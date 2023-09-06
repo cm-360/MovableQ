@@ -17,7 +17,6 @@ from jobs import JobManager, Job, read_movable, count_total_mined
 
 
 # constants
-work_timeout = 5
 id0_regex = re.compile(r'[a-fA-F0-9]{32}')
 
 
