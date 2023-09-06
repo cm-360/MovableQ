@@ -4,7 +4,7 @@ MovableQ is a service meant to automatically connect people who need their 3DS c
 
 ## Requirements
 
-- [Python 3](https://www.python.org/)
+- [Python 3.10+](https://www.python.org/)
 - [Pipenv](https://pypi.org/project/pipenv/)
 
 ## Setup
