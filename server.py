@@ -5,6 +5,8 @@ from functools import wraps
 from pyzbar.pyzbar import decode as qr_decode
 from PIL import Image
 
+from dotenv import load_dotenv
+
 import base64
 import json
 import os
@@ -29,12 +31,14 @@ app.config['TEMPLATES_AUTO_RELOAD'] = True
 # job manager
 manager = JobManager()
 
+# admin credentials
+
 # total movables mined
 total_mined = 0
 
 
 def check_auth(username, password):
-    return username == 'admin' and password == 'CHANGE_ME'
+    return username == os.getenv('ADMIN_USER', 'admin') and password == os.getenv('ADMIN_PASS', 'INSECURE')
 
 # https://stackoverflow.com/questions/22919182/flask-http-basicauth-how-does-it-work
 def login_required(f):
@@ -282,7 +286,8 @@ def get_request_ip():
 # main
 
 if __name__ == '__main__':
+    load_dotenv()
     total_mined = count_total_mined()
     print(f'mined {total_mined} movables previously')
     from waitress import serve
-    serve(app, host='127.0.0.1', port=7799)
+    serve(app, host=os.getenv('HOST_ADDR', '127.0.0.1'), port=os.getenv('HOST_PORT', 7799))

@@ -8,6 +8,7 @@ flask = "*"
 waitress = "*"
 pillow = "*"
 pyzbar = {path = "./pyzbar"}
+python-dotenv = "*"
 
 [dev-packages]
 
