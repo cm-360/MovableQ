@@ -1,0 +1,3 @@
+[submodule "pyzbar"]
+	path = pyzbar
+	url = https://github.com/nmccann/pyzbar
