@@ -5,7 +5,7 @@ import os
 from threading import RLock
 
 
-movable_path = 'saved'
+movable_path = os.getenv('MSEDS_PATH', './mseds')
 job_lifetime = timedelta(minutes=5)
 miner_lifetime = timedelta(minutes=10)
 
