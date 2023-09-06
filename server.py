@@ -70,6 +70,13 @@ def serve_js(filename):
     response.headers.set('Content-Type', 'text/javascript')
     return response
 
+@app.route('/get_miner_client')
+def get_miner_client():
+    response = make_response(render_template('miner_client.py'))
+    response.headers.set('Content-Type', 'application/octet-stream')
+    response.headers.set('Content-Disposition', 'attachment', filename=f'miner_client.py')
+    return response 
+
 # api routes
 
 @app.route('/api/submit_mii_job', methods=['POST'])
