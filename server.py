@@ -19,7 +19,6 @@ from jobs import JobManager, Job, read_movable, count_total_mined
 # constants
 id0_regex = re.compile(r'[a-fA-F0-9]{32}')
 
-
 # flask app
 app = Flask(__name__)
 app.wsgi_app = ProxyFix(
@@ -29,8 +28,6 @@ app.config['TEMPLATES_AUTO_RELOAD'] = True
 
 # job manager
 manager = JobManager()
-
-# admin credentials
 
 # total movables mined
 total_mined = 0
@@ -75,6 +72,7 @@ def get_miner_client():
     response.headers.set('Content-Type', 'application/octet-stream')
     response.headers.set('Content-Disposition', 'attachment', filename=f'miner_client.py')
     return response 
+
 
 # api routes
 
@@ -214,6 +212,7 @@ def error(message, code=400):
         'message': message
     })
     return make_response(response_json, code)
+
 
 # download movable
 
