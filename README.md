@@ -1,5 +1,6 @@
 # MovableQ
 
+MovableQ is a service meant to automatically connect people who need their 3DS console's `movable.sed` bruteforced with people that can offer the computing power to do so. Currently only "mii mining" is supported, though adding support for normal "seedminer" jobs is planned.
 
 ## Requirements
 
@@ -19,3 +20,7 @@ pipenv install
 ```bash
 pipenv run python3 server.py
 ```
+
+## About
+
+### 
