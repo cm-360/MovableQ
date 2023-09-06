@@ -105,14 +105,14 @@
     }
     cancelButton.title = "Cancel job";
     cancelButton.addEventListener("click", event => cancelJob(job.id0));
-	const cancelIcon = document.createElement("i");
-	cancelIcon.className = "fa-solid fa-xmark";
-	cancelButton.appendChild(cancelIcon);
-	const cancelText = document.createElement("div");
-	cancelText.className = "visually-hidden";
-	cancelText.innerText = "Cancel job";
-	cancelButton.appendChild(cancelText);
-	actionsCell.appendChild(cancelButton);
+    const cancelIcon = document.createElement("i");
+    cancelIcon.className = "fa-solid fa-xmark";
+    cancelButton.appendChild(cancelIcon);
+    const cancelText = document.createElement("div");
+    cancelText.className = "visually-hidden";
+    cancelText.innerText = "Cancel job";
+    cancelButton.appendChild(cancelText);
+    actionsCell.appendChild(cancelButton);
 
     row.appendChild(actionsCell);
 
