@@ -64,6 +64,12 @@ def page_home():
 def page_admin():
     return render_template('pages/admin.html')
 
+@app.route('/js/<path:filename>')
+def serve_js(filename):
+    response = make_response(render_template('js/' + filename))
+    response.headers.set('Content-Type', 'text/javascript')
+    return response
+
 # api routes
 
 @app.route('/api/submit_mii_job', methods=['POST'])

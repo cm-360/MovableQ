@@ -1,3 +1,5 @@
+import { getCookie, setCookie } from "{{ url_for('serve_js', filename='cookies.js') }}";
+
 (() => {
 
   const refreshTablesButton = document.getElementById("refreshTablesButton");
@@ -42,14 +44,14 @@
 
   function updateJobsTable(jobs) {
     jobsTableBody.innerHTML = "";
-    for (job of jobs) {
+    for (let job of jobs) {
       jobsTableBody.appendChild(createJobRow(job));
     }
   }
 
   function updateMinersTable(miners) {
     minersTableBody.innerHTML = "";
-    for (miner of miners) {
+    for (let miner of miners) {
       minersTableBody.appendChild(createMinerRow(miner));
     }
   }
@@ -167,30 +169,5 @@
     refreshTables();
     setInterval(refreshTables, 15000);
   });
-
-
-  // cookie helpers (thank you w3schools)
-
-  function setCookie(cname, cvalue, exdays) {
-    const d = new Date();
-    d.setTime(d.getTime() + (exdays * 24 * 60 * 60 * 1000));
-    let expires = "expires="+d.toUTCString();
-    document.cookie = cname + "=" + cvalue + ";" + expires + ";path=/";
-  }
-
-  function getCookie(cname) {
-    let name = cname + "=";
-    let ca = document.cookie.split(';');
-    for(let i = 0; i < ca.length; i++) {
-      let c = ca[i];
-      while (c.charAt(0) == ' ') {
-        c = c.substring(1);
-      }
-      if (c.indexOf(name) == 0) {
-        return c.substring(name.length, c.length);
-      }
-    }
-    return "";
-  }
 
 })();

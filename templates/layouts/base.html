@@ -22,7 +22,7 @@
 				<span id="minerCount">?</span> miners,
 				<span id="movableTotal">?</span> movables mined
 			</span>
-			<script type="text/javascript">{% include "js/stats.js" %}</script>
+			<script type="module" src="{{ url_for('serve_js', filename='stats.js') }}"></script>
 		</div>
 	</nav>
 	<br>
