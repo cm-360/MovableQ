@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "0e0f34e3d27a96213fe61f463cfe350a915f13c5fa330dc543f63ba8a17d9b17"
+            "sha256": "75297b093e720804d6b94e7c613990bc08c14fa259cf8e66646097be08c7efd0"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -173,6 +173,10 @@
             ],
             "index": "pypi",
             "version": "==10.0.0"
+        },
+        "pyzbar": {
+            "path": "./pyzbar",
+            "version": "==0.1.8"
         },
         "waitress": {
             "hashes": [
