@@ -210,7 +210,7 @@ def download_movable(id0):
         return error('Movable not found', 404)
     response = make_response(movable)
     response.headers.set('Content-Type', 'application/octet-stream')
-    response.headers.set('Content-Disposition', 'attachment', filename=f'movable.{id0}.sed')
+    response.headers.set('Content-Disposition', 'attachment', filename=f'movable.sed')
     return response
 
 
