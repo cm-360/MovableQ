@@ -5,13 +5,15 @@
 {% set discord_name='Nintendo Homebrew' %}
 {% set id0_help_url='https://3ds.hacks.guide/troubleshooting#seedminer' %}
 
+{% set title='MovableQ' %}
+
 <!DOCTYPE html>
 <html lang="en" class="h-100" data-bs-theme="dark">
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 	<meta name="description" content="">
-	<title>{% block title %}MovableQ{% endblock %}</title>
+	<title>{% block title %}{{ title }}{% endblock %}</title>
 	<link rel="icon" href="favicon.png">
 	<!-- Bootstrap -->
 	<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-4bw+/aepP/YC94hEpVNVgiZdgIC5+VKNBQNGCHeKRQN+PtmoHDEXuppvnDJzQIu9" crossorigin="anonymous">
@@ -22,7 +24,7 @@
 <body class="bg-dark-subtle d-flex flex-column h-100">
 	<nav class="navbar bg-body-tertiary">
 		<div class="container-fluid">
-			<a class="navbar-brand" href="{{ url_for('page_home') }}">{{ self.title() }}</a>
+			<a class="navbar-brand" href="{{ url_for('page_home') }}">{{ title }}</a>
 			<span class="navbar-text">
 				<span id="waitingCount">?</span> jobs in queue,
 				<span id="workingCount">?</span> active jobs,
