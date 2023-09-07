@@ -3,6 +3,7 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='cookies.j
 (() => {
 
   const refreshTablesButton = document.getElementById("refreshTablesButton");
+  const refreshTablesTime= document.getElementById("refreshTablesTime");
 
   const jobsTableBody = document.getElementById("jobsTableBody");
   const minersTableBody = document.getElementById("minersTableBody");
@@ -11,6 +12,7 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='cookies.j
   async function refreshTables() {
     refreshJobs();
     refreshMiners();
+    refreshTablesTime.innerText = new Date().toLocaleString();;
   }
 
   async function refreshJobs() {

@@ -4,13 +4,16 @@
 	<div class="card">
 		<div class="card-header">
 			<ul class="nav nav-tabs card-header-tabs" role="tablist">
-				<li class="nav-item" role="presentation">
+				<li class="nav-item">
 					<button class="nav-link active" id="jobs-tab" data-bs-toggle="tab" data-bs-target="#jobs-tab-pane" type="button" role="tab" aria-controls="jobs-tab-pane" aria-selected="true">Jobs</button>
 				</li>
-				<li class="nav-item" role="presentation">
+				<li class="nav-item">
 					<button class="nav-link" id="miners-tab" data-bs-toggle="tab" data-bs-target="#miners-tab-pane" type="button" role="tab" aria-controls="miners-tab-pane" aria-selected="false">Miners</button>
 				</li>
-				<li class="nav-item ms-auto" role="presentation">
+				<li class="nav-item">
+					<span class="nav-link disabled">Last checked: <span id="refreshTablesTime"></span></span>
+				</li>
+				<li class="nav-item ms-auto">
 					<button type="button" class="btn btn-sm btn-primary" id="refreshTablesButton"><i class="fa-solid fa-arrows-rotate"></i> Refresh</button>
 				</li>
 			</ul>
@@ -41,7 +44,7 @@
 							<tr>
 								<th>Name</th>
 								<th>IP</th>
-								<th>Last Seen</th>
+								<th>Last seen</th>
 							</tr>
 						</thead>
 						<tbody id="minersTableBody">
