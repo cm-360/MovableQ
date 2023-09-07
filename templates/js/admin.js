@@ -1,4 +1,4 @@
-import { getCookie, setCookie } from "{{ url_for('serve_js', filename='cookies.js') }}";
+import { getCookie, setCookie, getViewportSize } from "{{ url_for('serve_js', filename='utils.js') }}";
 
 (() => {
 

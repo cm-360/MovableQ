@@ -11,10 +11,16 @@
 					<button class="nav-link" id="miners-tab" data-bs-toggle="tab" data-bs-target="#miners-tab-pane" type="button" role="tab" aria-controls="miners-tab-pane" aria-selected="false">Miners</button>
 				</li>
 				<li class="nav-item">
-					<span class="nav-link disabled">Last checked: <span id="refreshTablesTime"></span></span>
+					<span class="nav-link disabled">
+						<span class="d-none d-md-inline">Checked: </span>
+						<span id="refreshTablesTime"></span>
+					</span>
 				</li>
 				<li class="nav-item ms-auto">
-					<button type="button" class="btn btn-sm btn-primary" id="refreshTablesButton"><i class="fa-solid fa-arrows-rotate"></i> Refresh</button>
+					<button type="button" class="btn btn-sm btn-primary" id="refreshTablesButton">
+						<i class="fa-solid fa-arrows-rotate"></i>
+						<span class="d-none d-md-inline">Refresh</span>
+					</button>
 				</li>
 			</ul>
 		</div>
