@@ -2,12 +2,15 @@
 
 MovableQ is a service meant to automatically connect people who need their 3DS console's `movable.sed` bruteforced with volunteers that can offer the computing power to do so. Currently only "Mii Mining" is supported, though adding support for normal "Seedminer" jobs is planned.
 
-## Requirements
+
+## Server Setup (Website)
+
+### Requirements
 
 - [Python 3.10+](https://www.python.org/)
 - [Pipenv](https://pypi.org/project/pipenv/)
 
-## Server Setup (Website)
+### Instructions
 
 1. Clone this GitHub repository and install the depedencies with pipenv:
 ```bash
@@ -21,9 +24,29 @@ pipenv install
 pipenv run python3 server.py
 ```
 
+
 ## Client Setup (Miner)
 
-TODO
+### Requirements
+
+- [Python 3.10+](https://www.python.org/)
+- [pycryptodomex](https://pypi.org/project/pycryptodomex/)
+
+### Instructions
+
+1. Download and extract the latest release of [Seedminer](https://github.com/zoogie/seedminer/releases) for your operating system.
+2. Download the mining client script from the MovableQ website, or [from this GitHub repository](./templates/mining_client.py). Place it inside the extracted Seedminer directory, in the same place as `seedminer_launcher_3.py`.
+3. Open the script in a text editor to change the `miner_name` variable and give yourself a username.
+   - If you downloaded the script from GitHub, you will also need to adjust the `base_url` variable.
+4. Install the `pycryptodomex` package if you haven't already:
+```bash
+pip install pycryptodomex
+```
+5. Run the mining client:
+```bash
+python3 mining_client.py
+```
+
 
 ## About
 
