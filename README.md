@@ -30,6 +30,7 @@ pipenv run python3 server.py
 ### Requirements
 
 - [Python 3.10+](https://www.python.org/)
+- [requests](https://pypi.org/project/requests/)
 - [pycryptodomex](https://pypi.org/project/pycryptodomex/)
 
 ### Instructions
@@ -38,9 +39,9 @@ pipenv run python3 server.py
 2. Download the mining client script from the MovableQ website, or [from this GitHub repository](./templates/mining_client.py). Place it inside the extracted Seedminer directory, in the same place as `seedminer_launcher_3.py`.
 3. Open the script in a text editor to change the `miner_name` variable and give yourself a username.
    - **NOTE**: If you downloaded the script from GitHub, you will also need to adjust the `base_url` variable.
-4. Install the `pycryptodomex` package if you haven't already:
+4. Install the `requests` and `pycryptodomex` packages if you haven't already:
 ```bash
-pip install pycryptodomex
+pip install requests pycryptodomex
 ```
 5. Run the mining client:
 ```bash
