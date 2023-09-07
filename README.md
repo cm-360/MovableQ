@@ -7,7 +7,7 @@ MovableQ is a service meant to automatically connect people who need their 3DS c
 - [Python 3.10+](https://www.python.org/)
 - [Pipenv](https://pypi.org/project/pipenv/)
 
-## Setup
+## Server Setup (Website)
 
 1. Clone this GitHub repository and install the depedencies with pipenv:
 ```bash
@@ -20,6 +20,10 @@ pipenv install
 ```bash
 pipenv run python3 server.py
 ```
+
+## Client Setup (Miner)
+
+TODO
 
 ## About
 
