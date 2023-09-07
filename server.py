@@ -55,6 +55,10 @@ def login_required(f):
 def page_home():
     return render_template('pages/home.html')
 
+@app.route('/volunteer')
+def page_volunteer():
+    return render_template('pages/volunteer.html')
+
 @app.route('/admin')
 @login_required
 def page_admin():
@@ -67,7 +71,7 @@ def serve_js(filename):
     return response
 
 @app.route('/get_mining_client')
-def get_miner_client():
+def get_mining_client():
     client_filename = 'mining_client.py'
     response = make_response(render_template(client_filename))
     response.headers.set('Content-Type', 'application/octet-stream')
