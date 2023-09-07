@@ -11,11 +11,11 @@ from traceback import print_exc
 
 base_url = '{{ url_for("page_home", _external=True) }}api'
 
+miner_name = 'CHANGE_ME'
+
 request_cooldown = 10
 error_cooldown = 30
 update_interval = 10
-
-miner_name = 'CHANGE_ME'
 
 
 def do_mii_mine(id0, model, year, mii_data):
