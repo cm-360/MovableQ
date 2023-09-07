@@ -1,4 +1,4 @@
-import { getCookie, setCookie, getViewportSize } from "{{ url_for('serve_js', filename='utils.js') }}";
+import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js') }}";
 
 (() => {
 
@@ -12,7 +12,7 @@ import { getCookie, setCookie, getViewportSize } from "{{ url_for('serve_js', fi
   async function refreshTables() {
     refreshJobs();
     refreshMiners();
-    refreshTablesTime.innerText = new Date().toLocaleString();;
+    refreshTablesTime.innerText = new Date().toLocaleTimeString();
   }
 
   async function refreshJobs() {
