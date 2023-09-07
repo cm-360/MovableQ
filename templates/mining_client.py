@@ -9,7 +9,7 @@ from urllib.parse import quote as url_quote
 from traceback import print_exc
 
 
-base_url = '{{ url_for("page_home", _external=True) }}api'
+base_url = '{{ url_for("page_home", _external=True) }}'
 
 miner_name = 'CHANGE_ME'
 
@@ -37,7 +37,7 @@ def do_mii_mine(id0, model, year, mii_data):
 				timer += 1
 				time.sleep(1)
 				if timer % update_interval == 0:
-					response = requests.get(f'{base_url}/update_job/{id0}')
+					response = requests.get(f'{base_url}/api/update_job/{id0}')
 					status = response.json()['data'].get('status')
 					if status == 'canceled':
 						print('Job canceled')
@@ -68,7 +68,7 @@ def cleanup_mining_files():
 def upload_movable(id0):
 	with open('movable.sed', 'rb') as movable:
 		response = requests.post(
-			f'{base_url}/complete_job/{id0}',
+			f'{base_url}/api/complete_job/{id0}',
 			json={'movable': str(base64.b64encode(movable.read()), 'utf-8')}
 		).json()
 
@@ -85,7 +85,7 @@ def kill_process(process):
 
 while True:
 	try:
-		response = requests.get(f'{base_url}/request_job?name={url_quote(miner_name)}').json()
+		response = requests.get(f'{base_url}/api/request_job?name={url_quote(miner_name)}').json()
 		if response['result'] == 'success':
 			data = response['data']
 			if data:

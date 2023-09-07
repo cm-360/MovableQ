@@ -66,11 +66,12 @@ def serve_js(filename):
     response.headers.set('Content-Type', 'text/javascript')
     return response
 
-@app.route('/get_miner_client')
+@app.route('/get_mining_client')
 def get_miner_client():
-    response = make_response(render_template('miner_client.py'))
+    client_filename = 'mining_client.py'
+    response = make_response(render_template(client_filename))
     response.headers.set('Content-Type', 'application/octet-stream')
-    response.headers.set('Content-Disposition', 'attachment', filename=f'miner_client.py')
+    response.headers.set('Content-Disposition', 'attachment', filename=client_filename)
     return response 
 
 
