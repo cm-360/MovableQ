@@ -180,7 +180,7 @@ def api_check_network_stats():
     return success({
         'waiting': manager.count_jobs('waiting'),
         'working': manager.count_jobs('working'),
-        'miners': manager.count_miners(),
+        'miners': manager.count_miners(active_only=True),
         'totalMined': total_mined
     })
 

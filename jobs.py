@@ -120,12 +120,15 @@ class JobManager():
     def count_jobs(self, status_filter=None):
         return len(self.list_jobs(status_filter))
 
-    def list_miners(self):
+    def list_miners(self, active_only=False):
         with self.lock:
-            return self.miners.values()
+            if active_only:
+                return [m for m in self.miners.values() if m.is_alive()]
+            else:
+                return self.miners.values()
 
-    def count_miners(self):
-        return len(self.list_miners())
+    def count_miners(self, active_only=False):
+        return len(self.list_miners(active_only))
 
     # return 'canceled' if job was canceled, update time otherwise
     def update_job(self, id0, miner_ip=None):
