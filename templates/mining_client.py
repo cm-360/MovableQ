@@ -25,7 +25,7 @@ def do_mii_mine(id0, model, year, mii_data):
 	try:
 		# set id0
 		subprocess.call([sys.executable, 'seedminer_launcher3.py', 'id0', id0])
-		# mining args 
+		# mining args
 		args = [sys.executable, 'seedminer_launcher3.py', 'mii', model]
 		if year:
 			args.append(str(year))

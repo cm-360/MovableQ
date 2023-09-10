@@ -76,7 +76,7 @@ def get_mining_client():
     response = make_response(render_template(client_filename))
     response.headers.set('Content-Type', 'application/octet-stream')
     response.headers.set('Content-Disposition', 'attachment', filename=client_filename)
-    return response 
+    return response
 
 
 # api routes
