@@ -162,7 +162,7 @@ def api_complete_job(id0):
     # TODO token check
     movable = base64.b64decode(request.json['movable'])
     if not manager.complete_job(id0, movable):
-        return error('Job not found')
+        return error('Job not found', 404)
     print('job completed: \t' + id0)
     total_mined += 1
     return success()
