@@ -163,19 +163,16 @@ class JobManager():
 
 class Job():
 
-    def __init__(self, id0, model, year, mii):
+    # note that _type is used instead of just type (avoids keyword collision)
+    def __init__(self, id0, _type):
         # job properties
         self.id0 = id0
-        self.model = model
-        self.year = year
-        self.mii = mii
+        self.type = _type  
         # for queue
         self.status = None
         self.created = datetime.now(tz=timezone.utc)
         self.assignee = None
         self.last_update = self.created
-        # for authentication
-        # self.token = None
 
     def assign_to(self, name):
         self.assignee = name
@@ -188,14 +185,40 @@ class Job():
         return datetime.now(tz=timezone.utc) < (self.last_update + job_lifetime)
 
     def __iter__(self):
+        yield 'type', self.type
         yield 'id0', self.id0
-        yield 'model', self.model
-        yield 'year', self.year
-        yield 'mii', self.mii
         yield 'status', self.status
         yield 'created', self.created.isoformat()
         yield 'assignee', self.assignee
         yield 'last_update', self.last_update.isoformat()
+
+
+class MiiJob(Job):
+
+    def __init__(self, id0, model, year, mii):
+        Job.__init__(self, id0, 'mii')
+        # mii-specific job properties
+        self.model = model
+        self.year = year
+        self.mii = mii
+
+    def __iter__(self):
+        yield from super().__iter__()
+        yield 'model', self.model
+        yield 'year', self.year
+        yield 'mii', self.mii
+
+
+class Part1Job(Job):
+
+    def __init__(self, id0, part1):
+        Job.__init__(self, id0, 'part1')
+        # part1-specific job properties
+        self.part1 = part1
+
+    def __iter__(self):
+        yield from super().__iter__()
+        yield 'part1', self.part1
 
 
 class Miner():

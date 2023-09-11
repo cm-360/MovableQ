@@ -14,7 +14,7 @@ import os
 import re
 import secrets
 
-from jobs import JobManager, Job, read_movable, count_total_mined
+from jobs import JobManager, MiiJob, Part1Job, read_movable, count_total_mined
 
 
 # constants
@@ -105,9 +105,9 @@ def api_submit_mii_job():
     # parse job submission
     submission = request.get_json(silent=True)
     if submission:
-        job = parse_job_submission(request.json)
+        job = parse_mii_job_submission(request.json)
     else:
-        job = parse_job_submission(request.form, mii_file=request.files['mii_file'])
+        job = parse_mii_job_submission(request.form, mii_file=request.files['mii_file'])
     # returns error message if job json is invalid
     if type(job) is str:
         return error(job)
@@ -266,7 +266,7 @@ def trim_canceled_jobs():
 def is_id0(value):
     return bool(id0_regex.fullmatch(value))
 
-def parse_job_submission(job_json, mii_file=None):
+def parse_mii_job_submission(job_json, mii_file=None):
     invalid = []
     try:
         # id0
@@ -295,7 +295,7 @@ def parse_job_submission(job_json, mii_file=None):
         if invalid:
             return 'invalid:' + ','.join(invalid)
         else:
-            return Job(id0, model, year, mii_data)
+            return MiiJob(id0, model, year, mii_data)
     except KeyError as e:
         return 'Missing parameter ' + str(e)
     except Exception as e:
