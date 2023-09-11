@@ -333,7 +333,7 @@ def parse_part1_job_submission(submission, part1_file=None):
         # part1 data
         part1_data = submission.get('part1_data')
         if part1_file:
-            part1_data = part1_file.read()
+            part1_data = process_part1_file(part1_file)
         if not part1_data:
             invalid.append('part1')
         if invalid:
@@ -361,6 +361,12 @@ def process_mii_file(mii_file):
             pass
     # base64 encode
     if raw_data and len(raw_data) == 112:
+        return str(base64.b64encode(raw_data), 'utf-8')
+
+def process_part1_file(part1_file):
+    raw_data = part1_file.read()
+    # base64 encode
+    if raw_data and len(raw_data) > 0: # better size checking once I'm sure, 0x1000 bytes?
         return str(base64.b64encode(raw_data), 'utf-8')
 
 def get_request_ip():
