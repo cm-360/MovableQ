@@ -105,11 +105,7 @@ def api_submit_mii_job():
 
 @app.route('/api/request_job')
 def api_request_job():
-    released = manager.release_dead_jobs()
-    if released:
-        print('jobs released:')
-        for id0 in released:
-            print(f'\t\t{id0}')
+    release_dead_jobs()
     miner_ip = get_request_ip()
     print(f'{miner_ip} requests work')
     miner_name = request.args.get('name', miner_ip)
@@ -148,11 +144,7 @@ def api_update_job(id0):
 
 @app.route('/api/cancel_job/<id0>')
 def api_cancel_job(id0):
-    deleted = manager.trim_canceled_jobs()
-    if deleted:
-        print('jobs deleted:')
-        for id0 in deleted:
-            print(f'\t\t{id0}')
+    trim_canceled_jobs()
     if not is_id0(id0):
         return error('Invalid ID0')
     # TODO token check
@@ -232,6 +224,23 @@ def download_movable(id0):
     response.headers.set('Content-Type', 'application/octet-stream')
     response.headers.set('Content-Disposition', 'attachment', filename=f'movable.sed')
     return response
+
+
+# cleanup routines
+
+def release_dead_jobs():
+    released = manager.release_dead_jobs()
+    if released:
+        print('jobs released:')
+        for id0 in released:
+            print(f'\t\t{id0}')
+
+def trim_canceled_jobs():
+    deleted = manager.trim_canceled_jobs()
+    if deleted:
+        print('jobs deleted:')
+        for id0 in deleted:
+            print(f'\t\t{id0}')
 
 
 # helpers
