@@ -118,7 +118,29 @@ def api_submit_mii_job():
         status = None
     if not status:
         manager.submit_job(job)
-        app.logger.info('job submitted: \t' + job.id0)
+        app.logger.info('mii job submitted: \t' + job.id0)
+    return success({'id0': job.id0})
+
+@app.route('/api/submit_part1_job', methods=['POST'])
+def api_submit_part1_job():
+    job = None
+    # parse job submission
+    submission = request.get_json(silent=True)
+    if submission:
+        job = parse_part1_job_submission(request.json)
+    else:
+        job = parse_part1_job_submission(request.form, part1_file=request.files['part1_file'])
+    # returns error message if job json is invalid
+    if type(job) is str:
+        return error(job)
+    # overwrite job if canceled
+    status = manager.check_job_status(job.id0)
+    if status == 'canceled':
+        manager.delete_job(job.id0)
+        status = None
+    if not status:
+        manager.submit_job(job)
+        app.logger.info('part1 job submitted: \t' + job.id0)
     return success({'id0': job.id0})
 
 @app.route('/api/request_job')
@@ -296,6 +318,28 @@ def parse_mii_job_submission(job_json, mii_file=None):
             return 'invalid:' + ','.join(invalid)
         else:
             return MiiJob(id0, model, year, mii_data)
+    except KeyError as e:
+        return 'Missing parameter ' + str(e)
+    except Exception as e:
+        return str(type(e)) + str(e)
+
+def parse_part1_job_submission(job_json, part1_file=None):
+    invalid = []
+    try:
+        # id0
+        id0 = job_json['id0']
+        if not is_id0(id0):
+            invalid.append('id0')
+        # part1 data
+        part1_data = job_json.get('part1_data')
+        if part1_file:
+            part1_data = part1_file.read()
+        if not part1_data:
+            invalid.append('part1')
+        if invalid:
+            return 'invalid:' + ','.join(invalid)
+        else:
+            return Part1Job(id0, part1_data)
     except KeyError as e:
         return 'Missing parameter ' + str(e)
     except Exception as e:
