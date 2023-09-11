@@ -1,6 +1,7 @@
-from flask import Flask, request, render_template, make_response
+from flask import Flask, request, render_template, make_response, g
 from werkzeug.middleware.proxy_fix import ProxyFix
 from functools import wraps
+from logging.config import dictConfig
 
 from pyzbar.pyzbar import decode as qr_decode
 from PIL import Image
@@ -18,6 +19,23 @@ from jobs import JobManager, Job, read_movable, count_total_mined
 
 # constants
 id0_regex = re.compile(r'[a-fA-F0-9]{32}')
+
+# logging config
+dictConfig({
+    'version': 1,
+    'formatters': {'default': {
+        'format': '[%(asctime)s] %(levelname)s in %(module)s: %(message)s',
+    }},
+    'handlers': {'wsgi': {
+        'class': 'logging.StreamHandler',
+        'stream': 'ext://flask.logging.wsgi_errors_stream',
+        'formatter': 'default'
+    }},
+    'root': {
+        'level': 'INFO',
+        'handlers': ['wsgi']
+    }
+})
 
 # flask app
 app = Flask(__name__)
@@ -100,19 +118,19 @@ def api_submit_mii_job():
         status = None
     if not status:
         manager.submit_job(job)
-        print('job submitted: \t' + job.id0)
+        app.logger.info('job submitted: \t' + job.id0)
     return success({'id0': job.id0})
 
 @app.route('/api/request_job')
 def api_request_job():
     release_dead_jobs()
     miner_ip = get_request_ip()
-    print(f'{miner_ip} requests work')
+    app.logger.info(f'{miner_ip} requests work')
     miner_name = request.args.get('name', miner_ip)
     job = manager.request_job(miner_name, miner_ip)
     if not job:
         return success()
-    print('job assigned: \t' + job.id0)
+    app.logger.info('job assigned: \t' + job.id0)
     return success(dict(job))
 
 @app.route('/api/release_job/<id0>')
@@ -133,7 +151,7 @@ def api_update_job(id0):
     if not is_id0(id0):
         return error('Invalid ID0')
     miner_ip = get_request_ip()
-    print(f'{miner_ip} is still mining')
+    app.logger.info(f'{miner_ip} is still mining')
     result = manager.update_job(id0, miner_ip)
     if not result:
         return error('Job not found', 404)
@@ -151,7 +169,7 @@ def api_cancel_job(id0):
     result = manager.cancel_job(id0)
     if not result:
         return error('Job not found', 404)
-    print('job canceled: \t' + id0)
+    app.logger.info('job canceled: \t' + id0)
     return success()
 
 @app.route('/api/complete_job/<id0>', methods=['POST'])
@@ -163,7 +181,7 @@ def api_complete_job(id0):
     movable = base64.b64decode(request.json['movable'])
     if not manager.complete_job(id0, movable):
         return error('Job not found', 404)
-    print('job completed: \t' + id0)
+    app.logger.info('job completed: \t' + id0)
     total_mined += 1
     return success()
 
@@ -231,16 +249,16 @@ def download_movable(id0):
 def release_dead_jobs():
     released = manager.release_dead_jobs()
     if released:
-        print('jobs released:')
+        app.logger.info('jobs released:')
         for id0 in released:
-            print(f'\t\t{id0}')
+            app.logger.info(f'\t\t{id0}')
 
 def trim_canceled_jobs():
     deleted = manager.trim_canceled_jobs()
     if deleted:
-        print('jobs deleted:')
+        app.logger.info('jobs deleted:')
         for id0 in deleted:
-            print(f'\t\t{id0}')
+            app.logger.info(f'\t\t{id0}')
 
 
 # helpers
@@ -313,6 +331,6 @@ def get_request_ip():
 if __name__ == '__main__':
     load_dotenv()
     total_mined = count_total_mined()
-    print(f'mined {total_mined} movables previously')
+    app.logger.info(f'mined {total_mined} movables previously')
     from waitress import serve
     serve(app, host=os.getenv('HOST_ADDR', '127.0.0.1'), port=os.getenv('HOST_PORT', 7799))
