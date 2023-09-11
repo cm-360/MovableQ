@@ -288,28 +288,28 @@ def trim_canceled_jobs():
 def is_id0(value):
     return bool(id0_regex.fullmatch(value))
 
-def parse_mii_job_submission(job_json, mii_file=None):
+def parse_mii_job_submission(submission, mii_file=None):
     invalid = []
     try:
         # id0
-        id0 = job_json['id0']
+        id0 = submission['id0']
         if not is_id0(id0):
             invalid.append('id0')
         # model
-        model = job_json['model'].lower()
+        model = submission['model'].lower()
         if model not in ['old', 'new']:
             invalid.append('model')
         # year
         year = None
-        if job_json['year']:
+        if submission['year']:
             try:
-                year = int(job_json['year'])
+                year = int(submission['year'])
                 if year < 2011 or year > 2020:
                     invalid.append('year')
             except (ValueError, TypeError) as e:
                 invalid.append('year')
         # mii data
-        mii_data = job_json.get('mii_data')
+        mii_data = submission.get('mii_data')
         if mii_file:
             mii_data = process_mii_file(mii_file)
         if not mii_data:
@@ -323,15 +323,15 @@ def parse_mii_job_submission(job_json, mii_file=None):
     except Exception as e:
         return str(type(e)) + str(e)
 
-def parse_part1_job_submission(job_json, part1_file=None):
+def parse_part1_job_submission(submission, part1_file=None):
     invalid = []
     try:
         # id0
-        id0 = job_json['id0']
+        id0 = submission['id0']
         if not is_id0(id0):
             invalid.append('id0')
         # part1 data
-        part1_data = job_json.get('part1_data')
+        part1_data = submission.get('part1_data')
         if part1_file:
             part1_data = part1_file.read()
         if not part1_data:
