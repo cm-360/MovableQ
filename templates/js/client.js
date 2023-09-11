@@ -131,6 +131,15 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
 
   // actions
 
+  function loadID0() {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has("id0")) {
+      setID0(urlParams.get("id0"));
+    } else {
+      setID0(getCookie("id0"));
+    }
+  }
+
   function setID0(new_id0) {
     if (new_id0) {
       const urlParams = new URLSearchParams(window.location.search);
@@ -233,12 +242,7 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
 
     // initial setup
     toggleMiiUpload();
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.has("id0")) {
-      setID0(urlParams.get("id0"));
-    } else {
-      setID0(getCookie("id0"));
-    }
+    loadID0();
     checkJob();
   });
 
