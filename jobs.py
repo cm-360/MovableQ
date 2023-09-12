@@ -18,13 +18,12 @@ class JobManager():
         self.miners = {}
         self.lock = RLock()
 
-    # create and queue job if not exist
+    # create job if not exist
     def submit_job(self, job):
         with self.lock:
             if self.job_exists(job.id0):
                 return False
             self.jobs[job.id0] = job
-            self.queue_job(job.id0)
             return True
 
     # set job status to canceled if exists
@@ -142,6 +141,13 @@ class JobManager():
                 job.update()
                 self.update_miner(job.assignee, miner_ip)
                 return True
+    
+    def add_part1(self, id0, part1):
+        with self.lock:
+            if not self.job_exists(id0):
+                return False
+            self.jobs[id0].part1 = part1
+            return True
 
     # save movable to disk and delete job
     def complete_job(self, id0, movable):
@@ -211,13 +217,15 @@ class MiiJob(Job):
 
 class Part1Job(Job):
 
-    def __init__(self, id0, part1):
+    def __init__(self, id0, friend_code=None, part1=None):
         Job.__init__(self, id0, 'part1')
         # part1-specific job properties
+        self.friend_code = friend_code
         self.part1 = part1
 
     def __iter__(self):
         yield from super().__iter__()
+        yield 'friend_code', self.friend_code
         yield 'part1', self.part1
 
 

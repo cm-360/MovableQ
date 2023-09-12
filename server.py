@@ -118,6 +118,7 @@ def api_submit_mii_job():
         status = None
     if not status:
         manager.submit_job(job)
+        manager.queue_job(job.id0)
         app.logger.info('mii job submitted: \t' + job.id0)
     return success({'id0': job.id0})
 
@@ -140,6 +141,7 @@ def api_submit_part1_job():
         status = None
     if not status:
         manager.submit_job(job)
+        manager.queue_job(job.id0)
         app.logger.info('part1 job submitted: \t' + job.id0)
     return success({'id0': job.id0})
 
@@ -194,12 +196,20 @@ def api_cancel_job(id0):
     app.logger.info('job canceled: \t' + id0)
     return success()
 
+@app.route('/api/add_part1/<id0>', methods=['POST'])
+def api_add_part1(id0):
+    if not is_id0(id0):
+        return error('Invalid ID0')
+    if not manager.job_exists(id0):
+        return error('Job not found', 404)
+    manager.add_part1(id0, request.json['part1'])
+    manager.queue_job(id0)
+
 @app.route('/api/complete_job/<id0>', methods=['POST'])
 def api_complete_job(id0):
     global total_mined
     if not is_id0(id0):
         return error('Invalid ID0')
-    # TODO token check
     movable = base64.b64decode(request.json['movable'])
     if not manager.complete_job(id0, movable):
         return error('Job not found', 404)
@@ -339,7 +349,7 @@ def parse_part1_job_submission(submission, part1_file=None):
         if invalid:
             return 'invalid:' + ','.join(invalid)
         else:
-            return Part1Job(id0, part1_data)
+            return Part1Job(id0, part1=part1_data)
     except KeyError as e:
         return 'Missing parameter ' + str(e)
     except Exception as e:
