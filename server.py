@@ -261,6 +261,16 @@ def error(message, code=400):
     return make_response(response_json, code)
 
 
+# error handler
+
+@app.errorhandler(Exception)
+def handle_exception(e):
+    # pass through HTTP errors
+    if isinstance(e, HTTPException):
+        return e
+    return error(f'{type(e).__name__}: {e}', code=500)
+
+
 # download movable
 
 @app.route('/download_movable/<id0>')
