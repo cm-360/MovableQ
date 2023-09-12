@@ -1,4 +1,4 @@
-from statemachine import StateMachine, State
+from transitions import Machine
 
 from collections import deque
 from datetime import datetime, timedelta, timezone
@@ -87,7 +87,8 @@ class JobManager():
             if job.canceled:
                 return False
             job.update()
-            self.update_miner(job.assignee.name, miner_ip)
+            if job.assignee:
+                self.update_miner(job.assignee.name, miner_ip)
             return True
 
     # if a name is provided, updates that miners ip and time, creating one if necessary; returns the Miner object
@@ -113,7 +114,7 @@ class JobManager():
         with self.lock:
             released = []
             for job in self.jobs.values():
-                if job.working.is_active and job.has_timed_out():
+                if 'working' == job.state and job.has_timed_out():
                     job.release()
                     released.append(job.id0)
             for id0 in released:
@@ -145,7 +146,7 @@ class JobManager():
                     return 'canceled'
                 else:
                     return job.get_status()
-            except Exception as e:
+            except KeyError as e:
                 if movable_exists(id0):
                     return 'done'
                 else:
@@ -155,7 +156,7 @@ class JobManager():
     def list_jobs(self, status_filter=None):
         with self.lock:
             if status_filter:
-                return [j for j in self.jobs.values() if j.status == status_filter]
+                return [j for j in self.jobs.values() if j.get_status() == status_filter]
             else:
                 return self.jobs.values()
 
@@ -176,29 +177,57 @@ class JobManager():
         return len(self.list_miners(active_only))
 
 
-class Job(StateMachine):
+class Job(Machine):
 
     # states
-    submitted = State(initial=True)
-    ready = State()
-    waiting = State()
-    working = State()
-    done = State()
+    states = [
+        'submitted',
+        'ready',
+        'waiting',
+        'working',
+        'done'
+    ]
 
-    # required
-    force_ready = submitted.to(ready)
-    # queue actions/transitions
-    queue = ready.to(waiting)
-    unqueue = waiting.to(ready)
-    # mining actions/transitions
-    assign = waiting.to(working)
-    update = waiting.to.itself()
-    release = working.to(waiting)
-    complete = working.to(done)
+    transitions = [
+        {
+            'trigger': 'queue',
+            'source': 'ready',
+            'dest': 'waiting'
+        },
+        {
+            'trigger': 'unqueue',
+            'source': 'waiting',
+            'dest': 'ready'
+        },
+        {
+            'trigger': 'assign',
+            'source': 'waiting',
+            'dest': 'working'
+        },
+        {
+            'trigger': 'update',
+            'source': 'working',
+            'dest': 'working'
+        },
+        {
+            'trigger': 'release',
+            'source': 'working',
+            'dest': 'waiting'
+        },
+        {
+            'trigger': 'complete',
+            'source': 'working',
+            'dest': 'done'
+        }
+    ]
 
     # note that _type is used instead of just type (avoids keyword collision)
     def __init__(self, id0, _type):
-        super().__init__()
+        super().__init__(
+            states=Job.states,
+            transitions=Job.transitions,
+            initial='submitted'
+        )
         # job properties
         self.id0 = id0
         self.type = _type  
@@ -216,7 +245,7 @@ class Job(StateMachine):
         self.last_update = datetime.now(tz=timezone.utc)
 
     def get_status(self):
-        return self.current_state.id
+        return self.state
 
     def is_canceled(self):
         return self.canceled
@@ -231,39 +260,36 @@ class Job(StateMachine):
         yield 'status', self.get_status()
         yield 'canceled', self.canceled
         yield 'created', self.created.isoformat()
-        yield 'assignee', self.assignee.name
+        yield 'assignee', self.assignee.name if self.assignee else None
         yield 'last_update', self.last_update.isoformat()
 
 
 class MiiJob(Job):
 
-    prepare = Job.submitted.to(Job.ready)
-
     def __init__(self, id0, model, year, mii):
         super().__init__(id0, 'mii')
+        self.add_transition('prepare', 'submitted', 'ready')
         # mii-specific job properties
-        self.model = model
-        self.year = year
+        self.console_model = model
+        self.console_year = year
         self.mii = mii
         # mii jobs are ready immediately
         self.prepare()
 
     def __iter__(self):
         yield from super().__iter__()
-        yield 'model', self.model
-        yield 'year', self.year
+        yield 'model', self.console_model
+        yield 'year', self.console_year
         yield 'mii', self.mii
 
 
 class Part1Job(Job):
 
-    need_part1 = State()
-
-    prepare = Job.submitted.to(need_part1)
-    add_part1 = need_part1.to(Job.ready)
-
     def __init__(self, id0, friend_code=None, part1=None):
         super().__init__(id0, 'part1')
+        self.add_state('need_part1')
+        self.add_transition('prepare', 'submitted', 'need_part1')
+        self.add_transition('add_part1', 'need_part1', 'ready')
         # part1-specific job properties
         self.friend_code = friend_code
         # part1 jobs need part1 (duh)
