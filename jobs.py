@@ -140,7 +140,11 @@ class JobManager():
     def check_job_status(self, id0):
         with self.lock:
             try:
-                return self.jobs[id0].get_status()
+                job = self.jobs[id0]
+                if job.is_canceled():
+                    return 'canceled'
+                else:
+                    return job.get_status()
             except Exception as e:
                 if movable_exists(id0):
                     return 'done'
