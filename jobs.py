@@ -137,7 +137,7 @@ class JobManager():
             return id0 in self.jobs
 
     # return job status if found, finished if movable exists, KeyError if neither
-    def get_job_status(self, id0):
+    def check_job_status(self, id0):
         with self.lock:
             try:
                 return self.jobs[id0].get_status()
