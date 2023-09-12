@@ -112,16 +112,7 @@ def api_submit_mii_job():
     # returns error message if job json is invalid
     if type(job) is str:
         return error(job)
-    # overwrite job if canceled
-    status = manager.check_job_status(job.id0)
-    if status == 'canceled':
-        manager.delete_job(job.id0)
-        status = None
-    if not status:
-        manager.submit_job(job)
-        manager.queue_job(job.id0)
-        app.logger.info('mii job submitted: \t' + job.id0)
-    return success({'id0': job.id0})
+    return submit_generic_job(job, queue=True)
 
 @app.route('/api/submit_part1_job', methods=['POST'])
 def api_submit_part1_job():
@@ -135,16 +126,7 @@ def api_submit_part1_job():
     # returns error message if job json is invalid
     if type(job) is str:
         return error(job)
-    # overwrite job if canceled
-    status = manager.check_job_status(job.id0)
-    if status == 'canceled':
-        manager.delete_job(job.id0)
-        status = None
-    if not status:
-        manager.submit_job(job)
-        manager.queue_job(job.id0)
-        app.logger.info('part1 job submitted: \t' + job.id0)
-    return success({'id0': job.id0})
+    return submit_generic_job(job)
 
 @app.route('/api/request_job')
 def api_request_job():
@@ -277,7 +259,28 @@ def download_movable(id0):
     return response
 
 
-# cleanup routines
+# manager action wrappers
+
+def submit_generic_job(job, queue=False):
+    # check for existing job
+    status = None
+    try:
+        status = manager.check_job_status(job.id0)
+        # delete existing job if it is canceled
+        if 'canceled' == status:
+            app.logger.info('deleting old job: \t' + job.id0)
+            manager.delete_job(job.id0)
+            status = None
+        if status:
+            return error('Duplicate job')
+    except: # job does not exist
+        pass
+    # submit and queue
+    manager.submit_job(job)
+    if queue:
+        manager.queue_job(job.id0)
+    app.logger.info(f'{job.type} job submitted: \t{job.id0}')
+    return success({'id0': job.id0})
 
 def release_dead_jobs():
     released = manager.release_dead_jobs()
