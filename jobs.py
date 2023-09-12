@@ -1,3 +1,5 @@
+from statemachine import StateMachine, State
+
 from collections import deque
 from datetime import datetime, timedelta, timezone
 import json
@@ -18,19 +20,17 @@ class JobManager():
         self.miners = {}
         self.lock = RLock()
 
-    # create job if not exist
+    # adds a job to the current job list, raises a ValueError if it exists already
     def submit_job(self, job):
         with self.lock:
             if self.job_exists(job.id0):
-                return False
+                raise ValueError(f'Duplicate job: {job.id0}')
             self.jobs[job.id0] = job
-            return True
 
     # set job status to canceled if exists
     def cancel_job(self, id0):
         with self.lock:
-            if not self.job_exists(id0):
-                return False
+            self.validate_job_exists(id0)
             self.unqueue_job(id0)
             self.jobs[id0].status = 'canceled'
             return True
@@ -38,8 +38,7 @@ class JobManager():
     # delete job from memory if exists
     def delete_job(self, id0):
         with self.lock:
-            if not self.job_exists(id0):
-                return False
+            self.validate_job_exists(id0)
             self.unqueue_job(id0)
             del self.jobs[id0]
             return True
@@ -80,7 +79,7 @@ class JobManager():
         with self.lock:
             released = []
             for job in self.jobs.values():
-                if job.status == 'working' and not job.is_alive():
+                if job.status == 'working' and job.has_timed_out():
                     released.append(job.id0)
             for id0 in released:
                 self.queue_job(id0, urgent=True)
@@ -90,7 +89,7 @@ class JobManager():
         with self.lock:
             deleted = []
             for job in self.jobs.values():
-                if job.status == 'canceled' and not job.is_alive():
+                if job.status == 'canceled' and job.has_timed_out():
                     deleted.append(id0)
             for id0 in deleted:
                 self.delete_job(id0)
@@ -101,6 +100,11 @@ class JobManager():
         with self.lock:
             return id0 in self.jobs
 
+    # raises a ValueError if a job does not exist
+    def validate_job_exists(self, id0):
+        if not self.job_exists(id0):
+            raise ValueError(f'Job not found: {id0}')
+
     # return job status if found, finished if movable exists
     def check_job_status(self, id0):
         with self.lock:
@@ -109,6 +113,7 @@ class JobManager():
             elif movable_exists(id0):
                 return 'done'
 
+    # returns all current jobs, optionally only those with a specific status
     def list_jobs(self, status_filter=None):
         with self.lock:
             if status_filter:
@@ -116,16 +121,19 @@ class JobManager():
             else:
                 return self.jobs.values()
 
+    # returns the number of current jobs, optionally only counting those with a specific status
     def count_jobs(self, status_filter=None):
         return len(self.list_jobs(status_filter))
 
+    # returns a list of all miners, or optionally only the active ones
     def list_miners(self, active_only=False):
         with self.lock:
             if active_only:
-                return [m for m in self.miners.values() if m.is_alive()]
+                return [m for m in self.miners.values() if not m.has_timed_out()]
             else:
                 return self.miners.values()
 
+    # returns the number of miners, optionally only counting the active ones
     def count_miners(self, active_only=False):
         return len(self.list_miners(active_only))
 
@@ -167,7 +175,23 @@ class JobManager():
                     self.miners[name] = Miner(name, ip)
 
 
-class Job():
+class Job(StateMachine):
+
+    # states
+    submitted = State(initial=True)
+    ready = State()
+    waiting = State()
+    working = State()
+    done = State()
+
+    # queue actions/transitions
+    queue = ready.to(waiting)
+    unqueue = waiting.to(ready)
+    # mining actions/transitions
+    assign = waiting.to(working)
+    update = waiting.to.itself()
+    release = working.to(waiting)
+    complete = working.to(done)
 
     # note that _type is used instead of just type (avoids keyword collision)
     def __init__(self, id0, _type):
@@ -175,31 +199,38 @@ class Job():
         self.id0 = id0
         self.type = _type  
         # for queue
-        self.status = None
+        self.canceled = False
         self.created = datetime.now(tz=timezone.utc)
         self.assignee = None
         self.last_update = self.created
 
-    def assign_to(self, name):
+    def on_assign(self, name):
         self.assignee = name
         self.update()
 
-    def update(self):
+    def on_update(self):
         self.last_update = datetime.now(tz=timezone.utc)
 
-    def is_alive(self):
-        return datetime.now(tz=timezone.utc) < (self.last_update + job_lifetime)
+    def is_canceled(self):
+        return self.canceled
+
+    # True if the job has timed out, False if it has not
+    def has_timed_out(self):
+        return datetime.now(tz=timezone.utc) > (self.last_update + job_lifetime)
 
     def __iter__(self):
         yield 'type', self.type
         yield 'id0', self.id0
-        yield 'status', self.status
+        yield 'status', self.current_state.id
+        yield 'canceled', self.canceled
         yield 'created', self.created.isoformat()
-        yield 'assignee', self.assignee
+        yield 'assignee', self.assignee.name
         yield 'last_update', self.last_update.isoformat()
 
 
 class MiiJob(Job):
+
+    prepare = Job.submitted.to(Job.ready)
 
     def __init__(self, id0, model, year, mii):
         Job.__init__(self, id0, 'mii')
@@ -207,6 +238,8 @@ class MiiJob(Job):
         self.model = model
         self.year = year
         self.mii = mii
+        # mii jobs are ready immediately
+        self.prepare()
 
     def __iter__(self):
         yield from super().__iter__()
@@ -217,10 +250,21 @@ class MiiJob(Job):
 
 class Part1Job(Job):
 
+    need_part1 = State()
+
+    prepare = Job.submitted.to(need_part1)
+    add_part1 = need_part1.to(Job.ready)
+
     def __init__(self, id0, friend_code=None, part1=None):
         Job.__init__(self, id0, 'part1')
         # part1-specific job properties
         self.friend_code = friend_code
+        # part1 jobs need part1 (duh)
+        self.prepare()
+        if part1:
+            self.add_part1(part1)
+    
+    def on_add_part1(part1):
         self.part1 = part1
 
     def __iter__(self):
@@ -241,8 +285,9 @@ class Miner():
         if ip:
             self.ip = ip
 
-    def is_alive(self):
-        return datetime.now(tz=timezone.utc) < (self.last_update + miner_lifetime)
+    # True if the miner has timed out, False if they have not
+    def has_timed_out(self):
+        return datetime.now(tz=timezone.utc) > (self.last_update + miner_lifetime)
 
     def __iter__(self):
         yield 'name', self.name
