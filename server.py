@@ -189,7 +189,6 @@ def api_cancel_job(id0):
     trim_canceled_jobs()
     if not is_id0(id0):
         return error('Invalid ID0')
-    # TODO token check
     result = manager.cancel_job(id0)
     if not result:
         return error('Job not found', 404)
