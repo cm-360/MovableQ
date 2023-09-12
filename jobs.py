@@ -185,6 +185,8 @@ class Job(StateMachine):
     working = State()
     done = State()
 
+    # required
+    force_ready = submitted.to(ready)
     # queue actions/transitions
     queue = ready.to(waiting)
     unqueue = waiting.to(ready)
@@ -196,6 +198,7 @@ class Job(StateMachine):
 
     # note that _type is used instead of just type (avoids keyword collision)
     def __init__(self, id0, _type):
+        super().__init__()
         # job properties
         self.id0 = id0
         self.type = _type  
@@ -237,7 +240,7 @@ class MiiJob(Job):
     prepare = Job.submitted.to(Job.ready)
 
     def __init__(self, id0, model, year, mii):
-        Job.__init__(self, id0, 'mii')
+        super().__init__(id0, 'mii')
         # mii-specific job properties
         self.model = model
         self.year = year
@@ -260,7 +263,7 @@ class Part1Job(Job):
     add_part1 = need_part1.to(Job.ready)
 
     def __init__(self, id0, friend_code=None, part1=None):
-        Job.__init__(self, id0, 'part1')
+        super().__init__(id0, 'part1')
         # part1-specific job properties
         self.friend_code = friend_code
         # part1 jobs need part1 (duh)

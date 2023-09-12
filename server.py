@@ -1,4 +1,5 @@
 from flask import Flask, request, render_template, make_response, g
+from werkzeug.exceptions import HTTPException 
 from werkzeug.middleware.proxy_fix import ProxyFix
 from functools import wraps
 from logging.config import dictConfig
@@ -149,13 +150,14 @@ def api_submit_part1_job():
 def api_request_job():
     release_dead_jobs()
     miner_ip = get_request_ip()
-    app.logger.info(f'{miner_ip} requests work')
     miner_name = request.args.get('name', miner_ip)
+    app.logger.info(f'miner "{miner_name}" ({miner_ip}) requests work')
     job = manager.request_job(miner_name, miner_ip)
-    if not job:
+    if job:
+        app.logger.info('job assigned: \t' + job.id0)
+        return success(dict(job))
+    else:
         return success()
-    app.logger.info('job assigned: \t' + job.id0)
-    return success(dict(job))
 
 @app.route('/api/release_job/<id0>')
 def api_release_job(id0):
@@ -166,32 +168,24 @@ def api_check_job_status(id0):
     if not is_id0(id0):
         return error('Invalid ID0')
     status = manager.check_job_status(id0)
-    if not status:
-        return error('Job not found', 404)
     return success({'status': status})
 
 @app.route('/api/update_job/<id0>')
 def api_update_job(id0):
     if not is_id0(id0):
         return error('Invalid ID0')
-    miner_ip = get_request_ip()
-    app.logger.info(f'{miner_ip} is still mining')
-    result = manager.update_job(id0, miner_ip)
-    if not result:
-        return error('Job not found', 404)
-    if type(result) == str:
-        return success({'status': result})
-    else:
+    if manager.update_job(id0, miner_ip=get_request_ip()):
         return success()
+    else:
+        return success({'status': 'canceled'})
+    app.logger.info(f'{miner_ip} is still mining')
 
 @app.route('/api/cancel_job/<id0>')
 def api_cancel_job(id0):
     trim_canceled_jobs()
     if not is_id0(id0):
         return error('Invalid ID0')
-    result = manager.cancel_job(id0)
-    if not result:
-        return error('Job not found', 404)
+    manager.cancel_job(id0)
     app.logger.info('job canceled: \t' + id0)
     return success()
 
@@ -199,8 +193,6 @@ def api_cancel_job(id0):
 def api_add_part1(id0):
     if not is_id0(id0):
         return error('Invalid ID0')
-    if not manager.job_exists(id0):
-        return error('Job not found', 404)
     manager.add_part1(id0, request.json['part1'])
     manager.queue_job(id0)
 
@@ -210,8 +202,7 @@ def api_complete_job(id0):
     if not is_id0(id0):
         return error('Invalid ID0')
     movable = base64.b64decode(request.json['movable'])
-    if not manager.complete_job(id0, movable):
-        return error('Job not found', 404)
+    manager.complete_job(id0, movable)
     app.logger.info('job completed: \t' + id0)
     total_mined += 1
     return success()
@@ -267,6 +258,7 @@ def handle_exception(e):
     # pass through HTTP errors
     if isinstance(e, HTTPException):
         return e
+    app.logger.exception(e)
     return error(f'{type(e).__name__}: {e}', code=500)
 
 
@@ -338,9 +330,7 @@ def parse_mii_job_submission(submission, mii_file=None):
         else:
             return MiiJob(id0, model, year, mii_data)
     except KeyError as e:
-        return 'Missing parameter ' + str(e)
-    except Exception as e:
-        return str(type(e)) + str(e)
+        raise KeyError(f'Missing parameter {e}')
 
 def parse_part1_job_submission(submission, part1_file=None):
     invalid = []
@@ -360,9 +350,7 @@ def parse_part1_job_submission(submission, part1_file=None):
         else:
             return Part1Job(id0, part1=part1_data)
     except KeyError as e:
-        return 'Missing parameter ' + str(e)
-    except Exception as e:
-        return str(type(e)) + str(e)
+        raise KeyError(f'Missing parameter {e}')
 
 def process_mii_file(mii_file):
     filename = mii_file.filename.lower()
