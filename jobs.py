@@ -27,70 +27,106 @@ class JobManager():
                 raise ValueError(f'Duplicate job: {job.id0}')
             self.jobs[job.id0] = job
 
-    # set job status to canceled if exists
+    # adds a part1 file to a job
+    def add_part1(self, id0, part1):
+        with self.lock:
+            self.jobs[id0].add_part1(part1)
+
+    # set job status to canceled, KeyError if it does not exist
     def cancel_job(self, id0):
         with self.lock:
-            self.validate_job_exists(id0)
-            self.unqueue_job(id0)
-            self.jobs[id0].status = 'canceled'
-            return True
+            job = self.jobs[id0]
+            job.canceled = True
+            self._unqueue_job(id0)
 
-    # delete job from memory if exists
+    # delete job from the current job list if exists
     def delete_job(self, id0):
         with self.lock:
-            self.validate_job_exists(id0)
-            self.unqueue_job(id0)
             del self.jobs[id0]
-            return True
+            self._unqueue_job(id0)
 
-    # add job id to queue if exists
+    # add job id to queue
+    def _queue_job(self, id0, urgent=False):
+        if urgent:
+            self.wait_queue.appendleft(id0)
+        else:
+            self.wait_queue.append(id0)
+
+    # add job id to queue, raises ValueError if it was already queued
     def queue_job(self, id0, urgent=False):
         with self.lock:
-            if not self.job_exists(id0):
-                return False
-            self.jobs[id0].status = 'waiting'
-            if id0 in self.wait_queue:
-                return False
-            if urgent:
-                self.wait_queue.appendleft(id0)
-            else:
-                self.wait_queue.append(id0)
-            return True
+            job = self.jobs[id0]
+            job.queue()
+            self._queue_job(id0, urgent)
 
+    # removes an id0 from the job queue if it was queued before
+    def _unqueue_job(self, id0):
+        if id0 in self.wait_queue:
+            self.wait_queue.remove(id0)
+
+    # removes an id0 from the job queue, raises ValueError if it was not queued
     def unqueue_job(self, id0):
         with self.lock:
-            if id0 in self.wait_queue:
-                self.wait_queue.remove(id0)
-                return True
-            return False
+            job = self.jobs[id0]
+            job.unqueue()
+            self._unqueue_job(job.id0)
 
     # pop from job queue if not empty and assign
     def request_job(self, miner_name=None, miner_ip=None):
         with self.lock:
-            self.update_miner(miner_name, miner_ip)
+            miner = self.update_miner(miner_name, miner_ip)
             if len(self.wait_queue) > 0:
                 job = self.jobs[self.wait_queue.popleft()]
-                job.status = 'working'
-                job.assign_to(miner_name)
+                job.assign(miner)
                 return job
+
+    # returns False if a job was canceled, updates its time/miner and returns True otherwise
+    def update_job(self, id0, miner_ip=None):
+        with self.lock:
+            job = self.jobs[id0]
+            if job.canceled:
+                return False
+            job.update()
+            self.update_miner(job.assignee.name, miner_ip)
+            return True
+
+    # if a name is provided, updates that miners ip and time, creating one if necessary; returns the Miner object
+    def update_miner(self, name, ip=None):
+        with self.lock:
+            if name:
+                if name in self.miners:
+                    self.miners[name].update(ip)
+                else:
+                    self.miners[name] = Miner(name, ip)
+                return self.miners[name]
+
+    # save movable to disk and delete job
+    def complete_job(self, id0, movable):
+        with self.lock:
+            job = self.jobs[id0]
+            job.complete()
+            save_movable(id0, movable)
+            self.delete_job(id0)
 
     # requeue dead jobs
     def release_dead_jobs(self):
         with self.lock:
             released = []
             for job in self.jobs.values():
-                if job.status == 'working' and job.has_timed_out():
+                if job.working.is_active and job.has_timed_out():
+                    job.release()
                     released.append(job.id0)
             for id0 in released:
-                self.queue_job(id0, urgent=True)
+                self._queue_job(id0, urgent=True)
             return released
 
+    # delete old canceled jobs
     def trim_canceled_jobs(self):
         with self.lock:
             deleted = []
             for job in self.jobs.values():
-                if job.status == 'canceled' and job.has_timed_out():
-                    deleted.append(id0)
+                if job.is_canceled() and job.has_timed_out():
+                    deleted.append(job.id0)
             for id0 in deleted:
                 self.delete_job(id0)
             return deleted
@@ -100,18 +136,16 @@ class JobManager():
         with self.lock:
             return id0 in self.jobs
 
-    # raises a ValueError if a job does not exist
-    def validate_job_exists(self, id0):
-        if not self.job_exists(id0):
-            raise ValueError(f'Job not found: {id0}')
-
-    # return job status if found, finished if movable exists
-    def check_job_status(self, id0):
+    # return job status if found, finished if movable exists, KeyError if neither
+    def get_job_status(self, id0):
         with self.lock:
-            if self.job_exists(id0):
-                return self.jobs[id0].status
-            elif movable_exists(id0):
-                return 'done'
+            try:
+                return self.jobs[id0].get_status()
+            except Exception as e:
+                if movable_exists(id0):
+                    return 'done'
+                else:
+                    raise e
 
     # returns all current jobs, optionally only those with a specific status
     def list_jobs(self, status_filter=None):
@@ -136,43 +170,6 @@ class JobManager():
     # returns the number of miners, optionally only counting the active ones
     def count_miners(self, active_only=False):
         return len(self.list_miners(active_only))
-
-    # return 'canceled' if job was canceled, update time otherwise
-    def update_job(self, id0, miner_ip=None):
-        with self.lock:
-            if not self.job_exists(id0):
-                return False
-            job = self.jobs[id0]
-            if job.status == 'canceled':
-                return 'canceled'
-            else:
-                job.update()
-                self.update_miner(job.assignee, miner_ip)
-                return True
-    
-    def add_part1(self, id0, part1):
-        with self.lock:
-            if not self.job_exists(id0):
-                return False
-            self.jobs[id0].part1 = part1
-            return True
-
-    # save movable to disk and delete job
-    def complete_job(self, id0, movable):
-        with self.lock:
-            if not self.job_exists(id0):
-                return False
-            save_movable(id0, movable)
-            self.delete_job(id0)
-            return True
-
-    def update_miner(self, name, ip=None):
-        with self.lock:
-            if name:
-                if name in self.miners:
-                    self.miners[name].update(ip)
-                else:
-                    self.miners[name] = Miner(name, ip)
 
 
 class Job(StateMachine):
@@ -204,12 +201,15 @@ class Job(StateMachine):
         self.assignee = None
         self.last_update = self.created
 
-    def on_assign(self, name):
-        self.assignee = name
+    def on_assign(self, miner):
+        self.assignee = miner
         self.update()
 
     def on_update(self):
         self.last_update = datetime.now(tz=timezone.utc)
+
+    def get_status(self):
+        return self.current_state.id
 
     def is_canceled(self):
         return self.canceled
@@ -221,7 +221,7 @@ class Job(StateMachine):
     def __iter__(self):
         yield 'type', self.type
         yield 'id0', self.id0
-        yield 'status', self.current_state.id
+        yield 'status', self.get_status()
         yield 'canceled', self.canceled
         yield 'created', self.created.isoformat()
         yield 'assignee', self.assignee.name
