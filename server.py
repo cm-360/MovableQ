@@ -128,6 +128,18 @@ def api_submit_part1_job():
         return error(job)
     return submit_generic_job(job, queue=True)
 
+@app.route('/api/add_part1/<id0>', methods=['POST'])
+def api_add_part1(id0):
+    if not is_id0(id0):
+        return error('Invalid ID0')
+    submission = request.get_json(silent=True)
+    if submission:
+        part1_data = parse_part1_upload(request.json)
+    else:
+        part1_data = parse_part1_upload(request.form, part1_file=request.files['part1_file'])
+    manager.add_part1(id0, part1_data)
+    manager.queue_job(id0)
+
 @app.route('/api/request_job')
 def api_request_job():
     release_dead_jobs()
@@ -175,13 +187,6 @@ def api_cancel_job(id0):
     manager.cancel_job(id0)
     app.logger.info('job canceled: \t' + id0)
     return success()
-
-@app.route('/api/add_part1/<id0>', methods=['POST'])
-def api_add_part1(id0):
-    if not is_id0(id0):
-        return error('Invalid ID0')
-    manager.add_part1(id0, request.json['part1'])
-    manager.queue_job(id0)
 
 @app.route('/api/complete_job/<id0>', methods=['POST'])
 def api_complete_job(id0):
@@ -348,17 +353,22 @@ def parse_part1_job_submission(submission, part1_file=None):
         if not is_id0(id0):
             invalid.append('id0')
         # part1 data
-        part1_data = submission.get('part1_data')
-        if part1_file:
-            part1_data = process_part1_file(part1_file)
-        if not part1_data:
-            invalid.append('part1')
+        part1_data = parse_part1_upload(submission, part1_file)
         if invalid:
             return 'invalid:' + ','.join(invalid)
         else:
             return Part1Job(id0, part1=part1_data)
     except KeyError as e:
-        raise KeyError(f'Missing parameter {e}')
+        raise KeyError(f'Missing parameter "{e}"')
+
+def parse_part1_upload(submission, part1_file=None):
+    try:
+        part1_data = submission.get('part1_data')
+        if part1_file:
+            part1_data = process_part1_file(part1_file)
+        return part1_data
+    except:
+        raise ValueError('Could not parse part1 data')
 
 def process_mii_file(mii_file):
     filename = mii_file.filename.lower()
