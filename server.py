@@ -126,7 +126,7 @@ def api_submit_part1_job():
     # returns error message if job json is invalid
     if type(job) is str:
         return error(job)
-    return submit_generic_job(job, queue=True)
+    return submit_generic_job(job, queue=job.has_part1())
 
 @app.route('/api/add_part1/<id0>', methods=['POST'])
 def api_add_part1(id0):
