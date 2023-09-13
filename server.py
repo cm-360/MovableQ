@@ -188,6 +188,14 @@ def api_cancel_job(id0):
     app.logger.info('job canceled: \t' + id0)
     return success()
 
+@app.route('/api/reset_job/<id0>')
+def api_reset_job(id0):
+    if not is_id0(id0):
+        return error('Invalid ID0')
+    manager.reset_job(id0)
+    app.logger.info('job reset: \t' + id0)
+    return success()
+
 @app.route('/api/complete_job/<id0>', methods=['POST'])
 def api_complete_job(id0):
     global total_mined

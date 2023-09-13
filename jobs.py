@@ -36,8 +36,17 @@ class JobManager():
     def cancel_job(self, id0):
         with self.lock:
             job = self.jobs[id0]
-            job.canceled = True
+            job.to_canceled()
             self._unqueue_job(id0)
+
+    # reset a canceled job
+    def reset_job(self, id0):
+        with self.lock:
+            job = self.jobs[id0]
+            job.reset()
+            job.prepare()
+            if 'ready' == job.state:
+                self._queue_job(id0)
 
     # delete job from the current job list if exists
     def delete_job(self, id0):
@@ -133,7 +142,7 @@ class JobManager():
         with self.lock:
             deleted = []
             for job in self.jobs.values():
-                if job.is_canceled() and job.has_timed_out():
+                if 'canceled' == job.state and job.has_timed_out():
                     deleted.append(job.id0)
             for id0 in deleted:
                 self.delete_job(id0)
@@ -149,7 +158,7 @@ class JobManager():
         with self.lock:
             try:
                 job = self.jobs[id0]
-                return job.get_status()
+                return job.state
             except KeyError as e:
                 if movable_exists(id0):
                     return 'done'
@@ -160,7 +169,7 @@ class JobManager():
     def list_jobs(self, status_filter=None):
         with self.lock:
             if status_filter:
-                return [j for j in self.jobs.values() if j.get_status() == status_filter]
+                return [j for j in self.jobs.values() if j.state == status_filter]
             else:
                 return self.jobs.values()
 
@@ -189,6 +198,8 @@ class Job(Machine):
         'ready',
         'waiting',
         'working',
+        'canceled',
+        'failed',
         'done'
     ]
 
@@ -215,6 +226,17 @@ class Job(Machine):
             'dest': 'waiting'
         },
         {
+            'trigger': 'reset',
+            'source': 'canceled',
+            'dest': 'submitted'
+        },
+        {
+            'trigger': 'fail',
+            'source': 'working',
+            'dest': 'failed',
+            'before': 'on_fail'
+        },
+        {
             'trigger': 'complete',
             'source': 'working',
             'dest': 'done'
@@ -230,28 +252,23 @@ class Job(Machine):
         )
         # job properties
         self.id0 = id0
-        self.type = _type  
+        self.type = _type
+        self.note = None
         # for queue
         self.canceled = False
         self.created = datetime.now(tz=timezone.utc)
         self.assignee = None
         self.last_update = self.created
 
+    def update(self):
+        self.last_update = datetime.now(tz=timezone.utc)
+
     def on_assign(self, miner):
         self.assignee = miner
         self.update()
 
-    def update(self):
-        self.last_update = datetime.now(tz=timezone.utc)
-
-    def get_status(self):
-        if self.is_canceled():
-            return 'canceled'
-        else:            
-            return self.state
-
-    def is_canceled(self):
-        return self.canceled
+    def on_fail(self, note=None):
+        self.note = note
 
     # True if the job has timed out, False if it has not
     def has_timed_out(self):
@@ -260,7 +277,7 @@ class Job(Machine):
     def __iter__(self):
         yield 'type', self.type
         yield 'id0', self.id0
-        yield 'status', self.get_status()
+        yield 'status', self.state
         yield 'canceled', self.canceled
         yield 'created', self.created.isoformat()
         yield 'assignee', self.assignee.name if self.assignee else None
@@ -291,14 +308,18 @@ class Part1Job(Job):
     def __init__(self, id0, friend_code=None, part1=None):
         super().__init__(id0, 'part1')
         self.add_state('need_part1')
-        self.add_transition('prepare', 'submitted', 'need_part1')
+        self.add_transition('prepare', 'submitted', 'need_part1', after='on_prepare')
         self.add_transition('add_part1', 'need_part1', 'ready', before='on_add_part1')
         # part1-specific job properties
         self.friend_code = friend_code
         # part1 jobs need part1 (duh)
-        self.prepare()
+        self.prepare(part1)
+
+    def on_prepare(self, part1=None):
         if part1:
             self.add_part1(part1)
+        elif self.part1:
+            self.to_ready()
     
     def on_add_part1(self, part1):
         self.part1 = part1
