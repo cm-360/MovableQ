@@ -312,6 +312,7 @@ class Part1Job(Job):
         self.add_transition('add_part1', 'need_part1', 'ready', before='on_add_part1')
         # part1-specific job properties
         self.friend_code = friend_code
+        self.part1 = part1
         # part1 jobs need part1 (duh)
         self.prepare(part1)
 

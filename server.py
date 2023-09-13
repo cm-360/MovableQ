@@ -139,6 +139,7 @@ def api_add_part1(id0):
         part1_data = parse_part1_upload(request.form, part1_file=request.files['part1_file'])
     manager.add_part1(id0, part1_data)
     manager.queue_job(id0)
+    return success()
 
 @app.route('/api/request_job')
 def api_request_job():
