@@ -156,8 +156,9 @@ def api_check_job_status(id0):
 def api_update_job(id0):
     if not is_id0(id0):
         return error('Invalid ID0')
+    miner_ip = get_request_ip()
     app.logger.info(f'{miner_ip} is still mining')
-    if manager.update_job(id0, miner_ip=get_request_ip()):
+    if manager.update_job(id0, miner_ip=miner_ip):
         return success()
     else:
         return success({'status': 'canceled'})
