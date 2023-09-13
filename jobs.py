@@ -303,6 +303,12 @@ class Part1Job(Job):
     def on_add_part1(self, part1):
         self.part1 = part1
 
+    def has_part1(self):
+        if self.part1:
+            return True
+        else:
+            return False
+
     def __iter__(self):
         yield from super().__iter__()
         yield 'friend_code', self.friend_code
