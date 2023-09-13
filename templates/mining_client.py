@@ -117,7 +117,7 @@ while True:
 			data = response['data']
 			if data:
 				job_type = data['type']
-				if 'mii ' == job_type:
+				if 'mii' == job_type:
 					print('\nMii job received:')
 					print(f'  ID0:   {data["id0"]}')
 					print(f'  Model: {data["model"]}')
