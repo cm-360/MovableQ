@@ -74,6 +74,14 @@ def login_required(f):
 def page_home():
     return render_template('pages/home.html')
 
+@app.route('/mii')
+def page_mii():
+    return render_template('pages/mii.html')
+
+@app.route('/part1')
+def page_part1():
+    return render_template('pages/part1.html')
+
 @app.route('/volunteer')
 def page_volunteer():
     return render_template('pages/volunteer.html')
