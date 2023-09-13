@@ -114,17 +114,13 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
 
   function applyMiiFormFeedback(feedback) {
     resetMiiFormFeedback();
-    if (feedback.startsWith("invalid:")) {
-      for (let invalid of feedback.replace("invalid:", "").split(",")) {
-        if (invalid == "mii") {
-          miiForm.elements["mii_file"].classList.add("is-invalid");
-          miiForm.elements["mii_url"].classList.add("is-invalid");
-        } else {
-          miiForm.elements[invalid].classList.add("is-invalid");
-        }
+    for (let invalid of feedback.replace("invalid:", "").split(",")) {
+      if (invalid == "mii") {
+        miiForm.elements["mii_file"].classList.add("is-invalid");
+        miiForm.elements["mii_url"].classList.add("is-invalid");
+      } else {
+        miiForm.elements[invalid].classList.add("is-invalid");
       }
-    } else {
-      window.alert("Error submitting job: " + responseJson.message);
     }
   }
 
@@ -175,30 +171,51 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
   }
 
   async function submitMiiForm() {
-    const formData = new FormData(miiForm);
+    const formData = new FormData(miiForm);    
+    // fetch mii data if selected
     if (miiUploadUrl.classList.contains("show")) {
-      const miiResponse = await fetch(miiUploadUrl.value);
-      if (miiResponse.ok) {
+      try {
+        const miiResponse = await fetch(miiUploadUrl.value);
         const miiBlob = await miiResponse.blob();
         formData.set("mii_file", miiBlob);
-      } else {
-        window.alert("Error submitting job: Failed to download Mii data");
-      }
-    }
-    const response = await fetch("{{ url_for('api_submit_mii_job') }}", {
-      method: "POST",
-      body: formData
-    });
-    const responseJson = await response.json();
-    if (response.ok) {
-      if (responseJson.result != "success") {
-        window.alert(responseJson.message);
+      } catch (error) {
+        window.alert(`Error downloading Mii data: ${error.message}`);
         return;
       }
-      setID0(responseJson.data.id0);
-      checkJob();
-    } else {
-      applyMiiFormFeedback(responseJson.message);
+    }
+    // submit job to server
+    let response;
+    try {
+      response = await fetch("{{ url_for('api_submit_mii_job') }}", {
+        method: "POST",
+        body: formData
+      });
+      const responseJson = await response.json();
+      if (response.ok) {
+        // submission successful
+        setID0(responseJson.data.id0);
+        checkJob();
+      } else {
+        // throw error with server message
+        throw new Error(responseJson.message);
+      }
+    } catch (error) {
+      if (error instanceof SyntaxError) {
+        // syntax error from parsing non-JSON server error response
+        window.alert(`Error submitting job: ${response.status} - ${response.statusText}`);
+      } else if (error.message.startsWith("invalid:")) {
+        // form input invalid
+        applyMiiFormFeedback(error.message);
+      } else if (error.message === "Duplicate job") {
+        // duplicate job
+        if (window.confirm("A job with this ID0 already exists. Would you like to view its progress?")) {
+          setID0(formData.get("id0"));
+          checkJob();
+        }
+      } else {
+        // generic error
+        window.alert(`Error submitting job: ${error.message}`);
+      }
     }
   }
 
@@ -207,23 +224,46 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
       showCard1();
       return;
     }
-    const response = await fetch("{{ url_for('api_check_job_status', id0='') }}" + id0);
-    const responseJson = await response.json();
-    if (response.ok) {
-      if (responseJson.result != "success") {
-        window.alert(responseJson.message);
-        return;
+    // grab job status from server
+    let response;
+    try {
+      response = await fetch("{{ url_for('api_check_job_status', id0='') }}" + id0);
+      const responseJson = await response.json();
+      if (response.ok) {
+        updateCards(responseJson.data.status);
+        console.log(responseJson);
+      } else {
+        throw new Error(responseJson.message);
       }
-      updateCards(responseJson.data.status);
-      console.log(responseJson);
-    } else {
-      window.alert("Error checking job status: " + responseJson.message);
+    } catch (error) {
+      if (error instanceof SyntaxError) {
+        // syntax error from parsing non-JSON server error response
+        window.alert(`Error checking job status: ${response.status} - ${response.statusText}`);
+      } else {
+        // generic error
+        window.alert(`Error checking job status: ${error.message}`);
+      }
       startOver();
     }
   }
 
   async function cancelJob() {
-    const response = await fetch("{{ url_for('api_cancel_job', id0='') }}" + id0);
+    let response;
+    try {
+      response = await fetch("{{ url_for('api_cancel_job', id0='') }}" + id0);
+      const responseJson = await response.json();
+      if (!response.ok) {
+        throw new Error(responseJson.message);
+      }
+    } catch (error) {
+      if (error instanceof SyntaxError) {
+        // syntax error from parsing non-JSON server error response
+        window.alert(`Error checking job status: ${response.status} - ${response.statusText}`);
+      } else {
+        // generic error
+        window.alert(`Error checking job status: ${error.message}`);
+      }
+    }
     startOver();
   }
 
