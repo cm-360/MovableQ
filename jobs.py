@@ -285,7 +285,7 @@ class Part1Job(Job):
         super().__init__(id0, 'part1')
         self.add_state('need_part1')
         self.add_transition('prepare', 'submitted', 'need_part1')
-        self.add_transition('add_part1', 'need_part1', 'ready', 'on_add_part1')
+        self.add_transition('add_part1', 'need_part1', 'ready', before='on_add_part1')
         # part1-specific job properties
         self.friend_code = friend_code
         # part1 jobs need part1 (duh)
@@ -293,7 +293,7 @@ class Part1Job(Job):
         if part1:
             self.add_part1(part1)
     
-    def on_add_part1(part1):
+    def on_add_part1(self, part1):
         self.part1 = part1
 
     def __iter__(self):
