@@ -158,7 +158,7 @@ def api_release_job(id0):
     if not is_id0(id0):
         return error('Invalid ID0')
     manager.release_job(id0)
-    app.logger.info('job canceled: \t' + id0)
+    app.logger.info('job released: \t' + id0)
     return success()
 
 @app.route('/api/check_job_status/<id0>')
