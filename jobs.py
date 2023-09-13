@@ -79,6 +79,13 @@ class JobManager():
                 job = self.jobs[self.wait_queue.popleft()]
                 job.assign(miner)
                 return job
+    
+    # set job status to canceled, KeyError if it does not exist
+    def release_job(self, id0):
+        with self.lock:
+            job = self.jobs[id0]
+            job.release()
+            self._queue_job(id0, urgent=True)
 
     # returns False if a job was canceled, updates its time/miner and returns True otherwise
     def update_job(self, id0, miner_ip=None):

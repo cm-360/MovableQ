@@ -126,7 +126,7 @@ def api_submit_part1_job():
     # returns error message if job json is invalid
     if type(job) is str:
         return error(job)
-    return submit_generic_job(job)
+    return submit_generic_job(job, queue=True)
 
 @app.route('/api/request_job')
 def api_request_job():
@@ -143,7 +143,11 @@ def api_request_job():
 
 @app.route('/api/release_job/<id0>')
 def api_release_job(id0):
-    pass
+    if not is_id0(id0):
+        return error('Invalid ID0')
+    manager.release_job(id0)
+    app.logger.info('job canceled: \t' + id0)
+    return success()
 
 @app.route('/api/check_job_status/<id0>')
 def api_check_job_status(id0):
