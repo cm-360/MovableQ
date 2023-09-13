@@ -26,7 +26,7 @@ def do_mii_mine(id0, model, year, mii_data):
 	args = [sys.executable, 'seedminer_launcher3.py', 'mii', model]
 	if year:
 		args.append(str(year))
-	run_bfcl(id0, [sys.executable, 'seedminer_launcher3.py', 'gpu'])
+	run_bfcl(id0, args)
 	# check output
 	if os.path.isfile('movable.sed'):
 		print(f'Mining complete! Uploading movable...')
