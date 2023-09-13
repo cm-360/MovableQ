@@ -199,12 +199,8 @@ class Job(Machine):
         {
             'trigger': 'assign',
             'source': 'waiting',
-            'dest': 'working'
-        },
-        {
-            'trigger': 'update',
-            'source': 'working',
-            'dest': 'working'
+            'dest': 'working',
+            'before': 'on_assign'
         },
         {
             'trigger': 'release',
@@ -238,7 +234,7 @@ class Job(Machine):
         self.assignee = miner
         self.update()
 
-    def on_update(self):
+    def update(self):
         self.last_update = datetime.now(tz=timezone.utc)
 
     def get_status(self):
@@ -289,7 +285,7 @@ class Part1Job(Job):
         super().__init__(id0, 'part1')
         self.add_state('need_part1')
         self.add_transition('prepare', 'submitted', 'need_part1')
-        self.add_transition('add_part1', 'need_part1', 'ready')
+        self.add_transition('add_part1', 'need_part1', 'ready', 'on_add_part1')
         # part1-specific job properties
         self.friend_code = friend_code
         # part1 jobs need part1 (duh)
