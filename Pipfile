@@ -9,7 +9,6 @@ waitress = "*"
 pillow = "*"
 pyzbar = {path = "./pyzbar"}
 python-dotenv = "*"
-python-statemachine = "*"
 transitions = "*"
 
 [dev-packages]

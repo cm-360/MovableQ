@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "2499782d0cedaf349742ee53e478b701d20ee076360bf3cd8d546ae2b2c085f6"
+            "sha256": "b3177fb698608bd4271dbadc1f8760e73c65eccc88d2b802644f858643e4a440"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -191,14 +191,6 @@
             ],
             "index": "pypi",
             "version": "==1.0.0"
-        },
-        "python-statemachine": {
-            "hashes": [
-                "sha256:1ef93e467dd3be9949ac81052a35159af04de14650bb053873a0e5d7406b1385",
-                "sha256:5aabafa4b98a0b65a1d3d400707f7c86eae62f0ad1f233d7858f1bc4cef5dae0"
-            ],
-            "index": "pypi",
-            "version": "==2.1.1"
         },
         "pyzbar": {
             "path": "./pyzbar",
