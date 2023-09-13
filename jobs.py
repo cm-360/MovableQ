@@ -142,10 +142,7 @@ class JobManager():
         with self.lock:
             try:
                 job = self.jobs[id0]
-                if job.is_canceled():
-                    return 'canceled'
-                else:
-                    return job.get_status()
+                return job.get_status()
             except KeyError as e:
                 if movable_exists(id0):
                     return 'done'
@@ -245,7 +242,10 @@ class Job(Machine):
         self.last_update = datetime.now(tz=timezone.utc)
 
     def get_status(self):
-        return self.state
+        if self.is_canceled():
+            return 'canceled'
+        else:            
+            return self.state
 
     def is_canceled(self):
         return self.canceled
