@@ -130,7 +130,7 @@ def api_submit_part1_job():
     if submission:
         job = parse_part1_job_submission(request.json)
     else:
-        job = parse_part1_job_submission(request.form, part1_file=request.files['part1_file'])
+        job = parse_part1_job_submission(request.form, part1_file=request.files.get('part1_file'))
     # returns error message if job json is invalid
     if type(job) is str:
         return error(job)
@@ -329,6 +329,9 @@ def trim_canceled_jobs():
 def is_id0(value):
     return bool(id0_regex.fullmatch(value))
 
+def is_friend_code(value):
+    return True # TODO check fc
+
 def parse_mii_job_submission(submission, mii_file=None):
     invalid = []
     try:
@@ -369,12 +372,16 @@ def parse_part1_job_submission(submission, part1_file=None):
         id0 = submission['id0']
         if not is_id0(id0):
             invalid.append('id0')
+        # friend code
+        friend_code = submission.get('friend_code')
+        if friend_code and not is_friend_code(friend_code):
+            invalid.append('friend_code')
         # part1 data
         part1_data = parse_part1_upload(submission, part1_file)
         if invalid:
             return 'invalid:' + ','.join(invalid)
         else:
-            return Part1Job(id0, part1=part1_data)
+            return Part1Job(id0, friend_code=friend_code, part1=part1_data)
     except KeyError as e:
         raise KeyError(f'Missing parameter "{e}"')
 
