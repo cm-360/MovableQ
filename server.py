@@ -1,5 +1,5 @@
 from flask import Flask, request, render_template, make_response, g
-from werkzeug.exceptions import HTTPException 
+from werkzeug.exceptions import HTTPException
 from werkzeug.middleware.proxy_fix import ProxyFix
 from functools import wraps
 from logging.config import dictConfig
