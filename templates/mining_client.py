@@ -25,6 +25,7 @@ miner_name = 'CHANGE_ME'
 # mean you will never claim a demanding/lengthy part1 job!
 acceptable_job_types = [ 'part1', 'mii' ]
 
+# values are in seconds
 request_cooldown = 10
 error_cooldown = 30
 update_interval = 10
