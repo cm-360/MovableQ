@@ -9,9 +9,21 @@ from urllib.parse import quote as url_quote
 from traceback import print_exc
 
 
+# This is the URL of the mining coordination server you would like to use. Be
+# sure to replace everything (including the curly braces) if you downloaded
+# this script from GitHub. 
 base_url = '{{ url_for("page_home", _external=True) }}'
 
+# Enter a name for yourself. This name will be associated with your device on
+# the mining server and shown on the leaderboard. Any jobs you claim will be
+# associated with this name as well, so make sure its appropriate!
 miner_name = 'CHANGE_ME'
+
+# Choose which job types you are willing to mine. Note that mii mining jobs
+# are typically much more demanding than part1 jobs, and can significantly
+# stress your GPU. Part1 jobs are typically shorter, though this does not
+# mean you will never claim a demanding/lengthy part1 job!
+acceptable_job_types = [ 'part1', 'mii' ]
 
 request_cooldown = 10
 error_cooldown = 30
@@ -110,41 +122,55 @@ def kill_process(process):
 		pass
 
 
-while True:
-	try:
-		response = requests.get(f'{base_url}/api/request_job?name={url_quote(miner_name)}').json()
-		if response['result'] == 'success':
-			data = response['data']
-			if data:
-				job_type = data['type']
-				if 'mii' == job_type:
-					print('\nMii job received:')
-					print(f'  ID0:   {data["id0"]}')
-					print(f'  Model: {data["model"]}')
-					print(f'  Year:  {data["year"]}')
-					do_mii_mine(
-						data['id0'],
-						data['model'],
-						data['year'],
-						base64.b64decode(data['mii'])
-					)
-				elif 'part1' == job_type:
-					print('\nPart1 job received:')
-					print(f'  ID0:   {data["id0"]}')
-					do_part1_mine(
-						data['id0'],
-						base64.b64decode(data['part1'])
-					)
+def run_client()
+	global miner_name
+	global acceptable_job_types
+	# remind miner to change name variable
+	if miner_name == 'CHANGE_ME':
+		print('Please enter a name first.')
+		return
+	# sanitize variables
+	miner_name = url_quote(miner_name)
+	acceptable_job_types = ','.join(acceptable_job_types)
+	# main mining loop
+	while True:
+		try:
+			response = requests.get(f'{base_url}/api/request_job?name={miner_name}&types={acceptable_job_types}').json()
+			if response['result'] == 'success':
+				data = response['data']
+				if data:
+					job_type = data['type']
+					if 'mii' == job_type:
+						print('\nMii job received:')
+						print(f'  ID0:   {data["id0"]}')
+						print(f'  Model: {data["model"]}')
+						print(f'  Year:  {data["year"]}')
+						do_mii_mine(
+							data['id0'],
+							data['model'],
+							data['year'],
+							base64.b64decode(data['mii'])
+						)
+					elif 'part1' == job_type:
+						print('\nPart1 job received:')
+						print(f'  ID0:   {data["id0"]}')
+						do_part1_mine(
+							data['id0'],
+							base64.b64decode(data['part1'])
+						)
+					else:
+						print(f'Unknown job type "{job_type}" received, ignoring...')
 				else:
-					print(f'Unknown job type "{job_type}" received, ignoring...')
-			else:
-				print(f'No mining jobs, waiting {request_cooldown} seconds...', end='\r')
-		time.sleep(request_cooldown)
-	except KeyboardInterrupt:
-		should_exit = input('\nWould you like to exit? (y/n): ')
-		if should_exit.lower().startswith('y'):
-			break
-	except:
-		print_exc()
-		print(f'Error contacting mining site, waiting {error_cooldown} seconds...')
-		time.sleep(error_cooldown)
+					print(f'No mining jobs, waiting {request_cooldown} seconds...', end='\r')
+			time.sleep(request_cooldown)
+		except KeyboardInterrupt:
+			should_exit = input('\nWould you like to exit? (y/n): ')
+			if should_exit.lower().startswith('y'):
+				break
+		except:
+			print_exc()
+			print(f'Error contacting mining site, waiting {error_cooldown} seconds...')
+			time.sleep(error_cooldown)
+
+if __name__ == '__main__':
+	run_client()
