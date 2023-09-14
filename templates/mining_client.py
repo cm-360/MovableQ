@@ -67,7 +67,7 @@ def do_benchmark():
 	args = [sys.executable, 'seedminer_launcher3.py', 'gpu', '0', '5']
 	error = run_bfcl('fef0fef0fef0fef0fef0fef0fef0fef0', args)
 	time_finish = time.time()
-	if error:
+	if error and not isinstance(error, BfclReturnCodeError):
 		print('There was an error running bfCL! Please figure this out before joining the mining network.')
 		success = False
 	elif time_finish > time_target:
