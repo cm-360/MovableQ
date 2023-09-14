@@ -31,7 +31,53 @@ error_cooldown = 30
 update_interval = 10
 
 
-def do_mii_mine(id0, model, year, mii_data):
+# benchmarking options
+benchmark_target = 215
+benchmark_filename = 'benchmark'
+dry_run = False
+
+
+def validate_benchmark():
+	if not os.path.isfile(benchmark_filename):
+		if do_benchmark():
+			create_benchmark()
+
+def create_benchmark():
+	with open(benchmark_filename, 'w') as benchmark_file:
+		benchmark_file.write(str(benchmark_target))
+
+def erase_benchmark():
+	try:
+		os.remove(benchmark_filename)
+	except:
+		pass
+
+def do_benchmark():
+	global dry_run
+	dry_run = True
+	cleanup_mining_files()
+	# write impossible part1
+	with open('movable_part1.sed', 'wb') as part1_bin:
+		content = b'\xFF\xEE\xFF'
+		part1_bin.write(content)
+		part1_bin.write(b'\0' * (0x1000 - len(content)))
+	# run and time bfCL
+	success = True
+	time_target = time.time() + benchmark_target
+	args = [sys.executable, 'seedminer_launcher3.py', 'gpu', '0', '5']
+	error = run_bfcl('fef0fef0fef0fef0fef0fef0fef0fef0', args)
+	time_finish = time.time()
+	if error:
+		print('There was an error running bfCL! Please figure this out before joining the mining network.')
+		success = False
+	elif time_finish > time_target:
+		print('Unfortunately, your graphics card is too slow to help mine.')
+		success = False
+	cleanup_mining_files()
+	dry_run = False
+	return success
+
+def do_mii_mine(id0, model, year, mii_data, timeout=0):
 	cleanup_mining_files()
 	with open('input.bin', 'wb') as mii_bin:
 		mii_bin.write(mii_data)
@@ -39,7 +85,7 @@ def do_mii_mine(id0, model, year, mii_data):
 	args = [sys.executable, 'seedminer_launcher3.py', 'mii', model]
 	if year:
 		args.append(str(year))
-	run_bfcl(id0, args)
+	error = run_bfcl(id0, args)
 	# check output
 	if os.path.isfile('movable.sed'):
 		print(f'Mining complete! Uploading movable...')
@@ -47,14 +93,15 @@ def do_mii_mine(id0, model, year, mii_data):
 	else:
 		print(f'bfCL was not able to complete the mining job!')
 	cleanup_mining_files()
+	return error
 
-def do_part1_mine(id0, part1_data):
+def do_part1_mine(id0, part1_data, timeout=0):
 	cleanup_mining_files()
 	with open('movable_part1.sed', 'wb') as part1_bin:
 		part1_bin.write(part1_data)
 	# bfCL
 	args = [sys.executable, 'seedminer_launcher3.py', 'gpu']
-	run_bfcl(id0, args)
+	error = run_bfcl(id0, args)
 	# check output
 	if os.path.isfile('movable.sed'):
 		print(f'Mining complete! Uploading movable...')
@@ -62,6 +109,7 @@ def do_part1_mine(id0, part1_data):
 	else:
 		print(f'bfCL was not able to complete the mining job!')
 	cleanup_mining_files()
+	return error
 
 def run_bfcl(id0, args):
 	try:
@@ -79,33 +127,54 @@ def run_bfcl(id0, args):
 					if status == 'canceled':
 						print('Job canceled')
 						kill_process(process)
-						cleanup_mining_files()
 						return
+			check_bfcl_return_code(process.returncode)
 		except KeyboardInterrupt:
 			kill_process(process)
 			print('Terminated bfCL')
 			release_job(id0)
-	except:
+	except Exception as e:
 		print_exc()
 		print('bfCL was not able to run correctly!')
-		release_job(id0)
+		fail_job(id0, f'{type(e).__name__}: {e}')
+		return e
+
+def check_bfcl_return_code(return_code):
+	if -1 == return_code:
+		raise BfclReturnCodeError(return_code, 'invalid arguments (not verified, could be generic error)')
+	elif 101 == return_code:
+		raise BfclReturnCodeError(return_code, 'maximum offset reached without a hit')
 
 def cleanup_mining_files():
 	to_remove = ['input.bin', 'movable.sed', 'movable_part1.sed']
-	for file in to_remove:
+	for filename in to_remove:
 		try:
-			os.remove(file)
+			os.remove(filename)
 		except:
 			pass
 
 def update_job(id0):
+	if dry_run:
+		return
 	response = requests.get(f'{base_url}/api/update_job/{id0}')
 	return response.json()['data'].get('status')
 
 def release_job(id0):
+	if dry_run:
+		return
 	requests.get(f'{base_url}/api/release_job/{id0}')
 
+def fail_job(id0, note):
+	if dry_run:
+		return
+	requests.post(
+		f'{base_url}/api/fail_job/{id0}',
+		json={'note': note}
+	)
+
 def upload_movable(id0):
+	if dry_run:
+		return
 	with open('movable.sed', 'rb') as movable:
 		response = requests.post(
 			f'{base_url}/api/complete_job/{id0}',
@@ -123,6 +192,14 @@ def kill_process(process):
 		pass
 
 
+class BfclReturnCodeError(Exception):
+
+	def __init__(self, return_code, message):
+		self.return_code = return_code
+		self.message = message
+		super().__init__(f'{return_code}, f{message}')
+
+
 def run_client():
 	global miner_name
 	global acceptable_job_types
@@ -133,6 +210,9 @@ def run_client():
 	# sanitize variables
 	miner_name = url_quote(miner_name)
 	acceptable_job_types = ','.join(acceptable_job_types)
+	# benchmark to find issues before claiming real jobs
+	if not validate_benchmark():
+		return
 	# main mining loop
 	while True:
 		try:
@@ -140,13 +220,14 @@ def run_client():
 			if response['result'] == 'success':
 				data = response['data']
 				if data:
+					error = None
 					job_type = data['type']
 					if 'mii' == job_type:
 						print('\nMii job received:')
 						print(f'  ID0:   {data["id0"]}')
 						print(f'  Model: {data["model"]}')
 						print(f'  Year:  {data["year"]}')
-						do_mii_mine(
+						error = do_mii_mine(
 							data['id0'],
 							data['model'],
 							data['year'],
@@ -155,12 +236,16 @@ def run_client():
 					elif 'part1' == job_type:
 						print('\nPart1 job received:')
 						print(f'  ID0:   {data["id0"]}')
-						do_part1_mine(
+						error = do_part1_mine(
 							data['id0'],
 							base64.b64decode(data['part1'])
 						)
 					else:
 						print(f'Unknown job type "{job_type}" received, ignoring...')
+					# errors not arising from return codes mean a bigger issue
+					if error and not isinstance(error, BfclReturnCodeError):
+						erase_benchmark()
+						break
 				else:
 					print(f'No mining jobs, waiting {request_cooldown} seconds...', end='\r')
 			time.sleep(request_cooldown)
