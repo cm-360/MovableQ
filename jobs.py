@@ -113,7 +113,7 @@ class JobManager():
     def update_job(self, id0, miner_ip=None):
         with self.lock:
             job = self.jobs[id0]
-            if job.canceled:
+            if 'canceled' == job.state:
                 return False
             job.update()
             if job.assignee:
@@ -268,7 +268,6 @@ class Job(Machine):
         self.type = _type
         self.note = None
         # for queue
-        self.canceled = False
         self.created = datetime.now(tz=timezone.utc)
         self.assignee = None
         self.last_update = self.created
@@ -291,7 +290,6 @@ class Job(Machine):
         yield 'type', self.type
         yield 'id0', self.id0
         yield 'status', self.state
-        yield 'canceled', self.canceled
         yield 'created', self.created.isoformat()
         yield 'assignee', self.assignee.name if self.assignee else None
         yield 'last_update', self.last_update.isoformat()
