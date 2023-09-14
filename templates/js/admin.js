@@ -8,6 +8,11 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
   const jobsTableBody = document.getElementById("jobsTableBody");
   const minersTableBody = document.getElementById("minersTableBody");
 
+  let jobsData;
+  let minersData;
+
+  const inspectedJobs = new Set();
+
 
   async function refreshTables() {
     refreshJobs();
@@ -23,7 +28,8 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
         window.alert(responseJson.message);
         return;
       }
-      updateJobsTable(responseJson.data.jobs);
+      jobsData = responseJson.data.jobs;
+      updateJobsTable();
     } else {
       window.alert("Error retrieving jobs: " + responseJson.message);
     }
@@ -37,23 +43,27 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
         window.alert(responseJson.message);
         return;
       }
-      updateMinersTable(responseJson.data.miners);
+      minersData = responseJson.data.miners;
+      updateMinersTable();
     } else {
       window.alert("Error retrieving miners: " + responseJson.message);
     }
   }
 
 
-  function updateJobsTable(jobs) {
+  function updateJobsTable() {
     jobsTableBody.innerHTML = "";
-    for (let job of jobs) {
+    for (let job of jobsData) {
       jobsTableBody.appendChild(createJobRow(job));
+      if (inspectedJobs.has(job.id0)) {
+        jobsTableBody.appendChild(createJobInspectRow(job));
+      }
     }
   }
 
-  function updateMinersTable(miners) {
+  function updateMinersTable() {
     minersTableBody.innerHTML = "";
-    for (let miner of miners) {
+    for (let miner of minersData) {
       minersTableBody.appendChild(createMinerRow(miner));
     }
   }
@@ -65,6 +75,10 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
     const idCell = document.createElement("td");
     idCell.innerText = job.id0;
     row.appendChild(idCell);
+
+    const typeCell = document.createElement("td");
+    typeCell.innerText = job.type;
+    row.appendChild(typeCell);
 
     const statusCell = document.createElement("td");
     statusCell.innerText = job.status;
@@ -86,40 +100,64 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
 
     const actionsCell = document.createElement("td");
 
-/*    const requeueButton = document.createElement("button");
-    requeueButton.type = "button";
-    requeueButton.className = "btn btn-secondary";
-    requeueButton.title = "Requeue job";
-	const requeueIcon = document.createElement("i");
-	requeueIcon.className = "fa-solid fa-arrow-rotate-left";
-	requeueButton.appendChild(requeueIcon);
-	const requeueText = document.createElement("div");
-	requeueText.className = "visually-hidden";
-	requeueText.innerText = "Requeue job";
-	requeueButton.appendChild(requeueText);
-	actionsCell.appendChild(requeueButton);
-
-	actionsCell.appendChild(document.createTextNode(" "));
-*/
     const cancelButton = document.createElement("button");
     cancelButton.type = "button";
-    cancelButton.className = "btn btn-danger";
-    if (job.status == "Canceled") {
-      cancelButton.classList.add("disabled");
-    }
-    cancelButton.title = "Cancel job";
-    cancelButton.addEventListener("click", event => cancelJob(job.id0));
     const cancelIcon = document.createElement("i");
-    cancelIcon.className = "fa-solid fa-xmark";
     cancelButton.appendChild(cancelIcon);
     const cancelText = document.createElement("div");
     cancelText.className = "visually-hidden";
-    cancelText.innerText = "Cancel job";
+    if ("canceled" === job.status) {
+      cancelButton.addEventListener("click", event => resetJob(job.id0));
+      cancelButton.title = "Reset job";
+      cancelButton.className = "btn btn-warning px-2";
+      cancelIcon.className = "fa-solid fa-fw fa-arrow-rotate-left";
+      cancelText.innerText = "Reset job";
+    } else {
+      cancelButton.addEventListener("click", event => cancelJob(job.id0));
+      cancelButton.title = "Cancel job";
+      cancelButton.className = "btn btn-danger px-2";
+      cancelIcon.className = "fa-solid fa-fw fa-xmark";
+      cancelText.innerText = "Cancel job";
+    }
     cancelButton.appendChild(cancelText);
     actionsCell.appendChild(cancelButton);
 
+    actionsCell.appendChild(document.createTextNode(" "));
+
+    const inspectButton = document.createElement("button");
+    inspectButton.addEventListener("click", event => inspectJob(job.id0));
+    inspectButton.type = "button";
+    inspectButton.className = "btn btn-primary px-2";
+    inspectButton.title = "Inspect job";
+    const inspectIcon = document.createElement("i");
+    inspectIcon.className = "fa-solid fa-fw fa-magnifying-glass";
+    inspectButton.appendChild(inspectIcon);
+    const inspectText = document.createElement("div");
+    inspectText.className = "visually-hidden";
+    inspectText.innerText = "Inspect job";
+    inspectButton.appendChild(inspectText);
+    actionsCell.appendChild(inspectButton);
+
     row.appendChild(actionsCell);
 
+    return row;
+  }
+
+  function createJobInspectRow(job) {
+    const row = document.createElement("tr");
+    const cell = document.createElement("td");
+    cell.colSpan = 7;
+
+    const jobJsonOuter = document.createElement("pre");
+    jobJsonOuter.className = "m-1";
+    const jobJsonInner = document.createElement("code");
+
+    jobJsonInner.innerText = JSON.stringify(job, null, 2);
+
+    jobJsonOuter.appendChild(jobJsonInner);
+    cell.appendChild(jobJsonOuter);
+
+    row.appendChild(cell);
     return row;
   }
 
@@ -144,24 +182,54 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
   }
 
 
-  function requeueJob() {
-    // TODO requeue job
-  }
-
   async function cancelJob(id0) {
-    const response = await fetch("{{ url_for('api_cancel_job', id0='') }}" + id0);
-    const responseJson = await response.json();
-    if (response.ok) {
-      if (responseJson.result != "success") {
-        window.alert(responseJson.message);
-        return;
+    let response;
+    try {
+      response = await fetch("{{ url_for('api_cancel_job', id0='') }}" + id0);
+      const responseJson = await response.json();
+      if (!response.ok) {
+        throw new Error(responseJson.message);
       }
-    } else {
-      window.alert("Error canceling job: " + responseJson.message);
+    } catch (error) {
+      if (error instanceof SyntaxError) {
+        // syntax error from parsing non-JSON server error response
+        window.alert(`Error canceling job: ${response.status} - ${response.statusText}`);
+      } else {
+        // generic error
+        window.alert(`Error canceling job: ${error.message}`);
+      }
     }
     refreshJobs();
   }
 
+  async function resetJob(id0) {
+    let response;
+    try {
+      response = await fetch("{{ url_for('api_reset_job', id0='') }}" + id0);
+      const responseJson = await response.json();
+      if (!response.ok) {
+        throw new Error(responseJson.message);
+      }
+    } catch (error) {
+      if (error instanceof SyntaxError) {
+        // syntax error from parsing non-JSON server error response
+        window.alert(`Error resetting job: ${response.status} - ${response.statusText}`);
+      } else {
+        // generic error
+        window.alert(`Error resetting job: ${error.message}`);
+      }
+    }
+    refreshJobs();
+  }
+
+  async function inspectJob(id0) {
+    if (inspectedJobs.has(id0)) {
+      inspectedJobs.delete(id0);
+    } else {
+      inspectedJobs.add(id0);
+    }
+    updateJobsTable();
+  }
 
   document.addEventListener('DOMContentLoaded', () => {
     // event listeners
