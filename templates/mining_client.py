@@ -2,6 +2,7 @@ import base64
 import os
 import requests
 import signal
+import struct
 import subprocess
 import sys
 import time
