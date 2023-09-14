@@ -1,11 +1,13 @@
 {% extends "layouts/base.html" %}
 
+{% block title %}{{ site_title }} - Volunteer{% endblock %}
+
 {% block content %}
 	<div class="card">
-		<h4 class="card-header">Mine for {{ title }}</h4>
+		<h4 class="card-header">Mine for {{ site_title }}</h4>
 		<div class="card-body">
 			<p class="card-text">
-				{{ title }} is made possible by volunteers with powerful GPUs who are willing to offer computing time to the service. If you are interested in mining, download the <a href="{{ url_for('get_mining_client') }}">mining script</a>, and follow the <a href="https://github.com/cm-360/MovableQ#client-setup-miner">client setup instructions</a> on GitHub. Please do not run the client script if you only have integrated graphics, as it will greatly slow down the mining process for some users.
+				{{ site_title }} is made possible by volunteers with powerful GPUs who are willing to offer computing time to the service. If you are interested in mining, download the <a href="{{ url_for('get_mining_client') }}">mining script</a>, and follow the <a href="https://github.com/cm-360/MovableQ#client-setup-miner">client setup instructions</a> on GitHub. Please do not run the client script if you only have integrated graphics, as it will greatly slow down the mining process for some users.
 			</p>
 			<p class="alert alert-warning card-text" role="alert">
 				<b>Note</b>: Mining works best on Windows systems with a powerful dedicated GPU. While mining on other systems is possible, your mileage may vary. Mac users might find their system is not powerful enough, and Linux users might run into driver/compatibility issues (especially with bfCL).
