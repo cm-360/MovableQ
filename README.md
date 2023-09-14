@@ -1,6 +1,6 @@
 # MovableQ
 
-MovableQ is a service meant to automatically connect people who need their 3DS console's `movable.sed` bruteforced with volunteers that can offer the computing power to do so. Currently only "Mii Mining" is supported, though adding support for normal "Seedminer" jobs is planned.
+MovableQ is a service meant to automatically connect people who need their 3DS console's `movable.sed` bruteforced with volunteers that can offer the computing power to do so. Currently part1 mining and Mii mining are supported.
 
 
 ## Server Setup (Website)
