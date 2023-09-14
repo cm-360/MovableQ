@@ -138,6 +138,12 @@ class JobManager():
             save_movable(id0, movable)
             self.delete_job(id0)
 
+    # mark job as failed and attach note
+    def fail_job(self, id0, note=None):
+        with self.lock:
+            job = self.jobs[id0]
+            job.fail(note)
+
     # requeue dead jobs
     def release_dead_jobs(self):
         with self.lock:
@@ -287,9 +293,10 @@ class Job(Machine):
         return datetime.now(tz=timezone.utc) > (self.last_update + job_lifetime)
 
     def __iter__(self):
-        yield 'type', self.type
         yield 'id0', self.id0
+        yield 'type', self.type
         yield 'status', self.state
+        yield 'note', self.note
         yield 'created', self.created.isoformat()
         yield 'assignee', self.assignee.name if self.assignee else None
         yield 'last_update', self.last_update.isoformat()
