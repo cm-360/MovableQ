@@ -40,9 +40,9 @@ dry_run = False
 def validate_benchmark():
 	if not os.path.isfile(benchmark_filename):
 		if do_benchmark():
-			create_benchmark()
+			write_benchmark()
 
-def create_benchmark():
+def write_benchmark():
 	with open(benchmark_filename, 'w') as benchmark_file:
 		benchmark_file.write(str(benchmark_target))
 
@@ -62,54 +62,58 @@ def do_benchmark():
 		part1_bin.write(content)
 		part1_bin.write(b'\0' * (0x1000 - len(content)))
 	# run and time bfCL
-	success = True
 	time_target = time.time() + benchmark_target
-	args = [sys.executable, 'seedminer_launcher3.py', 'gpu', '0', '5']
-	error = run_bfcl('fef0fef0fef0fef0fef0fef0fef0fef0', args)
-	time_finish = time.time()
-	if error and not isinstance(error, BfclReturnCodeError):
+	try:
+		args = [sys.executable, 'seedminer_launcher3.py', 'gpu', '0', '1']
+		run_bfcl('fef0fef0fef0fef0fef0fef0fef0fef0', args)
+	except BfclReturnCodeError:
+		time_finish = time.time()
+		if time_finish > time_target:
+			print('Unfortunately, your graphics card is too slow to help mine.')
+		else:
+			print('Good news, your GPU is fast enough to help mine!')
+			return True
+	except BfclExecutionError:
 		print('There was an error running bfCL! Please figure this out before joining the mining network.')
-		success = False
-	elif time_finish > time_target:
-		print('Unfortunately, your graphics card is too slow to help mine.')
-		success = False
-	cleanup_mining_files()
-	dry_run = False
-	return success
+	finally:
+		cleanup_mining_files()
+		dry_run = False
 
 def do_mii_mine(id0, model, year, mii_data, timeout=0):
 	cleanup_mining_files()
 	with open('input.bin', 'wb') as mii_bin:
 		mii_bin.write(mii_data)
-	# bfCL
-	args = [sys.executable, 'seedminer_launcher3.py', 'mii', model]
-	if year:
-		args.append(str(year))
-	error = run_bfcl(id0, args)
-	# check output
-	if os.path.isfile('movable.sed'):
-		print(f'Mining complete! Uploading movable...')
-		upload_movable(id0)
-	else:
-		print(f'bfCL was not able to complete the mining job!')
-	cleanup_mining_files()
-	return error
+	try:
+		# bfCL
+		args = [sys.executable, 'seedminer_launcher3.py', 'mii', model]
+		if year:
+			args.append(str(year))
+		run_bfcl(id0, args)
+		# check output
+		if os.path.isfile('movable.sed'):
+			print(f'Mining complete! Uploading movable...')
+			upload_movable(id0)
+		else:
+			print(f'bfCL was not able to complete the mining job!')
+	finally:
+		cleanup_mining_files()
 
 def do_part1_mine(id0, part1_data, timeout=0):
 	cleanup_mining_files()
 	with open('movable_part1.sed', 'wb') as part1_bin:
 		part1_bin.write(part1_data)
-	# bfCL
-	args = [sys.executable, 'seedminer_launcher3.py', 'gpu']
-	error = run_bfcl(id0, args)
-	# check output
-	if os.path.isfile('movable.sed'):
-		print(f'Mining complete! Uploading movable...')
-		upload_movable(id0)
-	else:
-		print(f'bfCL was not able to complete the mining job!')
-	cleanup_mining_files()
-	return error
+	try:
+		# bfCL
+		args = [sys.executable, 'seedminer_launcher3.py', 'gpu']
+		run_bfcl(id0, args)
+		# check output
+		if os.path.isfile('movable.sed'):
+			print(f'Mining complete! Uploading movable...')
+			upload_movable(id0)
+		else:
+			print(f'bfCL was not able to complete the mining job!')
+	finally:
+		cleanup_mining_files()
 
 def run_bfcl(id0, args):
 	try:
@@ -133,11 +137,14 @@ def run_bfcl(id0, args):
 			kill_process(process)
 			print('Terminated bfCL')
 			release_job(id0)
+	except BfclReturnCodeError as e:
+		fail_job(id0, f'{type(e).__name__}: {e}')
 	except Exception as e:
 		print_exc()
 		print('bfCL was not able to run correctly!')
-		fail_job(id0, f'{type(e).__name__}: {e}')
-		return e
+		message = f'{type(e).__name__}: {e}'
+		fail_job(id0, message)
+		raise BfclExecutionError(message) from e
 
 def check_bfcl_return_code(return_code):
 	if -1 == return_code:
@@ -197,7 +204,14 @@ class BfclReturnCodeError(Exception):
 	def __init__(self, return_code, message):
 		self.return_code = return_code
 		self.message = message
-		super().__init__(f'{return_code}, f{message}')
+		super().__init__(f'{return_code}, {message}')
+
+
+class BfclExecutionError(Exception):
+
+	def __init__(self, message):
+		self.message = message
+		super().__init__(message)
 
 
 def run_client():
@@ -220,14 +234,13 @@ def run_client():
 			if response['result'] == 'success':
 				data = response['data']
 				if data:
-					error = None
 					job_type = data['type']
 					if 'mii' == job_type:
 						print('\nMii job received:')
 						print(f'  ID0:   {data["id0"]}')
 						print(f'  Model: {data["model"]}')
 						print(f'  Year:  {data["year"]}')
-						error = do_mii_mine(
+						do_mii_mine(
 							data['id0'],
 							data['model'],
 							data['year'],
@@ -236,16 +249,12 @@ def run_client():
 					elif 'part1' == job_type:
 						print('\nPart1 job received:')
 						print(f'  ID0:   {data["id0"]}')
-						error = do_part1_mine(
+						do_part1_mine(
 							data['id0'],
 							base64.b64decode(data['part1'])
 						)
 					else:
 						print(f'Unknown job type "{job_type}" received, ignoring...')
-					# errors not arising from return codes mean a bigger issue
-					if error and not isinstance(error, BfclReturnCodeError):
-						erase_benchmark()
-						break
 				else:
 					print(f'No mining jobs, waiting {request_cooldown} seconds...', end='\r')
 			time.sleep(request_cooldown)
@@ -253,6 +262,10 @@ def run_client():
 			should_exit = input('\nWould you like to exit? (y/n): ')
 			if should_exit.lower().startswith('y'):
 				break
+		except BfclExecutionError as e:
+			# errors not arising from return codes mean a bigger issue
+			erase_benchmark()
+			break
 		except:
 			print_exc()
 			print(f'Error contacting mining site, waiting {error_cooldown} seconds...')
