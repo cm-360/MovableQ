@@ -110,7 +110,8 @@ def do_part1_mine(id0, part1_data, timeout=0):
 		part1_bin.write(part1_data)
 	try:
 		# bfCL
-		args = [sys.executable, 'seedminer_launcher3.py', 'gpu']
+		max_offset = get_max_offset(get_lfcs(part1_data))
+		args = [sys.executable, 'seedminer_launcher3.py', 'gpu', str(max_offset)]
 		run_bfcl(id0, args)
 		# check output
 		if os.path.isfile('movable.sed'):
@@ -158,6 +159,52 @@ def check_bfcl_return_code(return_code):
 		raise BfclReturnCodeError(return_code, 'invalid arguments (not verified, could be generic error)')
 	elif 101 == return_code:
 		raise BfclReturnCodeError(return_code, 'maximum offset reached without a hit')
+
+def get_lfcs(part1_data):
+	return int.from_bytes(part1_data[:8], byteorder='little')
+
+# Calculates the max offset bfCL should check for a given LFCS
+# Adapted from @eip618's BFM autolauncher script
+def get_max_offset(lfcs):
+	is_new = lfcs >> 32
+	lfcs &= 0xFFFFFFF0
+	lfcs |= 0x8
+
+	# determine offsets/distances and load LFCSes for appropriate console type
+	if 2 == is_new:
+		max_offsets = [     16,      16,      20]
+		distances   = [0x00000, 0x00100, 0x00200]
+		with open("saves/new-v2.dat", "rb") as lfcs_file:
+			lfcs_buffer = lfcs_file.read()
+	elif 0 == is_new:
+		max_offsets = [     18,      18,      20]
+		distances   = [0x00000, 0x00100, 0x00200]
+		with open("saves/old-v2.dat", "rb") as lfcs_file:
+			lfcs_buffer = lfcs_file.read()
+	else:
+		raise ValueError('LFCS high u32 is not 0 or 2')
+
+	# unpack LFCSes from binary data
+	lfcs_list=[]
+	lfcs_count = len(lfcs_buffer) // 8
+	for i in range(0, lfcs_count):
+		lfcs_list.append(struct.unpack('<I', lfcs_buffer[i*8:i*8+4])[0])
+
+	# compare given LFCS to saved list and find smallest distance estimate
+	distance = lfcs - lfcs_list[lfcs_count - 1]
+	for i in range(1, lfcs_count - 1):
+		if lfcs < lfcs_list[i]:
+			distance = min(lfcs - lfcs_list[i-1], lfcs_list[i+1] - lfcs)
+			break
+
+	# print('Distance: %08X' % distance)
+	# get largest max offset for calulcated distance estimate
+	i = 0
+	for d in distances:
+		if distance < d:
+			return max_offsets[i-1] + 10
+		i += 1
+	return max_offsets[len(distances) - 1] + 10
 
 def cleanup_mining_files():
 	to_remove = ['input.bin', 'movable.sed', 'movable_part1.sed']
