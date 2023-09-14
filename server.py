@@ -217,6 +217,14 @@ def api_complete_job(id0):
     total_mined += 1
     return success()
 
+@app.route('/api/fail_job/<id0>', methods=['POST'])
+def api_fail_job(id0):
+    if not is_id0(id0):
+        return error('Invalid ID0')
+    manager.fail_job(id0, request.json.get('note'))
+    app.logger.info('job failed: \t' + id0)
+    return success()
+
 @app.route('/api/check_network_stats')
 def api_check_network_stats():
     return success({
