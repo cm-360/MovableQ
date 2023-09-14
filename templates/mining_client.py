@@ -38,10 +38,13 @@ dry_run = False
 
 
 def validate_benchmark():
-	if not os.path.isfile(benchmark_filename):
+	if os.path.isfile(benchmark_filename):
+		return True
+	else:
 		print('No existing bechmark found!')
 		if do_benchmark():
 			write_benchmark()
+			return True
 
 def write_benchmark():
 	with open(benchmark_filename, 'w') as benchmark_file:
