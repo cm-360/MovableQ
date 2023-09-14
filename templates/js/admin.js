@@ -8,7 +8,10 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
   const jobsTableBody = document.getElementById("jobsTableBody");
   const minersTableBody = document.getElementById("minersTableBody");
 
+  const jobFilter = document.getElementById("jobFilter");
+
   let jobsData;
+  let jobStrings;
   let minersData;
 
   const inspectedJobs = new Set();
@@ -29,6 +32,7 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
         return;
       }
       jobsData = responseJson.data.jobs;
+      jobStrings = jobsData.map(job => JSON.stringify(job));
       updateJobsTable();
     } else {
       window.alert("Error retrieving jobs: " + responseJson.message);
@@ -53,10 +57,14 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
 
   function updateJobsTable() {
     jobsTableBody.innerHTML = "";
-    for (let job of jobsData) {
-      jobsTableBody.appendChild(createJobRow(job));
-      if (inspectedJobs.has(job.id0)) {
-        jobsTableBody.appendChild(createJobInspectRow(job));
+    for (let i = 0; i < jobsData.length; i++) {
+      const job = jobsData[i];
+      const jobStr = jobStrings[i];
+      if (!jobFilter.value || jobStr.includes(jobFilter.value)) {
+        jobsTableBody.appendChild(createJobRow(job));
+        if (inspectedJobs.has(job.id0)) {
+          jobsTableBody.appendChild(createJobInspectRow(job));
+        }
       }
     }
   }
@@ -234,6 +242,7 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
   document.addEventListener('DOMContentLoaded', () => {
     // event listeners
     refreshTablesButton.addEventListener("click", event => refreshTables());
+    jobFilter.addEventListener("input", event => updateJobsTable());
 
     // tables refresh
     refreshTables();
