@@ -62,13 +62,14 @@ def do_benchmark():
 		part1_bin.write(content)
 		part1_bin.write(b'\0' * (0x1000 - len(content)))
 	# run and time bfCL
-	time_target = time.time() + benchmark_target
 	try:
+		time_target = time.time() + benchmark_target
 		args = [sys.executable, 'seedminer_launcher3.py', 'gpu', '0', '1']
-		run_bfcl('fef0fef0fef0fef0fef0fef0fef0fef0', args)
-	except BfclReturnCodeError:
+		return_code = run_bfcl('fef0fef0fef0fef0fef0fef0fef0fef0', args)
 		time_finish = time.time()
-		if time_finish > time_target:
+		if return_code != 101:
+			print(f'Finished with an unexpected return code from bfCL: {return_code}')
+		elif time_finish > time_target:
 			print('Unfortunately, your graphics card is too slow to help mine.')
 		else:
 			print('Good news, your GPU is fast enough to help mine!')
@@ -139,6 +140,7 @@ def run_bfcl(id0, args):
 			release_job(id0)
 	except BfclReturnCodeError as e:
 		fail_job(id0, f'{type(e).__name__}: {e}')
+		return e.return_code
 	except Exception as e:
 		print_exc()
 		print('bfCL was not able to run correctly!')
