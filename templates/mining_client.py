@@ -69,7 +69,7 @@ def do_benchmark():
 	# run and time bfCL
 	try:
 		time_target = time.time() + benchmark_target
-		args = [sys.executable, 'seedminer_launcher3.py', 'gpu', '0', '1']
+		args = [sys.executable, 'seedminer_launcher3.py', 'gpu', '0', '5']
 		return_code = run_bfcl('fef0fef0fef0fef0fef0fef0fef0fef0', args)
 		time_finish = time.time()
 		if return_code != 101:
