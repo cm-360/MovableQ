@@ -258,10 +258,10 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
     } catch (error) {
       if (error instanceof SyntaxError) {
         // syntax error from parsing non-JSON server error response
-        window.alert(`Error checking job status: ${response.status} - ${response.statusText}`);
+        window.alert(`Error canceling job: ${response.status} - ${response.statusText}`);
       } else {
         // generic error
-        window.alert(`Error checking job status: ${error.message}`);
+        window.alert(`Error canceling job: ${error.message}`);
       }
     }
     startOver();
