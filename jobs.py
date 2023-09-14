@@ -80,15 +80,28 @@ class JobManager():
             job.unqueue()
             self._unqueue_job(job.id0)
 
-    # pop from job queue if not empty and assign
-    def request_job(self, miner_name=None, miner_ip=None):
+    # pop from job queue, optionally filtering by type
+    def _get_job(self, accepted_types=None):
+        if len(self.wait_queue) == 0:
+            return
+        if accepted_types:
+            for id0 in self.wait_queue:
+                job = self.jobs[id0]
+                if job.type in accepted_types:
+                    self.wait_queue.remove(id0)
+                    return job
+        else:
+            return self.jobs[self.wait_queue.popleft()]
+
+    # pop from job queue if not empty and assign, optionally filtering by type
+    def request_job(self, miner_name=None, miner_ip=None, accepted_types=None):
         with self.lock:
             miner = self.update_miner(miner_name, miner_ip)
-            if len(self.wait_queue) > 0:
-                job = self.jobs[self.wait_queue.popleft()]
+            job = self._get_job(accepted_types)
+            if job:
                 job.assign(miner)
                 return job
-    
+
     # set job status to canceled, KeyError if it does not exist
     def release_job(self, id0):
         with self.lock:

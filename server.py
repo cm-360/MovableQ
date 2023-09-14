@@ -154,8 +154,9 @@ def api_request_job():
     release_dead_jobs()
     miner_ip = get_request_ip()
     miner_name = request.args.get('name', miner_ip)
+    accepted_types = request.args.get('types')
     app.logger.info(f'miner "{miner_name}" ({miner_ip}) requests work')
-    job = manager.request_job(miner_name, miner_ip)
+    job = manager.request_job(miner_name, miner_ip, accepted_types)
     if job:
         app.logger.info('job assigned: \t' + job.id0)
         return success(dict(job))
