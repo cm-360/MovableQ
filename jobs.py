@@ -46,7 +46,7 @@ class JobManager():
             job.reset()
             job.prepare()
             if 'ready' == job.state:
-                self._queue_job(id0)
+                self.queue_job(id0)
 
     # delete job from the current job list if exists
     def delete_job(self, id0):
