@@ -39,6 +39,7 @@ dry_run = False
 
 def validate_benchmark():
 	if not os.path.isfile(benchmark_filename):
+		print('No existing bechmark found!')
 		if do_benchmark():
 			write_benchmark()
 
@@ -56,6 +57,7 @@ def do_benchmark():
 	global dry_run
 	dry_run = True
 	cleanup_mining_files()
+	print('Benchmarking...')
 	# write impossible part1
 	with open('movable_part1.sed', 'wb') as part1_bin:
 		content = b'\xFF\xEE\xFF'
