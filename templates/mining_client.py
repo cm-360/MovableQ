@@ -12,7 +12,7 @@ from traceback import print_exc
 
 # This is the URL of the mining coordination server you would like to use. Be
 # sure to replace everything (including the curly braces) if you downloaded
-# this script from GitHub. 
+# this script from GitHub.
 base_url = '{{ url_for("page_home", _external=True) }}'
 
 # Enter a name for yourself. This name will be associated with your device on
