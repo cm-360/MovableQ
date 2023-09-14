@@ -122,7 +122,7 @@ def kill_process(process):
 		pass
 
 
-def run_client()
+def run_client():
 	global miner_name
 	global acceptable_job_types
 	# remind miner to change name variable
