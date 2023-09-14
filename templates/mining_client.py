@@ -112,7 +112,8 @@ def do_part1_mine(id0, part1_data, timeout=0):
 	try:
 		# bfCL
 		max_offset = get_max_offset(get_lfcs(part1_data))
-		args = [sys.executable, 'seedminer_launcher3.py', 'gpu', str(max_offset)]
+		print(f'Using maximum offset: {max_offset}')
+		args = [sys.executable, 'seedminer_launcher3.py', 'gpu', '0', str(max_offset)]
 		run_bfcl(id0, args)
 		# check output
 		if os.path.isfile('movable.sed'):
