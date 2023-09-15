@@ -19,6 +19,10 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
 
   const miningId0 = document.getElementById("miningId0");
   const miningStatus = document.getElementById("miningStatus");
+  const miningAssignee = document.getElementById("miningAssignee");
+  const miningStatsCollapse = document.getElementById("miningStatsCollapse");
+  const miningRate = document.getElementById("miningRate");
+  const miningOffset = document.getElementById("miningOffset");
   const cancelJobButton = document.getElementById("cancelJobButton");
 
   const movableDownload = document.getElementById("movableDownload");
@@ -54,9 +58,20 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
     card4.hide();
   }
 
-  function showCard3(status) {
+  function showCard3(statusResponse) {
     miningId0.innerText = id0;
-    switch (status) {
+    // mining stats
+    const miningStats = statusResponse.mining_stats
+    miningAssignee.innerText = miningStats.assignee;
+    if (miningStats.rate && miningStats.offset) {
+      miningRate.innerText = miningStats.rate;
+      miningOffset.innerText = miningStats.offset;
+      miningStatsCollapse.classList.add("show");
+    } else {
+      miningStatsCollapse.classList.remove("show");
+    }
+    // spinner message
+    switch (statusResponse.status) {
       case "working":
         miningStatus.innerText = "Mining in progress...";
         break;
@@ -84,14 +99,14 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
     card4.show();
   }
 
-  function updateCards(status) {
-    switch (status) {
+  function updateCards(statusResponse) {
+    switch (statusResponse.status) {
       case "done":
         showCard4();
         break;
       case "waiting":
       case "working":
-        showCard3(status);
+        showCard3(statusResponse);
         break;
       case "need_part1":
         showCard2();
@@ -288,7 +303,7 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
       response = await fetch("{{ url_for('api_check_job_status', id0='') }}" + id0);
       const responseJson = await response.json();
       if (response.ok) {
-        updateCards(responseJson.data.status);
+        updateCards(responseJson.data);
         console.log(responseJson);
       } else {
         throw new Error(responseJson.message);

@@ -58,12 +58,19 @@
 				<p class="card-text mb-3">
 					Please wait for the mining process to complete. This process can take up to 90 minutes, so feel free to leave this website running in the background, or even close it. While you wait, please ensure your ID0 is correct, and cancel the job if it is not. Otherwise, you will be waiting forever!
 				</p>
-				<p class="card-text mb-2">
-					ID0: <span id="miningId0"></span>
-				</p>
 				<div class="mb-3">
 					<span class="spinner-border spinner-border-sm" role="status"></span>
 					<span id="miningStatus" class="m-2"></span>
+				</div>
+				<div class="collapse show alert alert-dark" role="alert">
+					<div class="card-text">
+						<div>ID0: <span id="miningId0"></span></div>
+						<div>Assigned to: <span id="miningAssignee"></span></div>
+					</div>
+					<div class="card-text collapse mt-2" id="miningStatsCollapse">
+						<div>Hash rate: <span id="miningRate">0</span> M/s</div>
+						<div>Current offset: <span id="miningOffset"></span></div>
+					</div>
 				</div>
 				<button id="cancelJobButton" class="btn btn-danger">Cancel</button>
 			</div>

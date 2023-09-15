@@ -17,6 +17,10 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
 
   const miningId0 = document.getElementById("miningId0");
   const miningStatus = document.getElementById("miningStatus");
+  const miningAssignee = document.getElementById("miningAssignee");
+  const miningStatsCollapse = document.getElementById("miningStatsCollapse");
+  const miningRate = document.getElementById("miningRate");
+  const miningOffset = document.getElementById("miningOffset");
   const cancelJobButton = document.getElementById("cancelJobButton");
 
   const movableDownload = document.getElementById("movableDownload");
@@ -40,9 +44,20 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
     card3.hide();
   }
 
-  function showCard2(status) {
+  function showCard2(statusResponse) {
     miningId0.innerText = id0;
-    switch (status) {
+    // mining stats
+    const miningStats = statusResponse.mining_stats
+    miningAssignee.innerText = miningStats.assignee;
+    if (miningStats.rate && miningStats.offset) {
+      miningRate.innerText = miningStats.rate;
+      miningOffset.innerText = miningStats.offset;
+      miningStatsCollapse.classList.add("show");
+    } else {
+      miningStatsCollapse.classList.remove("show");
+    }
+    // spinner message
+    switch (statusResponse.status) {
       case "working":
         miningStatus.innerText = "Mining in progress...";
         break;
@@ -68,14 +83,14 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
     card3.show();
   }
 
-  function updateCards(status) {
-    switch (status) {
+  function updateCards(statusResponse) {
+    switch (statusResponse.status) {
       case "done":
         showCard3();
         break;
       case "waiting":
       case "working":
-        showCard2(status);
+        showCard2(statusResponse);
         break;
       case "canceled":
         cancelJobWatch();
@@ -83,6 +98,7 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
         break;
       case "failed":
         cancelJobWatch();
+        // TODO failure note
         failedModal.show();
         break;
       default:
@@ -227,10 +243,10 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
     // grab job status from server
     let response;
     try {
-      response = await fetch("{{ url_for('api_check_job_status', id0='') }}" + id0);
+      response = await fetch(`{{ url_for('api_check_job_status', id0='') }}${id0}?include_stats=1`);
       const responseJson = await response.json();
       if (response.ok) {
-        updateCards(responseJson.data.status);
+        updateCards(responseJson.data);
         console.log(responseJson);
       } else {
         throw new Error(responseJson.message);
