@@ -188,7 +188,7 @@ class JobManager():
         with self.lock:
             job = self.jobs[id0]
             return {
-                'assignee': job.assignee,
+                'assignee': job.get_assignee_name(),
                 'rate': job.mining_rate,
                 'offset': job.mining_offset
             }
@@ -300,6 +300,9 @@ class Job(Machine):
     def on_fail(self, note=None):
         self.note = note
 
+    def get_assignee_name():
+        return self.assignee.name if self.assignee else None
+
     # True if the job has timed out, False if it has not
     def has_timed_out(self):
         return datetime.now(tz=timezone.utc) > (self.last_update + job_lifetime)
@@ -312,7 +315,7 @@ class Job(Machine):
         yield 'note', self.note
         # for queue
         yield 'created', self.created.isoformat()
-        yield 'assignee', self.assignee.name if self.assignee else None
+        yield 'assignee', self.get_assignee_name()
         yield 'last_update', self.last_update.isoformat()
         # mining stats
         yield 'mining_rate', self.mining_rate
