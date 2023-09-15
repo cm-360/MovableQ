@@ -300,7 +300,7 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
     // grab job status from server
     let response;
     try {
-      response = await fetch("{{ url_for('api_check_job_status', id0='') }}" + id0);
+      response = await fetch(`{{ url_for('api_check_job_status', id0='') }}${id0}?include_stats=1`);
       const responseJson = await response.json();
       if (response.ok) {
         updateCards(responseJson.data);
