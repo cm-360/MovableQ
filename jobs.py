@@ -173,7 +173,7 @@ class JobManager():
             return id0 in self.jobs
 
     # return job status if found, finished if movable exists, KeyError if neither
-    def check_job_status(self, id0):
+    def check_job_status(self, id0, extra_info=False):
         with self.lock:
             try:
                 job = self.jobs[id0]
@@ -183,6 +183,15 @@ class JobManager():
                     return 'done'
                 else:
                     raise e
+
+    def get_mining_stats(self, id0):
+        with self.lock:
+            job = self.jobs[id0]
+            return {
+                'assignee': job.assignee,
+                'rate': job.mining_rate,
+                'offset': job.mining_offset
+            }
 
     # returns all current jobs, optionally only those with a specific status
     def list_jobs(self, status_filter=None):
@@ -277,6 +286,9 @@ class Job(Machine):
         self.created = datetime.now(tz=timezone.utc)
         self.assignee = None
         self.last_update = self.created
+        # mining stats
+        self.mining_rate = None
+        self.mining_offset = None
 
     def update(self):
         self.last_update = datetime.now(tz=timezone.utc)
@@ -293,13 +305,18 @@ class Job(Machine):
         return datetime.now(tz=timezone.utc) > (self.last_update + job_lifetime)
 
     def __iter__(self):
+        # job properties
         yield 'id0', self.id0
         yield 'type', self.type
         yield 'status', self.state
         yield 'note', self.note
+        # for queue
         yield 'created', self.created.isoformat()
         yield 'assignee', self.assignee.name if self.assignee else None
         yield 'last_update', self.last_update.isoformat()
+        # mining stats
+        yield 'mining_rate', self.mining_rate
+        yield 'mining_offset', self.mining_offset
 
 
 class MiiJob(Job):

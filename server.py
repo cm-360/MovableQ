@@ -176,7 +176,13 @@ def api_check_job_status(id0):
     if not is_id0(id0):
         return error('Invalid ID0')
     status = manager.check_job_status(id0)
-    return success({'status': status})
+    if request.args.get('include_stats') and not 'done' == status:
+        return success({
+            'status': status,
+            'mining_stats': manager.get_mining_stats(id0)
+        })
+    else:
+        return success({'status': status})
 
 @app.route('/api/update_job/<id0>')
 def api_update_job(id0):
