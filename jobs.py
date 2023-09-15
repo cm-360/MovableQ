@@ -300,7 +300,7 @@ class Job(Machine):
     def on_fail(self, note=None):
         self.note = note
 
-    def get_assignee_name():
+    def get_assignee_name(self):
         return self.assignee.name if self.assignee else None
 
     # True if the job has timed out, False if it has not
