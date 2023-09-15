@@ -155,10 +155,10 @@ def api_request_job():
     miner_ip = get_request_ip()
     miner_name = request.args.get('name', miner_ip)
     accepted_types = request.args.get('types')
-    app.logger.info(f'miner "{miner_name}" ({miner_ip}) requests work')
+    app.logger.info(f'{log_prefix()} {miner_name} requests work')
     job = manager.request_job(miner_name, miner_ip, accepted_types)
     if job:
-        app.logger.info('job assigned: \t' + job.id0)
+        app.logger.info(f'{log_prefix(job.id0)} assigned to {miner_name}')
         return success(dict(job))
     else:
         return success()
@@ -168,7 +168,7 @@ def api_release_job(id0):
     if not is_id0(id0):
         return error('Invalid ID0')
     manager.release_job(id0)
-    app.logger.info('job released: \t' + id0)
+    app.logger.info(f'{log_prefix(id0)} released')
     return success()
 
 @app.route('/api/check_job_status/<id0>')
@@ -182,9 +182,8 @@ def api_check_job_status(id0):
 def api_update_job(id0):
     if not is_id0(id0):
         return error('Invalid ID0')
-    miner_ip = get_request_ip()
-    app.logger.info(f'{miner_ip} is still mining')
-    if manager.update_job(id0, miner_ip=miner_ip):
+    app.logger.info(f'{log_prefix(id0)} still mining')
+    if manager.update_job(id0, miner_ip=get_request_ip()):
         return success()
     else:
         return success({'status': 'canceled'})
@@ -195,7 +194,7 @@ def api_cancel_job(id0):
     if not is_id0(id0):
         return error('Invalid ID0')
     manager.cancel_job(id0)
-    app.logger.info('job canceled: \t' + id0)
+    app.logger.info(f'{log_prefix(id0)} canceled')
     return success()
 
 @app.route('/api/reset_job/<id0>')
@@ -203,7 +202,7 @@ def api_reset_job(id0):
     if not is_id0(id0):
         return error('Invalid ID0')
     manager.reset_job(id0)
-    app.logger.info('job reset: \t' + id0)
+    app.logger.info(f'{log_prefix(id0)} reset')
     return success()
 
 @app.route('/api/complete_job/<id0>', methods=['POST'])
@@ -213,7 +212,7 @@ def api_complete_job(id0):
         return error('Invalid ID0')
     movable = base64.b64decode(request.json['movable'])
     manager.complete_job(id0, movable)
-    app.logger.info('job completed: \t' + id0)
+    app.logger.info(f'{log_prefix(id0)} completed')
     total_mined += 1
     return success()
 
@@ -222,7 +221,7 @@ def api_fail_job(id0):
     if not is_id0(id0):
         return error('Invalid ID0')
     manager.fail_job(id0, request.json.get('note'))
-    app.logger.info('job failed: \t' + id0)
+    app.logger.info(f'{log_prefix(id0)} failed')
     return success()
 
 @app.route('/api/check_network_stats')
@@ -268,6 +267,11 @@ def error(message, code=400):
     })
     return make_response(response_json, code)
 
+def log_prefix(id0=None):
+    prefix = '(' + get_request_ip() + ')'
+    if id0:
+        prefix += f' {id0}'
+    return prefix
 
 # error handler
 
@@ -276,6 +280,7 @@ def handle_exception(e):
     # pass through HTTP errors
     if isinstance(e, HTTPException):
         return e
+    app.logger.error(f'{log_prefix()} caught exception')
     app.logger.exception(e)
     return error(f'{type(e).__name__}: {e}', code=500)
 
@@ -304,7 +309,7 @@ def submit_generic_job(job, queue=False):
         status = manager.check_job_status(job.id0)
         # delete existing job if it is canceled
         if 'canceled' == status:
-            app.logger.info('deleting old job: \t' + job.id0)
+            app.logger.info(f'{log_prefix(job.id0)} overwritten')
             manager.delete_job(job.id0)
             status = None
         if status:
@@ -315,22 +320,22 @@ def submit_generic_job(job, queue=False):
     manager.submit_job(job)
     if queue:
         manager.queue_job(job.id0)
-    app.logger.info(f'{job.type} job submitted: \t{job.id0}')
+    app.logger.info(f'{log_prefix(job.id0)} submitted ({job.type})')
     return success({'id0': job.id0})
 
 def release_dead_jobs():
     released = manager.release_dead_jobs()
     if released:
-        app.logger.info('jobs released:')
+        app.logger.info('automatically released jobs:')
         for id0 in released:
-            app.logger.info(f'\t\t{id0}')
+            app.logger.info(f'\t{id0}')
 
 def trim_canceled_jobs():
     deleted = manager.trim_canceled_jobs()
     if deleted:
-        app.logger.info('jobs deleted:')
+        app.logger.info('automatically deleted jobs:')
         for id0 in deleted:
-            app.logger.info(f'\t\t{id0}')
+            app.logger.info(f'\t{id0}')
 
 
 # helpers
