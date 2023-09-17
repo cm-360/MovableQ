@@ -255,9 +255,15 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
       if (error instanceof SyntaxError) {
         // syntax error from parsing non-JSON server error response
         window.alert(`Error checking job status: ${response.status} - ${response.statusText}`);
+      } else if (error.message.includes("KeyError")) {
+        window.alert(`Error checking job status: ID0 ${id0} not found`);
       } else {
         // generic error
         window.alert(`Error checking job status: ${error.message}`);
+      }
+      // do not reset the page for network errors!
+      if (error.message.startsWith("NetworkError")) {
+        return;
       }
       startOver();
     }
