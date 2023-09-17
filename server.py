@@ -10,10 +10,12 @@ from PIL import Image
 from dotenv import load_dotenv
 
 import base64
+import hashlib
 import json
 import os
 import re
 import secrets
+import struct
 
 from jobs import JobManager, MiiJob, Part1Job, read_movable, count_total_mined
 
@@ -349,8 +351,17 @@ def trim_canceled_jobs():
 def is_id0(value):
     return bool(id0_regex.fullmatch(value))
 
+# https://github.com/nh-server/Kurisu/blob/main/cogs/friendcode.py#L28
 def is_friend_code(value):
-    return True # TODO check fc
+    try:
+        fc = int(value.replace('-', ''))
+    except ValueError:
+        return False
+    if fc > 0x7FFFFFFFFF:
+        return False
+    principal_id = fc & 0xFFFFFFFF
+    checksum = (fc & 0xFF00000000) >> 32
+    return hashlib.sha1(struct.pack('<L', principal_id)).digest()[0] >> 1 == checksum
 
 def parse_mii_job_submission(submission, mii_file=None):
     invalid = []
