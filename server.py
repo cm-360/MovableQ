@@ -295,9 +295,13 @@ def api_complete_job(key):
     if not is_job_key(key):
         return error('Invalid Job Key')
     result = base64.b64decode(request.json['result'])
-    manager.complete_job(key, result)
-    app.logger.info(f'{log_prefix(key)} completed')
-    total_mined += 1
+    if validate_job_result(key, result):
+        manager.complete_job(key, result)
+        app.logger.info(f'{log_prefix(key)} completed')
+        total_mined += 1
+    else:
+        app.logger.info(f'{log_prefix(key)} uploaded faulty result')
+        manager.fail_job(key, 'miner uploaded faulty result') # probably shouldn't fail?
     return success()
 
 @app.route('/api/fail_job/<key>', methods=['POST'])
@@ -444,6 +448,24 @@ def is_friend_code(value):
     principal_id = fc & 0xFFFFFFFF
     checksum = (fc & 0xFF00000000) >> 32
     return hashlib.sha1(struct.pack('<L', principal_id)).digest()[0] >> 1 == checksum
+
+def validate_job_result(key, result):
+    if len(key) == 16: # mii -> lfcs
+        if len(result) < 5:
+            return False
+        if b"\0\0\0\0" in result[:4]:
+            return False
+        #if result[4:5] != b"\x00" && result[4:5] != b"\x02":
+        #    return False
+        return True
+
+    elif len(key) == 32: # part1 -> mkey
+        if len(result) != 16:
+            return False
+        return True
+
+    else:
+        return False
 
 # Modified from https://stackoverflow.com/a/28568003
 def parse_version_string(version_str, point_max_len=10):

@@ -425,16 +425,16 @@ def upload_movable(id0):
 	with open('movable.sed', 'rb') as movable:
 		response = requests.post(
 			f'{base_url}/api/complete_job/{id0}',
-			json={'result': str(base64.b64encode(movable.read()), 'utf-8')}
+			json={'result': str(base64.b64encode(movable.read()[0x110:0x120]), 'utf-8')}
 		).json()
 
 def upload_part1(final):
 	if dry_run:
 		return
-	with open('movable_part1.sed', 'rb') as movable:
+	with open('movable_part1.sed', 'rb') as part1:
 		response = requests.post(
 			f'{base_url}/api/complete_job/{final}',
-			json={'result': str(base64.b64encode(movable.read()), 'utf-8')}
+			json={'result': str(base64.b64encode(part1.read()[:5]), 'utf-8')}
 		).json()
 
 def kill_process(process):

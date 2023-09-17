@@ -151,6 +151,8 @@ class JobManager():
     def fulfill_job(self, key, part1=None):
         if not part1:
             part1 = read_mii_part1(key)
+        if not part1:
+            return
         part1 = str(base64.b64encode(part1), 'utf-8')
         with self.lock:
             for job in self.jobs.values():
@@ -452,7 +454,11 @@ def read_mii_part1(final):
     if not mii_part1_exists(final):
         return
     with open(mii_final_to_part1_path(final), 'rb') as part1_file:
-        return part1_file.read()
+        lfcs = part1_file.read()
+        if len(lfcs) < 5: # broken file?
+            return
+        else:
+            return lfcs[:5]
 
 
 def id0_to_movable_path(id0, create=False):
@@ -473,7 +479,13 @@ def read_movable(id0):
     if not movable_exists(id0):
         return
     with open(id0_to_movable_path(id0), 'rb') as movable_file:
-        return movable_file.read()
+        movable = movable_file.read()
+        if len(movable) == 0x10: # reduced size
+            return b"\0" * 0x110 + movable + b"\0" * 0x20
+        elif len(movable) == 0x140: # old full size
+            return movable
+        else: # broken file?
+            return
 
 
 def count_total_mined():
