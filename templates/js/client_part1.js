@@ -35,9 +35,12 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
 
   // card UI functions
 
-  function showCard1() {
+  function showCard1(id0) {
     cancelJobWatch();
-    jobForm.reset();
+    if (id0)
+      jobForm.id0.value = id0;
+    else
+      jobForm.reset();
     // update cards
     card1.show();
     card2.hide();
@@ -92,8 +95,8 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
       case "working":
         showCard2(statusResponse);
         break;
-      case "need_part1": // shouldn't happen
-        showCard1();
+      case "need_part1":
+        showCard1(id0);
         break;
       case "canceled":
         cancelJobWatch();
@@ -255,12 +258,8 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
       response = await fetch(`{{ url_for('api_check_job_status', key='') }}${id0}?include_stats=1`);
       const responseJson = await response.json();
       if (response.ok) {
-        if (responseJson.data.status === "need_part1") {
-            applyJobFormFeedback("invalid:part1");
-        } else {
-            updateCards(responseJson.data);
-            console.log(responseJson);
-        }
+        updateCards(responseJson.data);
+        console.log(responseJson);
       } else {
         throw new Error(responseJson.message);
       }

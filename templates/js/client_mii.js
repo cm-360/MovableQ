@@ -92,7 +92,7 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
     switch (statusResponse.status) {
       case "done":
         if (mii) {
-          setMii();
+          setMii("");
           checkJob();
         } else {
           showCard3();
@@ -103,8 +103,13 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
         showCard2(statusResponse);
         break;
       case "canceled":
-        cancelJobWatch();
-        canceledModal.show();
+        if (mii) {
+          setMii("");
+          checkJob();
+        } else {
+          cancelJobWatch();
+          canceledModal.show();
+        }
         break;
       case "failed":
         cancelJobWatch();

@@ -21,7 +21,7 @@ import re
 import secrets
 import struct
 
-from jobs import JobManager, MiiJob, Part1Job, read_movable, count_total_mined
+from jobs import JobManager, MiiJob, FCJob, Part1Job, read_movable, count_total_mined
 
 
 # constants
@@ -158,16 +158,26 @@ def api_submit_fc_job():
     part1_job = None
     # parse job submission
     submission = request.get_json(silent=True)
-    job = parse_fc_job_submission(request.json)
-    part1_job = parse_part1_job_submission(request.json)
+    if submission:
+        job = parse_fc_job_submission(request.json)
+        part1_job = parse_part1_job_submission(request.json)
+    else:
+        job = parse_fc_job_submission(request.form)
+        part1_job = parse_part1_job_submission(request.form)
     # returns error message if job json is invalid
     if type(job) is str:
         return error(job)
     if type(part1_job) is str:
         return error(part1_job)
     part1_job.prerequisite = job.key
-    submit_generic_job(part1_job)
-    return submit_generic_job(job, queue=True)
+    part1_res = submit_generic_job(part1_job, no_response=True)
+    if not part1_res[0]:
+        return error(part1_res[1])
+    res = submit_generic_job(job, queue=True, no_response=True)
+    return success({
+        'fc' : res[1].key if res[0] else '',
+        'id0' : part1_res[1].key
+    })
 
 @app.route('/api/submit_part1_job', methods=['POST'])
 def api_submit_part1_job():
@@ -498,7 +508,7 @@ def parse_fc_job_submission(submission):
         if invalid:
             return 'invalid:' + ','.join(invalid)
         else:
-            return FCJob(id0, friend_code=friend_code)
+            return FCJob(friend_code)
     except KeyError as e:
         raise KeyError(f'Missing parameter "{e}"')
 
