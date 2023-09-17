@@ -103,8 +103,13 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
         showCard2(statusResponse);
         break;
       case "canceled":
-        cancelJobWatch();
-        canceledModal.show();
+        if (mii) {
+          setMii("");
+          checkJob();
+        } else {
+          cancelJobWatch();
+          canceledModal.show();
+        }
         break;
       case "failed":
         cancelJobWatch();
