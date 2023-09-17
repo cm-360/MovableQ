@@ -16,55 +16,25 @@
 					<label for="id0" class="form-label">ID0</label>
 					<input required type="text" class="form-control" id="id0" name="id0" placeholder="a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5">
 					<div class="invalid-feedback">
-						Your ID0 should be a 32-character hex string.
+						Your ID0 should be a 32-character hex string. Also make sure it's not ID1 (the 2nd level folder name.)
 					</div>
 				</div>
 				<div class="mb-3">
-					<label for="friend_code" class="form-label">Friend code</label>
-					<input required type="text" class="form-control" id="friend_code" name="friend_code" placeholder="123456789012">
+					<label for="part1_file" class="form-label">Movable part1 file</label>
+					<input type="file" class="form-control collapse" id="part1_file" name="part1_file" accept=".jpg,.bin">
+					<input type="text" class="form-control collapse" id="part1_url" name="part1_url" placeholder="https://example.com/path/to/movable_part1.sed">
 					<div class="invalid-feedback">
-						This is not a valid friend code.
+						Your part1 data is invalid.
 					</div>
+					<button type="button" class="btn btn-link btn-sm p-0" id="part1UploadToggle"></button>
 				</div>
 				<button type="submit" class="btn btn-success">Submit</button>
 			</form>
 		</div>
 	</div>
 	<div class="card">
-		<h4 class="card-header">Step 2: Part1 File</h4>
+		<h4 class="card-header">Step 2: Mining</h4>
 		<div id="card2" class="collapse">
-			<div class="card-body">
-				<div class="alert alert-info" role="alert">
-					Using the 3DS friends list, regsiter <b id="botFriendCode">????-????-????</b> as a new online friend. Feel free to enter any name you wish, it is not important. If you need assistance adding a friend, check Nintendo's instructions <a class="link" href="https://www.nintendo.co.uk/Support/Nintendo-3DS-2DS/FAQ/Hardware/How-do-I-register-friends-/How-do-I-register-friends-242795.html">here</a>.
-				</div>
-				<div class="mb-3 card-text">
-					It is connected to this service and will automatically retrieve your <code>movable_part1.sed</code> when you add it to your friend list. Add the friend code provided above and just wait for it to process, this site should proceed automatically.
-				</div>
-				<div class="mb-3">
-					<span class="spinner-border spinner-border-sm" role="status"></span>
-					<span id="part1Status" class="m-2">Please wait...</span>
-				</div>
-				<div class="card-text">
-					Alternatively, you can manually obtain <code>movable_part1.sed</code> by using <a class="link" href="https://github.com/zoogie/seedminer/releases/tag/v2.1">seedStarter</a> on a second, already-modded console. If you choose to do so, upload the file <a data-bs-toggle="collapse" href="#part1Form" role="button" aria-expanded="false" aria-controls="part1Form">here</a>.
-				</div>
-				<form id="part1Form" class="collapse mt-3">
-					<div class="mb-3">
-						<label for="part1_file" class="form-label">Movable part1 file</label>
-						<input type="file" class="form-control collapse" id="part1_file" name="part1_file" accept=".jpg,.bin">
-						<input type="text" class="form-control collapse" id="part1_url" name="part1_url" placeholder="https://example.com/path/to/movable_part1.sed">
-						<div class="invalid-feedback">
-							Your part1 data is invalid.
-						</div>
-						<button type="button" class="btn btn-link btn-sm p-0" id="part1UploadToggle"></button>
-					</div>
-					<button type="submit" class="btn btn-success">Submit</button>
-				</form>
-			</div>
-		</div>
-	</div>
-	<div class="card">
-		<h4 class="card-header">Step 3: Mining</h4>
-		<div id="card3" class="collapse">
 			<div class="card-body">
 				<p class="card-text mb-3">
 					Please wait for the mining process to complete. This process can take up to 90 minutes, so feel free to leave this website running in the background, or even close it. While you wait, please ensure your ID0 is correct, and cancel the job if it is not. Otherwise, you will be waiting forever!
@@ -88,8 +58,8 @@
 		</div>
 	</div>
 	<div class="card">
-		<h4 class="card-header">Step 4: Done!</h4>
-		<div id="card4" class="collapse">
+		<h4 class="card-header">Step 3: Done!</h4>
+		<div id="card3" class="collapse">
 			<div class="card-body">
 				<p class="card-text">
 					Good news, the mining is complete! Download your <code>movable.sed</code> using the button below. If you ended up here immediately after submitting a job, go ahead and continue with the provided download.

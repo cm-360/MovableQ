@@ -8,10 +8,8 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
   const card1 = new bootstrap.Collapse(document.getElementById("card1"), { toggle: false });
   const card2 = new bootstrap.Collapse(document.getElementById("card2"), { toggle: false });
   const card3 = new bootstrap.Collapse(document.getElementById("card3"), { toggle: false });
-  const card4 = new bootstrap.Collapse(document.getElementById("card4"), { toggle: false });
 
   const jobForm = document.getElementById("jobForm");
-  const part1Form = document.getElementById("part1Form");
 
   const part1UploadToggle = document.getElementById("part1UploadToggle");
   const part1UploadFile = document.getElementById("part1_file");
@@ -44,21 +42,9 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
     card1.show();
     card2.hide();
     card3.hide();
-    card4.hide();
   }
 
-  function showCard2() {
-    part1Form.reset();
-    // TODO friend code
-    startJobWatch();
-    // update cards
-    card1.hide();
-    card2.show();
-    card3.hide();
-    card4.hide();
-  }
-
-  function showCard3(statusResponse) {
+  function showCard2(statusResponse) {
     miningId0.innerText = id0;
     // mining stats
     const miningStats = statusResponse.mining_stats
@@ -84,32 +70,30 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
     startJobWatch();
     // update cards
     card1.hide();
-    card2.hide();
-    card3.show();
-    card4.hide();
+    card2.show();
+    card3.hide();
   }
 
-  function showCard4() {
+  function showCard3() {
     cancelJobWatch();
     movableDownload.href = "{{ url_for('download_movable', id0='') }}" + id0;
     // update cards
     card1.hide();
     card2.hide();
-    card3.hide();
-    card4.show();
+    card3.show();
   }
 
   function updateCards(statusResponse) {
     switch (statusResponse.status) {
       case "done":
-        showCard4();
+        showCard3();
         break;
       case "waiting":
       case "working":
-        showCard3(statusResponse);
+        showCard2(statusResponse);
         break;
-      case "need_part1":
-        showCard2();
+      case "need_part1": // shouldn't happen
+        showCard1();
         break;
       case "canceled":
         cancelJobWatch();
@@ -149,18 +133,11 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
   function applyJobFormFeedback(feedback) {
     resetFormFeedback(jobForm);
     for (let invalid of feedback.replace("invalid:", "").split(",")) {
-      jobForm.elements[invalid].classList.add("is-invalid");
-    }
-  }
-
-  function applyPart1FormFeedback(feedback) {
-    resetFormFeedback(part1Form);
-    for (let invalid of feedback.replace("invalid:", "").split(",")) {
       if (invalid == "part1") {
-        part1Form.elements["part1_file"].classList.add("is-invalid");
-        part1Form.elements["part1_url"].classList.add("is-invalid");
+        jobForm.elements["part1_file"].classList.add("is-invalid");
+        jobForm.elements["part1_url"].classList.add("is-invalid");
       } else {
-        part1Form.elements[invalid].classList.add("is-invalid");
+        jobForm.elements[invalid].classList.add("is-invalid");
       }
     }
   }
@@ -170,10 +147,15 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
 
   function loadID0() {
     const urlParams = new URLSearchParams(window.location.search);
+    let tmp_id0;
     if (urlParams.has("id0")) {
-      setID0(urlParams.get("id0"));
+      tmp_id0 = urlParams.get("id0");
     } else {
-      setID0(getCookie("id0"));
+      tmp_id0 = getCookie("id0");
+    }
+    // crude id0 check
+    if (tmp_id0.length == 32) {
+      setID0(tmp_id0);
     }
   }
 
@@ -208,50 +190,11 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
     setID0("");
     cancelJobWatch();
     resetFormFeedback(jobForm);
-    resetFormFeedback(part1Form);
     showCard1();
   }
 
   async function submitJobForm() {
     const formData = new FormData(jobForm);    
-    // submit job to server
-    let response;
-    try {
-      response = await fetch("{{ url_for('api_submit_part1_job') }}", {
-        method: "POST",
-        body: formData
-      });
-      const responseJson = await response.json();
-      if (response.ok) {
-        // submission successful
-        setID0(responseJson.data.id0);
-        checkJob();
-      } else {
-        // throw error with server message
-        throw new Error(responseJson.message);
-      }
-    } catch (error) {
-      if (error instanceof SyntaxError) {
-        // syntax error from parsing non-JSON server error response
-        window.alert(`Error submitting job: ${response.status} - ${response.statusText}`);
-      } else if (error.message.startsWith("invalid:")) {
-        // form input invalid
-        applyJobFormFeedback(error.message);
-      } else if (error.message === "Duplicate job") {
-        // duplicate job
-        if (window.confirm("A job with this ID0 already exists. Would you like to view its progress?")) {
-          setID0(formData.get("id0"));
-          checkJob();
-        }
-      } else {
-        // generic error
-        window.alert(`Error submitting job: ${error.message}`);
-      }
-    }
-  }
-
-  async function submitPart1Form() {
-    const formData = new FormData(part1Form);    
     // fetch part1 data if selected
     if (part1UploadUrl.classList.contains("show")) {
       try {
@@ -266,13 +209,14 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
     // submit job to server
     let response;
     try {
-      response = await fetch("{{ url_for('api_add_part1', id0='') }}" + id0, {
+      response = await fetch("{{ url_for('api_submit_part1_job') }}", {
         method: "POST",
         body: formData
       });
       const responseJson = await response.json();
       if (response.ok) {
         // submission successful
+        setID0(responseJson.data.key);
         checkJob();
       } else {
         // throw error with server message
@@ -281,13 +225,21 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
     } catch (error) {
       if (error instanceof SyntaxError) {
         // syntax error from parsing non-JSON server error response
-        window.alert(`Error adding part1: ${response.status} - ${response.statusText}`);
+        window.alert(`Error submitting job: ${response.status} - ${response.statusText}`);
       } else if (error.message.startsWith("invalid:")) {
         // form input invalid
-        applyPart1FormFeedback(error.message);
+        applyJobFormFeedback(error.message);
+      } else if (error.message === "need_part1") {
+          applyJobFormFeedback("invalid:part1");
+      } else if (error.message === "Duplicate job") {
+        // duplicate job
+        if (window.confirm("A job with this ID0 already exists. Would you like to view its progress?")) {
+          setID0(formData.get("id0"));
+          checkJob();
+        }
       } else {
         // generic error
-        window.alert(`Error adding part1: ${error.message}`);
+        window.alert(`Error submitting job: ${error.message}`);
       }
     }
   }
@@ -300,11 +252,15 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
     // grab job status from server
     let response;
     try {
-      response = await fetch(`{{ url_for('api_check_job_status', id0='') }}${id0}?include_stats=1`);
+      response = await fetch(`{{ url_for('api_check_job_status', key='') }}${id0}?include_stats=1`);
       const responseJson = await response.json();
       if (response.ok) {
-        updateCards(responseJson.data);
-        console.log(responseJson);
+        if (responseJson.data.status === "need_part1") {
+            applyJobFormFeedback("invalid:part1");
+        } else {
+            updateCards(responseJson.data);
+            console.log(responseJson);
+        }
       } else {
         throw new Error(responseJson.message);
       }
@@ -329,7 +285,7 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
   async function cancelJob() {
     let response;
     try {
-      response = await fetch("{{ url_for('api_cancel_job', id0='') }}" + id0);
+      response = await fetch("{{ url_for('api_cancel_job', key='') }}" + id0);
       const responseJson = await response.json();
       if (!response.ok) {
         throw new Error(responseJson.message);
@@ -354,10 +310,6 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
     jobForm.addEventListener("submit", event => {
       event.preventDefault();
       submitJobForm();
-    });
-    part1Form.addEventListener("submit", event => {
-      event.preventDefault();
-      submitPart1Form();
     });
     part1UploadToggle.addEventListener("click", event => togglePart1Upload());
     canceledModalEl.addEventListener("hide.bs.modal", event => startOver());

@@ -7,6 +7,10 @@ from logging.config import dictConfig
 from pyzbar.pyzbar import decode as qr_decode
 from PIL import Image
 
+#from Cryptodome.Cipher import AES
+from Crypto.Cipher import AES
+from binascii import hexlify
+
 from dotenv import load_dotenv
 
 import base64
@@ -21,7 +25,8 @@ from jobs import JobManager, MiiJob, Part1Job, read_movable, count_total_mined
 
 
 # constants
-id0_regex = re.compile(r'[a-fA-F0-9]{32}')
+id0_regex = re.compile(r'(?![0-9a-fA-F]{4}(01|00)[0-9a-fA-F]{18}00[0-9a-fA-F]{6})[0-9a-fA-F]{32}')
+mii_final_regex = re.compile(r'[a-fA-F0-9]{16}')
 version_split_regex = re.compile(r'[.+-]')
 
 # logging config
@@ -84,6 +89,10 @@ def page_home():
 def page_mii():
     return render_template('pages/mii.html')
 
+@app.route('/fc')
+def page_fc():
+    return render_template('pages/fc.html')
+
 @app.route('/part1')
 def page_part1():
     return render_template('pages/part1.html')
@@ -117,15 +126,47 @@ def get_mining_client():
 @app.route('/api/submit_mii_job', methods=['POST'])
 def api_submit_mii_job():
     job = None
+    part1_job = None
     # parse job submission
     submission = request.get_json(silent=True)
     if submission:
         job = parse_mii_job_submission(request.json)
+        part1_job = parse_part1_job_submission(request.json)
     else:
         job = parse_mii_job_submission(request.form, mii_file=request.files['mii_file'])
+        part1_job = parse_part1_job_submission(request.form)
     # returns error message if job json is invalid
     if type(job) is str:
         return error(job)
+    if type(part1_job) is str:
+        return error(part1_job)
+    part1_job.prerequisite = job.key
+    part1_res = submit_generic_job(part1_job, no_response=True)
+    if not part1_res[0]:
+        return error(part1_res[1])
+    res = submit_generic_job(job, queue=True, no_response=True)
+    if not res[0]:
+        manager.fulfill_job(job.key)
+    return success({
+        'mii' : res[1].key if res[0] else '',
+        'id0' : part1_res[1].key
+    })
+
+@app.route('/api/submit_fc_job', methods=['POST'])
+def api_submit_fc_job():
+    job = None
+    part1_job = None
+    # parse job submission
+    submission = request.get_json(silent=True)
+    job = parse_fc_job_submission(request.json)
+    part1_job = parse_part1_job_submission(request.json)
+    # returns error message if job json is invalid
+    if type(job) is str:
+        return error(job)
+    if type(part1_job) is str:
+        return error(part1_job)
+    part1_job.prerequisite = job.key
+    submit_generic_job(part1_job)
     return submit_generic_job(job, queue=True)
 
 @app.route('/api/submit_part1_job', methods=['POST'])
@@ -140,7 +181,18 @@ def api_submit_part1_job():
     # returns error message if job json is invalid
     if type(job) is str:
         return error(job)
-    return submit_generic_job(job, queue=job.has_part1())
+    res = submit_generic_job(job, queue=job.has_part1(), no_response=True)
+    if res[0]:
+        return success({'key': res[1].key})
+    elif manager.job_exists(job.key) and manager.check_job_status(job.key) == 'need_part1':
+        if job.has_part1():
+            manager.add_part1(job.key, job.part1)
+            manager.queue_job(job.key)
+            return success({'key': job.key})
+        else:
+            return error('need_part1')
+    else:
+        return submit_generic_job(job, queue=job.has_part1())
 
 @app.route('/api/add_part1/<id0>', methods=['POST'])
 def api_add_part1(id0):
@@ -174,76 +226,76 @@ def api_request_job():
     # check for and assign jobs
     job = manager.request_job(miner_name, miner_ip, accepted_types)
     if job:
-        app.logger.info(f'{log_prefix(job.id0)} assigned to {miner_name}')
+        app.logger.info(f'{log_prefix(job.key)} assigned to {miner_name}')
         return success(dict(job))
     else:
         return success()
 
-@app.route('/api/release_job/<id0>')
-def api_release_job(id0):
-    if not is_id0(id0):
-        return error('Invalid ID0')
-    manager.release_job(id0)
-    app.logger.info(f'{log_prefix(id0)} released')
+@app.route('/api/release_job/<key>')
+def api_release_job(key):
+    if not is_job_key(key):
+        return error('Invalid Job Key')
+    manager.release_job(key)
+    app.logger.info(f'{log_prefix(key)} released')
     return success()
 
-@app.route('/api/check_job_status/<id0>')
-def api_check_job_status(id0):
-    if not is_id0(id0):
-        return error('Invalid ID0')
-    status = manager.check_job_status(id0)
+@app.route('/api/check_job_status/<key>')
+def api_check_job_status(key):
+    if not is_job_key(key):
+        return error('Invalid Job Key')
+    status = manager.check_job_status(key)
     if request.args.get('include_stats') and not 'done' == status:
         return success({
             'status': status,
-            'mining_stats': manager.get_mining_stats(id0)
+            'mining_stats': manager.get_mining_stats(key)
         })
     else:
         return success({'status': status})
 
-@app.route('/api/update_job/<id0>')
-def api_update_job(id0):
-    if not is_id0(id0):
-        return error('Invalid ID0')
-    app.logger.info(f'{log_prefix(id0)} still mining')
-    if manager.update_job(id0, miner_ip=get_request_ip()):
+@app.route('/api/update_job/<key>')
+def api_update_job(key):
+    if not is_job_key(key):
+        return error('Invalid Job Key')
+    app.logger.info(f'{log_prefix(key)} still mining')
+    if manager.update_job(key, miner_ip=get_request_ip()):
         return success()
     else:
         return success({'status': 'canceled'})
 
-@app.route('/api/cancel_job/<id0>')
-def api_cancel_job(id0):
+@app.route('/api/cancel_job/<key>')
+def api_cancel_job(key):
     trim_canceled_jobs()
-    if not is_id0(id0):
-        return error('Invalid ID0')
-    manager.cancel_job(id0)
-    app.logger.info(f'{log_prefix(id0)} canceled')
+    if not is_job_key(key):
+        return error('Invalid Job Key')
+    manager.cancel_job(key)
+    app.logger.info(f'{log_prefix(key)} canceled')
     return success()
 
-@app.route('/api/reset_job/<id0>')
-def api_reset_job(id0):
-    if not is_id0(id0):
-        return error('Invalid ID0')
-    manager.reset_job(id0)
-    app.logger.info(f'{log_prefix(id0)} reset')
+@app.route('/api/reset_job/<key>')
+def api_reset_job(key):
+    if not is_job_key(key):
+        return error('Invalid Job Key')
+    manager.reset_job(key)
+    app.logger.info(f'{log_prefix(key)} reset')
     return success()
 
-@app.route('/api/complete_job/<id0>', methods=['POST'])
-def api_complete_job(id0):
+@app.route('/api/complete_job/<key>', methods=['POST'])
+def api_complete_job(key):
     global total_mined
-    if not is_id0(id0):
-        return error('Invalid ID0')
-    movable = base64.b64decode(request.json['movable'])
-    manager.complete_job(id0, movable)
-    app.logger.info(f'{log_prefix(id0)} completed')
+    if not is_job_key(key):
+        return error('Invalid Job Key')
+    result = base64.b64decode(request.json['result'])
+    manager.complete_job(key, result)
+    app.logger.info(f'{log_prefix(key)} completed')
     total_mined += 1
     return success()
 
-@app.route('/api/fail_job/<id0>', methods=['POST'])
-def api_fail_job(id0):
-    if not is_id0(id0):
-        return error('Invalid ID0')
-    manager.fail_job(id0, request.json.get('note'))
-    app.logger.info(f'{log_prefix(id0)} failed')
+@app.route('/api/fail_job/<key>', methods=['POST'])
+def api_fail_job(key):
+    if not is_job_key(key):
+        return error('Invalid Job Key')
+    manager.fail_job(key, request.json.get('note'))
+    app.logger.info(f'{log_prefix(key)} failed')
     return success()
 
 @app.route('/api/check_network_stats')
@@ -289,10 +341,10 @@ def error(message, code=400):
     })
     return make_response(response_json, code)
 
-def log_prefix(id0=None):
+def log_prefix(key=None):
     prefix = '(' + get_request_ip() + ')'
-    if id0:
-        prefix += f' {id0}'
+    if key:
+        prefix += f' {key}'
     return prefix
 
 # error handler
@@ -324,51 +376,57 @@ def download_movable(id0):
 
 # manager action wrappers
 
-def submit_generic_job(job, queue=False):
+def submit_generic_job(job, queue=False, no_response=False):
     # check for existing job
     status = None
     try:
-        status = manager.check_job_status(job.id0)
+        status = manager.check_job_status(job.key)
         # delete existing job if it is canceled
         if 'canceled' == status:
-            app.logger.info(f'{log_prefix(job.id0)} overwritten')
-            manager.delete_job(job.id0)
+            app.logger.info(f'{log_prefix(job.key)} overwritten')
+            manager.delete_job(job.key)
             status = None
         if status:
-            return error('Duplicate job')
+            return (False, 'Duplicate job') if no_response else error('Duplicate job')
     except: # job does not exist
         pass
     # submit and queue
     manager.submit_job(job)
     if queue:
-        manager.queue_job(job.id0)
-    app.logger.info(f'{log_prefix(job.id0)} submitted ({job.type})')
-    return success({'id0': job.id0})
+        manager.queue_job(job.key)
+    app.logger.info(f'{log_prefix(job.key)} submitted ({job.type})')
+    return (True, job) if no_response else success({'key': job.key})
 
 def release_dead_jobs():
     released = manager.release_dead_jobs()
     if released:
         app.logger.info('automatically released jobs:')
-        for id0 in released:
-            app.logger.info(f'\t{id0}')
+        for key in released:
+            app.logger.info(f'\t{key}')
 
 def trim_canceled_jobs():
     deleted = manager.trim_canceled_jobs()
     if deleted:
         app.logger.info('automatically deleted jobs:')
-        for id0 in deleted:
-            app.logger.info(f'\t{id0}')
+        for key in deleted:
+            app.logger.info(f'\t{key}')
 
 
 # helpers
 
+def is_job_key(value):
+    return is_id0 or is_mii_final or is_friend_code
+
 def is_id0(value):
     return bool(id0_regex.fullmatch(value))
+
+def is_mii_final(value):
+    return bool(mii_final_regex.fullmatch(value))
 
 # Modified from https://github.com/nh-server/Kurisu/blob/main/cogs/friendcode.py#L28
 def is_friend_code(value):
     try:
-        fc = int(value.replace('-', ''))
+        fc = int(value)
     except ValueError:
         return False
     if fc > 0x7FFFFFFFFF:
@@ -414,15 +472,33 @@ def parse_mii_job_submission(submission, mii_file=None):
             except (ValueError, TypeError) as e:
                 invalid.append('year')
         # mii data
-        mii_data = submission.get('mii_data')
+        mii_final = submission.get('mii_final')
         if mii_file:
-            mii_data = process_mii_file(mii_file)
-        if not mii_data:
+            mii_final = process_mii_file(mii_file)
+        if not mii_final:
             invalid.append('mii')
         if invalid:
             return 'invalid:' + ','.join(invalid)
         else:
-            return MiiJob(id0, model, year, mii_data)
+            return MiiJob(mii_final, model, year, mii_final)
+    except KeyError as e:
+        raise KeyError(f'Missing parameter "{e}"')
+
+def parse_fc_job_submission(submission):
+    invalid = []
+    try:
+        # id0
+        id0 = submission['id0']
+        if not is_id0(id0):
+            invalid.append('id0')
+        # friend code
+        friend_code = submission.get('friend_code').replace('-', '')
+        if friend_code and not is_friend_code(friend_code):
+            invalid.append('friend_code')
+        if invalid:
+            return 'invalid:' + ','.join(invalid)
+        else:
+            return FCJob(id0, friend_code=friend_code)
     except KeyError as e:
         raise KeyError(f'Missing parameter "{e}"')
 
@@ -433,16 +509,12 @@ def parse_part1_job_submission(submission, part1_file=None):
         id0 = submission['id0']
         if not is_id0(id0):
             invalid.append('id0')
-        # friend code
-        friend_code = submission.get('friend_code')
-        if friend_code and not is_friend_code(friend_code):
-            invalid.append('friend_code')
         # part1 data
         part1_data = parse_part1_upload(submission, part1_file)
         if invalid:
             return 'invalid:' + ','.join(invalid)
         else:
-            return Part1Job(id0, friend_code=friend_code, part1=part1_data)
+            return Part1Job(id0, part1=part1_data)
     except KeyError as e:
         raise KeyError(f'Missing parameter "{e}"')
 
@@ -469,9 +541,17 @@ def process_mii_file(mii_file):
             raw_data = decoded[0].data
         except:
             pass
-    # base64 encode
     if raw_data and len(raw_data) == 112:
-        return str(base64.b64encode(raw_data), 'utf-8')
+        # from seedminer_launcher3.py by zoogie
+        # https://github.com/zoogie/seedminer/blob/master/seedminer/seedminer_launcher3.py#L126-L130
+        nonce = raw_data[:8] + b"\x00" * 4
+        nk31 = 0x59FC817E6446EA6190347B20E9BDCE52
+        cipher = AES.new(nk31.to_bytes(16, 'big'), AES.MODE_CCM, nonce)
+        dec = cipher.decrypt(raw_data[8:0x60])
+        nonce = nonce[:8]
+        final = dec[:12] + nonce + dec[12:]
+        app.logger.info(hexlify(final[4:4 + 8]).decode('ascii'))
+        return hexlify(final[4:4 + 8]).decode('ascii')
 
 def process_part1_file(part1_file):
     raw_data = part1_file.read()

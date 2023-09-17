@@ -6,6 +6,7 @@ import struct
 import subprocess
 import sys
 import time
+from binascii import hexlify, unhexlify
 from urllib.parse import quote as url_quote
 from traceback import print_exc
 
@@ -30,6 +31,10 @@ miner_name = 'CHANGE_ME'
 # mean you will never claim a demanding/lengthy part1 job!
 acceptable_job_types = [ 'part1', 'mii' ]
 
+# set this variable to "True" (without the quotes) if you want to use less of your gpu while mining
+# your hash rate will decrease by a bit
+force_reduced_work_size = False
+
 # values are in seconds
 request_cooldown = 10
 error_cooldown = 30
@@ -40,6 +45,178 @@ update_interval = 10
 benchmark_target = 215
 benchmark_filename = 'benchmark'
 dry_run = False
+
+
+
+
+# Don't edit below this line unless you know what you're doing
+lfcs = []
+ftune = []
+lfcs_new = []
+ftune_new = []
+err_correct = 0
+
+
+# from seedminer_launcher3.py by zoogie
+# https://github.com/zoogie/seedminer/blob/master/seedminer/seedminer_launcher3.py#L51-L114
+def bytes2int(s):
+	n = 0
+	for i in range(4):
+		n += ord(s[i:i + 1]) << (i * 8)
+	return n
+
+def int2bytes(n):
+	s = bytearray(4)
+	for i in range(4):
+		s[i] = n & 0xFF
+		n = n >> 8
+	return s
+
+def byteswap4(n):
+	# using a slice to reverse is better, and easier for bytes
+	return n[::-1]
+
+def endian4(n):
+	return (n & 0xFF000000) >> 24 | (n & 0x00FF0000) >> 8 | (n & 0x0000FF00) << 8 | (n & 0x000000FF) << 24
+
+def getmsed3estimate(n, isnew):
+	global err_correct
+	newbit = 0x0
+	if isnew:
+		fc = lfcs_new
+		ft = ftune_new
+		newbit = 0x80000000
+	else:
+		fc = lfcs
+		ft = ftune
+
+	fc_size = len(fc)
+	ft_size = len(ft)
+
+	if fc_size != ft_size:
+		return -1
+
+	for i in range(fc_size):
+		if n < fc[i]:
+			xs = (n - fc[i - 1])
+			xl = (fc[i] - fc[i - 1])
+			y = ft[i - 1]
+			yl = (ft[i] - ft[i - 1])
+			ys = ((xs * yl) // xl) + y
+			err_correct = ys
+			return ((n // 5) - ys) | newbit
+
+	return ((n // 5) - ft[ft_size - 1]) | newbit
+
+# from seedminer_launcher3.py by zoogie
+# https://github.com/zoogie/seedminer/blob/master/seedminer/seedminer_launcher3.py#L197-L273
+def generate_part2():
+	global err_correct
+
+	with open("saves/old-v2.dat", "rb") as f:
+		buf = f.read()
+
+	lfcs_len = len(buf) // 8
+	err_correct = 0
+
+	for i in range(lfcs_len):
+		lfcs.append(struct.unpack("<i", buf[i*8:i*8+4])[0])
+
+	for i in range(lfcs_len):
+		ftune.append(struct.unpack("<i", buf[i*8+4:i*8+8])[0])
+
+	with open("saves/new-v2.dat", "rb") as f:
+		buf = f.read()
+
+	lfcs_new_len = len(buf) // 8
+
+	for i in range(lfcs_new_len):
+		lfcs_new.append(struct.unpack("<i", buf[i*8:i*8+4])[0])
+
+	for i in range(lfcs_new_len):
+		ftune_new.append(struct.unpack("<i", buf[i*8+4:i*8+8])[0])
+
+	noobtest = b"\x00" * 0x20
+	with open("movable_part1.sed", "rb") as f:
+		seed = f.read()
+	if noobtest in seed[0x10:0x30]:
+		print("Error: ID0 has been left blank, please add an ID0")
+		print("Ex: python {} id0 abcdef012345EXAMPLEdef0123456789".format(sys.argv[0]))
+		sys.exit(1)
+	if noobtest[:4] in seed[:4]:
+		print("Error: LFCS has been left blank, did you do a complete two-way friend code exchange before dumping friendlist?")
+		sys.exit(1)
+	if len(seed) != 0x1000:
+		print("Error: movable_part1.sed is not 4KB")
+		sys.exit(1)
+
+	if seed[4:5] == b"\x02":
+		print("New3DS msed")
+		isnew = True
+	elif seed[4:5] == b"\x00":
+		print("Old3DS msed - this can happen on a New3DS")
+		isnew = False
+	else:
+		print("Error: can't read u8 msed[4]")
+		sys.exit(1)
+
+	print("LFCS	  : " + hex(bytes2int(seed[0:4])))
+	print("msed3 est : " + hex(getmsed3estimate(bytes2int(seed[0:4]), isnew)))
+	print("Error est : " + str(err_correct))
+	msed3 = getmsed3estimate(bytes2int(seed[0:4]), isnew)
+
+	offset = 0x10
+	hash_final = b""
+	i = None
+	for i in range(64):
+		try:
+			hash_init = unhexlify(seed[offset:offset + 0x20])
+		except:
+			break
+		hash_single = byteswap4(hash_init[0:4]) + byteswap4(hash_init[4:8]) + byteswap4(hash_init[8:12]) + byteswap4(hash_init[12:16])
+		print("ID0 hash " + str(i) + ": " + hexlify(hash_single).decode('ascii'))
+		hash_final += hash_single
+		offset += 0x20
+	print("Hash total: " + str(i))
+
+	part2 = seed[0:12] + int2bytes(msed3) + hash_final
+
+	pad = 0x1000 - len(part2)
+	part2 += b"\x00" * pad
+
+	with open("movable_part2.sed", "wb") as f:
+		f.write(part2)
+	print("movable_part2.sed generation success")
+
+# from seedminer_launcher3.py by zoogie
+# https://github.com/zoogie/seedminer/blob/master/seedminer/seedminer_launcher3.py#L291-L342
+def hash_clusterer(id0):
+	buf = b""
+	hashcount = 0
+
+	try:
+		with open("movable_part1.sed", "rb") as f:
+			file = f.read()
+	except IOError:
+		print("movable_part1.sed not found, generating a new one")
+		print("don't forget to add an lfcs to it!\n")
+		with open("movable_part1.sed", "wb") as f:
+			file = b"\x00" * 0x1000
+			f.write(file)
+
+	buf += str(id0).encode("ascii")
+
+	print(id0)
+
+	print("Hash added!")
+
+	file = file[:0x10]
+	pad_len = 0x1000 - len(file+buf)
+	pad = b"\x00" * pad_len
+	with open("movable_part1.sed", "wb") as f:
+		f.write(file + buf + pad)
+	print("There are now {} ID0 hashes in your movable_part1.sed!".format(len(file + buf) // 0x20))
+	print("Done!")
 
 
 def validate_benchmark():
@@ -73,9 +250,17 @@ def do_benchmark():
 		part1_bin.write(b'\0' * (0x1000 - len(content)))
 	# run and time bfCL
 	try:
+		hash_clusterer('fef0fef0fef0fef0fef0fef0fef0fef0')
+		generate_part2()
 		time_target = time.time() + benchmark_target
-		args = [sys.executable, 'seedminer_launcher3.py', 'gpu', '0', '5']
-		return_code = run_bfcl('fef0fef0fef0fef0fef0fef0fef0fef0', args)
+		# from seedminer_launcher3.py by zoogie
+		# https://github.com/zoogie/seedminer/blob/master/seedminer/seedminer_launcher3.py#L394-L402
+		with open("movable_part2.sed", "rb") as f:
+			buf = f.read()
+		keyy = hexlify(buf[:16]).decode('ascii')
+		id0 = hexlify(buf[16:32]).decode('ascii')
+		args = "msky {} {} {:08X} {:08X}".format(keyy, id0, endian4(0), endian4(5)).split()
+		return_code = run_bfcl('benchmark', args)
 		time_finish = time.time()
 		if return_code != 101:
 			print(f'Finished with an unexpected return code from bfCL: {return_code}')
@@ -90,20 +275,47 @@ def do_benchmark():
 		cleanup_mining_files()
 		dry_run = False
 
-def do_mii_mine(id0, model, year, mii_data, timeout=0):
+def do_mii_mine(model, year, final, timeout=0):
 	cleanup_mining_files()
-	with open('input.bin', 'wb') as mii_bin:
-		mii_bin.write(mii_data)
+
 	try:
-		# bfCL
-		args = [sys.executable, 'seedminer_launcher3.py', 'mii', model]
-		if year:
-			args.append(str(year))
-		run_bfcl(id0, args)
+		# from seedminer_launcher3.py by zoogie
+		# https://github.com/zoogie/seedminer/blob/master/seedminer/seedminer_launcher3.py#L140-L184
+		start_lfcs = (0x0B000000 if model == "old" else 0x05000000) // 2
+		if model == "old":
+			model_str = b"\x00\x00"
+			if year == 2011:
+				start_lfcs = 0x01000000
+			elif year == 2012:
+				start_lfcs = 0x04000000
+			elif year == 2013:
+				start_lfcs = 0x07000000
+			elif year == 2014:
+				start_lfcs = 0x09000000
+			elif year == 2015:
+				start_lfcs = 0x09800000
+			elif year == 2016:
+				start_lfcs = 0x0A000000
+			elif year == 2017:
+				start_lfcs = 0x0A800000
+				#start_lfcs = 0x0A650000
+		elif model == "new":
+			model_str = b"\x02\x00"
+			if year == 2014:
+				start_lfcs = 0x00800000
+			elif year == 2015:
+				start_lfcs = 0x01800000
+			elif year == 2016:
+				start_lfcs = 0x03000000
+			elif year == 2017:
+				start_lfcs = 0x04000000
+		args = "lfcs {:08X} {} {} {:08X}".format(endian4(start_lfcs), hexlify(model_str).decode('ascii'), final, endian4(0))
+		print(f'bfcl args:' + args)
+		run_bfcl(final, args.split())
 		# check output
-		if os.path.isfile('movable.sed'):
-			print(f'Mining complete! Uploading movable...')
-			upload_movable(id0)
+		if os.path.isfile('movable_part1.sed'):
+			print(f'Mining complete! Uploading movable_part1...')
+			upload_part1(final)
 		else:
 			print(f'bfCL was not able to complete the mining job!')
 	finally:
@@ -117,8 +329,18 @@ def do_part1_mine(id0, part1_data, timeout=0):
 		# bfCL
 		max_offset = get_max_offset(get_lfcs(part1_data))
 		print(f'Using maximum offset: {max_offset}')
-		args = [sys.executable, 'seedminer_launcher3.py', 'gpu', '0', str(max_offset)]
-		run_bfcl(id0, args)
+		hash_clusterer(id0)
+		generate_part2()
+
+		# from seedminer_launcher3.py by zoogie
+		# https://github.com/zoogie/seedminer/blob/master/seedminer/seedminer_launcher3.py#L394-L402
+		with open("movable_part2.sed", "rb") as f:
+			buf = f.read()
+		keyy = hexlify(buf[:16]).decode('ascii')
+		mid0 = hexlify(buf[16:32]).decode('ascii')
+		args = "msky {} {} {:08X} {:08X}".format(keyy, mid0, endian4(0), endian4(max_offset))
+		print(f'bfcl args:' + args)
+		run_bfcl(id0, args.split())
 		# check output
 		if os.path.isfile('movable.sed'):
 			print(f'Mining complete! Uploading movable...')
@@ -128,36 +350,38 @@ def do_part1_mine(id0, part1_data, timeout=0):
 	finally:
 		cleanup_mining_files()
 
-def run_bfcl(id0, args):
+def run_bfcl(key, args, rws = force_reduced_work_size):
 	try:
-		# set id0
-		subprocess.call([sys.executable, 'seedminer_launcher3.py', 'id0', id0])
 		# start mining
-		process = subprocess.Popen(args)
+		process = subprocess.Popen(['bfcl' if os.name == 'nt' else './bfcl'] + args + (['rws'] if rws else ['sws', 'sm']))
 		try:
 			timer = 0
 			while process.poll() is None:
 				timer += 1
 				time.sleep(1)
 				if timer % update_interval == 0:
-					status = update_job(id0)
+					status = update_job(key)
 					if status == 'canceled':
 						print('Job canceled')
 						kill_process(process)
 						return
-			check_bfcl_return_code(process.returncode)
+			if not rws and (process.returncode == 251 or process.returncode == 4294967291):  # Help wanted for a better way of catching an exit code of '-5'
+				time.sleep(3)  # Just wait a few seconds so we don't burn out our graphics card
+				return run_bfcl(key, args, True)
+			else:
+				check_bfcl_return_code(process.returncode)
 		except KeyboardInterrupt:
 			kill_process(process)
 			print('Terminated bfCL')
-			release_job(id0)
+			release_job(key)
 	except BfclReturnCodeError as e:
-		fail_job(id0, f'{type(e).__name__}: {e}')
+		fail_job(key, f'{type(e).__name__}: {e}')
 		return e.return_code
 	except Exception as e:
 		print_exc()
 		print('bfCL was not able to run correctly!')
 		message = f'{type(e).__name__}: {e}'
-		fail_job(id0, message)
+		fail_job(key, message)
 		raise BfclExecutionError(message) from e
 
 def check_bfcl_return_code(return_code):
@@ -178,12 +402,12 @@ def get_max_offset(lfcs):
 
 	# determine offsets/distances and load LFCSes for appropriate console type
 	if 2 == is_new:
-		max_offsets = [     16,      16,      20]
+		max_offsets = [	 16,	  16,	  20]
 		distances   = [0x00000, 0x00100, 0x00200]
 		with open("saves/new-v2.dat", "rb") as lfcs_file:
 			lfcs_buffer = lfcs_file.read()
 	elif 0 == is_new:
-		max_offsets = [     18,      18,      20]
+		max_offsets = [	 18,	  18,	  20]
 		distances   = [0x00000, 0x00100, 0x00200]
 		with open("saves/old-v2.dat", "rb") as lfcs_file:
 			lfcs_buffer = lfcs_file.read()
@@ -213,7 +437,11 @@ def get_max_offset(lfcs):
 	return max_offsets[len(distances) - 1] + 10
 
 def cleanup_mining_files():
-	to_remove = ['input.bin', 'movable.sed', 'movable_part1.sed']
+	lfcs = []
+	ftune = []
+	lfcs_new = []
+	ftune_new = []
+	to_remove = ['movable.sed', 'movable_part1.sed']
 	for filename in to_remove:
 		try:
 			os.remove(filename)
@@ -235,14 +463,13 @@ def do_job(job):
 	job_type = job['type']
 	if 'mii' == job_type:
 		print('Mii job received:')
-		print(f'  ID0:   {job["id0"]}')
 		print(f'  Model: {job["model"]}')
 		print(f'  Year:  {job["year"]}')
+		print(f'  Final: {job["final"]}')
 		do_mii_mine(
-			job['id0'],
 			job['model'],
 			job['year'],
-			base64.b64decode(job['mii'])
+			job['final']
 		)
 	elif 'part1' == job_type:
 		print('Part1 job received:')
@@ -279,7 +506,16 @@ def upload_movable(id0):
 	with open('movable.sed', 'rb') as movable:
 		response = requests.post(
 			f'{base_url}/api/complete_job/{id0}',
-			json={'movable': str(base64.b64encode(movable.read()), 'utf-8')}
+			json={'result': str(base64.b64encode(movable.read()), 'utf-8')}
+		).json()
+
+def upload_part1(final):
+	if dry_run:
+		return
+	with open('movable_part1.sed', 'rb') as movable:
+		response = requests.post(
+			f'{base_url}/api/complete_job/{final}',
+			json={'result': str(base64.b64encode(movable.read()), 'utf-8')}
 		).json()
 
 def kill_process(process):

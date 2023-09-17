@@ -2,25 +2,24 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
 
 (() => {
 
-  let mii;
   let id0;
   let intervalId = 0;
 
   const card1 = new bootstrap.Collapse(document.getElementById("card1"), { toggle: false });
   const card2 = new bootstrap.Collapse(document.getElementById("card2"), { toggle: false });
   const card3 = new bootstrap.Collapse(document.getElementById("card3"), { toggle: false });
+  const card4 = new bootstrap.Collapse(document.getElementById("card4"), { toggle: false });
 
-  const miiForm = document.getElementById("miiForm");
+  const jobForm = document.getElementById("jobForm");
+  const part1Form = document.getElementById("part1Form");
 
-  const miiUploadToggle = document.getElementById("miiUploadToggle");
-  const miiUploadFile = document.getElementById("mii_file");
-  const miiUploadUrl = document.getElementById("mii_url");
+  const part1UploadToggle = document.getElementById("part1UploadToggle");
+  const part1UploadFile = document.getElementById("part1_file");
+  const part1UploadUrl = document.getElementById("part1_url");
 
-  const miningMii = document.getElementById("miningMii");
   const miningId0 = document.getElementById("miningId0");
   const miningStatus = document.getElementById("miningStatus");
-  const miningMiiAssignee = document.getElementById("miningMiiAssignee");
-  const miningId0Assignee = document.getElementById("miningId0Assignee");
+  const miningAssignee = document.getElementById("miningAssignee");
   const miningStatsCollapse = document.getElementById("miningStatsCollapse");
   const miningRate = document.getElementById("miningRate");
   const miningOffset = document.getElementById("miningOffset");
@@ -40,20 +39,30 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
 
   function showCard1() {
     cancelJobWatch();
-    miiForm.reset();
+    jobForm.reset();
     // update cards
     card1.show();
     card2.hide();
     card3.hide();
+    card4.hide();
   }
 
-  function showCard2(statusResponse) {
-    if (mii)
-      miningMii.innerText = mii;
+  function showCard2() {
+    part1Form.reset();
+    // TODO friend code
+    startJobWatch();
+    // update cards
+    card1.hide();
+    card2.show();
+    card3.hide();
+    card4.hide();
+  }
+
+  function showCard3(statusResponse) {
     miningId0.innerText = id0;
     // mining stats
-    const miningStats = statusResponse.mining_stats;
-    (mii ? miningMiiAssignee : miningId0Assignee).innerText = miningStats.assignee;
+    const miningStats = statusResponse.mining_stats
+    miningAssignee.innerText = miningStats.assignee;
     if (miningStats.rate && miningStats.offset) {
       miningRate.innerText = miningStats.rate;
       miningOffset.innerText = miningStats.offset;
@@ -75,32 +84,32 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
     startJobWatch();
     // update cards
     card1.hide();
-    card2.show();
-    card3.hide();
+    card2.hide();
+    card3.show();
+    card4.hide();
   }
 
-  function showCard3() {
+  function showCard4() {
     cancelJobWatch();
     movableDownload.href = "{{ url_for('download_movable', id0='') }}" + id0;
     // update cards
     card1.hide();
     card2.hide();
-    card3.show();
+    card3.hide();
+    card4.show();
   }
 
   function updateCards(statusResponse) {
     switch (statusResponse.status) {
       case "done":
-        if (mii) {
-          setMii();
-          checkJob();
-        } else {
-          showCard3();
-        }
+        showCard4();
         break;
       case "waiting":
       case "working":
-        showCard2(statusResponse);
+        showCard3(statusResponse);
+        break;
+      case "need_part1":
+        showCard2();
         break;
       case "canceled":
         cancelJobWatch();
@@ -108,7 +117,6 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
         break;
       case "failed":
         cancelJobWatch();
-        // TODO failure note
         failedModal.show();
         break;
       default:
@@ -120,32 +128,39 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
 
   // other UI functions
 
-  function toggleMiiUpload() {
-    if (miiUploadFile.classList.contains("show")) {
-      miiUploadUrl.classList.add("show");
-      miiUploadFile.classList.remove("show");
-      miiUploadToggle.innerText = "Upload a file instead";
+  function togglePart1Upload() {
+    if (part1UploadFile.classList.contains("show")) {
+      part1UploadUrl.classList.add("show");
+      part1UploadFile.classList.remove("show");
+      part1UploadToggle.innerText = "Upload a file instead";
     } else {
-      miiUploadFile.classList.add("show");
-      miiUploadUrl.classList.remove("show");
-      miiUploadToggle.innerText = "Provide a URL instead";
+      part1UploadFile.classList.add("show");
+      part1UploadUrl.classList.remove("show");
+      part1UploadToggle.innerText = "Provide a URL instead";
     }
   }
 
-  function resetMiiFormFeedback() {
-    for (let element of miiForm.elements) {
+  function resetFormFeedback(form) {
+    for (let element of form.elements) {
       element.classList.remove("is-invalid");
     }
   }
 
-  function applyMiiFormFeedback(feedback) {
-    resetMiiFormFeedback();
+  function applyJobFormFeedback(feedback) {
+    resetFormFeedback(jobForm);
     for (let invalid of feedback.replace("invalid:", "").split(",")) {
-      if (invalid == "mii") {
-        miiForm.elements["mii_file"].classList.add("is-invalid");
-        miiForm.elements["mii_url"].classList.add("is-invalid");
+      jobForm.elements[invalid].classList.add("is-invalid");
+    }
+  }
+
+  function applyPart1FormFeedback(feedback) {
+    resetFormFeedback(part1Form);
+    for (let invalid of feedback.replace("invalid:", "").split(",")) {
+      if (invalid == "part1") {
+        part1Form.elements["part1_file"].classList.add("is-invalid");
+        part1Form.elements["part1_url"].classList.add("is-invalid");
       } else {
-        miiForm.elements[invalid].classList.add("is-invalid");
+        part1Form.elements[invalid].classList.add("is-invalid");
       }
     }
   }
@@ -161,6 +176,7 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
     } else {
       tmp_id0 = getCookie("id0");
     }
+    // crude id0 check
     if (tmp_id0.length == 32) {
       setID0(tmp_id0);
     }
@@ -181,34 +197,6 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
     setCookie("id0", id0, 7);
   }
 
-  function loadMii() {
-    const urlParams = new URLSearchParams(window.location.search);
-    let tmp_mii;
-    if (urlParams.has("mii")) {
-      tmp_mii = urlParams.get("mii");
-    } else {
-      tmp_mii = getCookie("mii");
-    }
-    if (tmp_mii.length == 16) {
-      setMii(tmp_mii);
-    }
-  }
-
-  function setMii(new_mii) {
-    if (new_mii) {
-      const urlParams = new URLSearchParams(window.location.search);
-      urlParams.set("mii", new_mii);
-      window.history.pushState(new_mii, "", window.location.pathname + "?" + urlParams.toString());
-    } else {
-      // avoid adding duplicate blank history entries
-      if (mii) {
-        window.history.pushState(new_mii, "", window.location.pathname);
-      }
-    }
-    mii = new_mii;
-    setCookie("mii", mii, 7);
-  }
-
   function startJobWatch() {
     cancelJobWatch();
     intervalId = setInterval(checkJob, 10000);
@@ -222,38 +210,26 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
   }
 
   function startOver() {
-    setMii("");
     setID0("");
     cancelJobWatch();
-    resetMiiFormFeedback();
+    resetFormFeedback(jobForm);
+    resetFormFeedback(part1Form);
     showCard1();
   }
 
-  async function submitMiiForm() {
-    const formData = new FormData(miiForm);    
-    // fetch mii data if selected
-    if (miiUploadUrl.classList.contains("show")) {
-      try {
-        const miiResponse = await fetch(miiUploadUrl.value);
-        const miiBlob = await miiResponse.blob();
-        formData.set("mii_file", miiBlob);
-      } catch (error) {
-        window.alert(`Error downloading Mii data: ${error.message}`);
-        return;
-      }
-    }
+  async function submitJobForm() {
+    const formData = new FormData(jobForm);    
     // submit job to server
     let response;
     try {
-      response = await fetch("{{ url_for('api_submit_mii_job') }}", {
+      response = await fetch("{{ url_for('api_submit_part1_job') }}", {
         method: "POST",
         body: formData
       });
       const responseJson = await response.json();
       if (response.ok) {
         // submission successful
-        setMii(responseJson.data.mii);
-        setID0(responseJson.data.id0);
+        setID0(responseJson.data.key);
         checkJob();
       } else {
         // throw error with server message
@@ -265,7 +241,7 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
         window.alert(`Error submitting job: ${response.status} - ${response.statusText}`);
       } else if (error.message.startsWith("invalid:")) {
         // form input invalid
-        applyMiiFormFeedback(error.message);
+        applyJobFormFeedback(error.message);
       } else if (error.message === "Duplicate job") {
         // duplicate job
         if (window.confirm("A job with this ID0 already exists. Would you like to view its progress?")) {
@@ -279,16 +255,57 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
     }
   }
 
+  async function submitPart1Form() {
+    const formData = new FormData(part1Form);    
+    // fetch part1 data if selected
+    if (part1UploadUrl.classList.contains("show")) {
+      try {
+        const part1Response = await fetch(part1UploadUrl.value);
+        const part1Blob = await part1Response.blob();
+        formData.set("part1_file", part1Blob);
+      } catch (error) {
+        window.alert(`Error downloading part1 data: ${error.message}`);
+        return;
+      }
+    }
+    // submit job to server
+    let response;
+    try {
+      response = await fetch("{{ url_for('api_add_part1', key='') }}" + id0, {
+        method: "POST",
+        body: formData
+      });
+      const responseJson = await response.json();
+      if (response.ok) {
+        // submission successful
+        checkJob();
+      } else {
+        // throw error with server message
+        throw new Error(responseJson.message);
+      }
+    } catch (error) {
+      if (error instanceof SyntaxError) {
+        // syntax error from parsing non-JSON server error response
+        window.alert(`Error adding part1: ${response.status} - ${response.statusText}`);
+      } else if (error.message.startsWith("invalid:")) {
+        // form input invalid
+        applyPart1FormFeedback(error.message);
+      } else {
+        // generic error
+        window.alert(`Error adding part1: ${error.message}`);
+      }
+    }
+  }
+
   async function checkJob() {
-    const key = mii || id0;
-    if (!key) {
+    if (!id0) {
       showCard1();
       return;
     }
     // grab job status from server
     let response;
     try {
-      response = await fetch(`{{ url_for('api_check_job_status', key='') }}${key}?include_stats=1`);
+      response = await fetch(`{{ url_for('api_check_job_status', key='') }}${id0}?include_stats=1`);
       const responseJson = await response.json();
       if (response.ok) {
         updateCards(responseJson.data);
@@ -301,8 +318,7 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
         // syntax error from parsing non-JSON server error response
         window.alert(`Error checking job status: ${response.status} - ${response.statusText}`);
       } else if (error.message.includes("KeyError")) {
-        const kn = key === mii ? "Mii" : "ID0";
-        window.alert(`Error checking job status: ${kn} ${key} not found`);
+          window.alert(`Error checking job status: ID0 ${id0} not found`);
       } else {
         // generic error
         window.alert(`Error checking job status: ${error.message}`);
@@ -316,10 +332,9 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
   }
 
   async function cancelJob() {
-    const key = mii || id0;
     let response;
     try {
-      response = await fetch("{{ url_for('api_cancel_job', key='') }}" + key);
+      response = await fetch("{{ url_for('api_cancel_job', key='') }}" + id0);
       const responseJson = await response.json();
       if (!response.ok) {
         throw new Error(responseJson.message);
@@ -341,17 +356,20 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
     // event listeners
     cancelJobButton.addEventListener("click", event => cancelJob());
     doAnotherButton.addEventListener("click", event => startOver());
-    miiForm.addEventListener("submit", event => {
+    jobForm.addEventListener("submit", event => {
       event.preventDefault();
-      submitMiiForm();
+      submitJobForm();
     });
-    miiUploadToggle.addEventListener("click", event => toggleMiiUpload());
+    part1Form.addEventListener("submit", event => {
+      event.preventDefault();
+      submitPart1Form();
+    });
+    part1UploadToggle.addEventListener("click", event => togglePart1Upload());
     canceledModalEl.addEventListener("hide.bs.modal", event => startOver());
     failedModalEl.addEventListener("hide.bs.modal", event => startOver());
 
     // initial setup
-    toggleMiiUpload();
-    loadMii();
+    togglePart1Upload();
     loadID0();
     checkJob();
   });
