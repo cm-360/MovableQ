@@ -25,7 +25,7 @@ from jobs import JobManager, MiiJob, Part1Job, read_movable, count_total_mined
 
 
 # constants
-id0_regex = re.compile(r'[a-fA-F0-9]{32}')
+id0_regex = re.compile(r'(?![0-9a-fA-F]{4}(01|00)[0-9a-fA-F]{18}00[0-9a-fA-F]{6})[0-9a-fA-F]{32}')
 mii_final_regex = re.compile(r'[a-fA-F0-9]{16}')
 version_split_regex = re.compile(r'[.+-]')
 
