@@ -10,6 +10,10 @@ from urllib.parse import quote as url_quote
 from traceback import print_exc
 
 
+# Do not change! This should be set by the server when downloaded.
+client_version = '{{ client_version }}'
+
+
 # This is the URL of the mining coordination server you would like to use. Be
 # sure to replace everything (including the curly braces) if you downloaded
 # this script from GitHub.
@@ -216,6 +220,40 @@ def cleanup_mining_files():
 		except:
 			pass
 
+def request_job():
+	if dry_run:
+		return
+	response = requests.get(f'{base_url}/api/request_job?version={client_version}&name={miner_name}&types={acceptable_job_types}').json()
+	result = response['result']
+	if 'success' != result:
+		error_message = response['message']
+		print(f'Error from server: {error_message}')
+		return
+	data = response['data']
+
+def do_job(job):
+	job_type = job['type']
+	if 'mii' == job_type:
+		print('Mii job received:')
+		print(f'  ID0:   {job["id0"]}')
+		print(f'  Model: {job["model"]}')
+		print(f'  Year:  {job["year"]}')
+		do_mii_mine(
+			job['id0'],
+			job['model'],
+			job['year'],
+			base64.b64decode(job['mii'])
+		)
+	elif 'part1' == job_type:
+		print('Part1 job received:')
+		print(f'  ID0:   {job["id0"]}')
+		do_part1_mine(
+			job['id0'],
+			base64.b64decode(job['part1'])
+		)
+	else:
+		print(f'Unknown job type "{job_type}" received, ignoring...')
+
 def update_job(id0):
 	if dry_run:
 		return
@@ -286,36 +324,18 @@ def run_client():
 	# main mining loop
 	while True:
 		try:
-			response = requests.get(f'{base_url}/api/request_job?name={miner_name}&types={acceptable_job_types}').json()
-			if response['result'] == 'success':
-				data = response['data']
-				if data:
-					job_type = data['type']
-					if 'mii' == job_type:
-						print('\nMii job received:')
-						print(f'  ID0:   {data["id0"]}')
-						print(f'  Model: {data["model"]}')
-						print(f'  Year:  {data["year"]}')
-						do_mii_mine(
-							data['id0'],
-							data['model'],
-							data['year'],
-							base64.b64decode(data['mii'])
-						)
-					elif 'part1' == job_type:
-						print('\nPart1 job received:')
-						print(f'  ID0:   {data["id0"]}')
-						do_part1_mine(
-							data['id0'],
-							base64.b64decode(data['part1'])
-						)
-					else:
-						print(f'Unknown job type "{job_type}" received, ignoring...')
+			try:
+				job = request_job()
+				if job:
+					print() # wait message carriage return fix
+					do_job(job)
 				else:
 					print(f'No mining jobs, waiting {request_cooldown} seconds...', end='\r')
-			time.sleep(request_cooldown)
+				time.sleep(request_cooldown)
+			finally:
+				print() # wait message carriage return fix
 		except KeyboardInterrupt:
-			should_exit = input('\nWould you like to exit? (y/n): ')
+			should_exit = input('Would you like to exit? (y/n): ')
 			if should_exit.lower().startswith('y'):
 				break
 		except BfclExecutionError as e:

@@ -22,6 +22,7 @@ from jobs import JobManager, MiiJob, Part1Job, read_movable, count_total_mined
 
 # constants
 id0_regex = re.compile(r'[a-fA-F0-9]{32}')
+version_split_regex = re.compile(r'[.+-]')
 
 # logging config
 dictConfig({
@@ -49,6 +50,9 @@ app.config['TEMPLATES_AUTO_RELOAD'] = True
 
 # job manager
 manager = JobManager()
+
+# mining client version
+mining_client_version = '1.0.0'
 
 # total movables mined
 total_mined = 0
@@ -102,7 +106,7 @@ def serve_js(filename):
 @app.route('/get_mining_client')
 def get_mining_client():
     client_filename = 'mining_client.py'
-    response = make_response(render_template(client_filename))
+    response = make_response(render_template(client_filename, client_version=mining_client_version))
     response.headers.set('Content-Type', 'application/octet-stream')
     response.headers.set('Content-Disposition', 'attachment', filename=client_filename)
     return response
@@ -154,10 +158,20 @@ def api_add_part1(id0):
 @app.route('/api/request_job')
 def api_request_job():
     release_dead_jobs()
+    # miner info
     miner_ip = get_request_ip()
     miner_name = request.args.get('name', miner_ip)
     accepted_types = request.args.get('types')
     app.logger.info(f'{log_prefix()} {miner_name} requests work')
+    # reject old versions
+    try:
+        miner_version = request.args['version']
+        if compare_versions(miner_version, mining_client_version) < 0:
+            return error('Outdated client version')
+    except Exception as e:
+        app.logger.exception(e)
+        return error('Unknown client version')
+    # check for and assign jobs
     job = manager.request_job(miner_name, miner_ip, accepted_types)
     if job:
         app.logger.info(f'{log_prefix(job.id0)} assigned to {miner_name}')
@@ -351,7 +365,7 @@ def trim_canceled_jobs():
 def is_id0(value):
     return bool(id0_regex.fullmatch(value))
 
-# https://github.com/nh-server/Kurisu/blob/main/cogs/friendcode.py#L28
+# Modified from https://github.com/nh-server/Kurisu/blob/main/cogs/friendcode.py#L28
 def is_friend_code(value):
     try:
         fc = int(value.replace('-', ''))
@@ -362,6 +376,22 @@ def is_friend_code(value):
     principal_id = fc & 0xFFFFFFFF
     checksum = (fc & 0xFF00000000) >> 32
     return hashlib.sha1(struct.pack('<L', principal_id)).digest()[0] >> 1 == checksum
+
+# Modified from https://stackoverflow.com/a/28568003
+def parse_version_string(version_str, point_max_len=10):
+   filled = []
+   for point in version_split_regex.split(version_str):
+      filled.append(point.zfill(point_max_len))
+   return tuple(filled)
+
+def compare_versions(version_a, version_b):
+    if len(version_a) != len(version_b):
+        raise ValueError('Lengths do not match')
+    return compare(version_a, version_b)
+
+# removed in Python 3 lol
+def compare(a, b):
+    return (a > b) - (a < b) 
 
 def parse_mii_job_submission(submission, mii_file=None):
     invalid = []
@@ -394,7 +424,7 @@ def parse_mii_job_submission(submission, mii_file=None):
         else:
             return MiiJob(id0, model, year, mii_data)
     except KeyError as e:
-        raise KeyError(f'Missing parameter {e}')
+        raise KeyError(f'Missing parameter "{e}"')
 
 def parse_part1_job_submission(submission, part1_file=None):
     invalid = []
