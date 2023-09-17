@@ -229,7 +229,7 @@ def request_job():
 		error_message = response['message']
 		print(f'Error from server: {error_message}')
 		return
-	data = response['data']
+	return response['data']
 
 def do_job(job):
 	job_type = job['type']

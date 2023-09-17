@@ -52,7 +52,7 @@ app.config['TEMPLATES_AUTO_RELOAD'] = True
 manager = JobManager()
 
 # mining client version
-mining_client_version = '1.0.0'
+mining_client_version = '1.0.0-fix1'
 
 # total movables mined
 total_mined = 0
