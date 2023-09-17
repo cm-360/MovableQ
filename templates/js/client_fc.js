@@ -170,10 +170,15 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
 
   function loadID0() {
     const urlParams = new URLSearchParams(window.location.search);
+    let tmp_id0;
     if (urlParams.has("id0")) {
-      setID0(urlParams.get("id0"));
+      tmp_id0 = urlParams.get("id0");
     } else {
-      setID0(getCookie("id0"));
+      tmp_id0 = getCookie("id0");
+    }
+    // crude id0 check
+    if (tmp_id0.length == 32) {
+      setID0(tmp_id0);
     }
   }
 
@@ -224,7 +229,7 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
       const responseJson = await response.json();
       if (response.ok) {
         // submission successful
-        setID0(responseJson.data.id0);
+        setID0(responseJson.data.key);
         checkJob();
       } else {
         // throw error with server message
@@ -266,7 +271,7 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
     // submit job to server
     let response;
     try {
-      response = await fetch("{{ url_for('api_add_part1', id0='') }}" + id0, {
+      response = await fetch("{{ url_for('api_add_part1', key='') }}" + id0, {
         method: "POST",
         body: formData
       });

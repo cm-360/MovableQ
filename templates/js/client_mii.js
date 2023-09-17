@@ -302,7 +302,7 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
         window.alert(`Error checking job status: ${response.status} - ${response.statusText}`);
       } else if (error.message.includes("KeyError")) {
         const kn = key === mii ? "Mii" : "ID0";
-        window.alert(`Error checking job status: ${kn} ${id0} not found`);
+        window.alert(`Error checking job status: ${kn} ${key} not found`);
       } else {
         // generic error
         window.alert(`Error checking job status: ${error.message}`);
