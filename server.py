@@ -141,10 +141,10 @@ def api_submit_mii_job():
     if type(part1_job) is str:
         return error(part1_job)
     part1_job.prerequisite = job.key
-    part1_res = submit_generic_job(part1_job, no_response=True)
+    part1_res = submit_generic_job(part1_job)
     if not part1_res[0]:
         return error(part1_res[1])
-    res = submit_generic_job(job, queue=True, no_response=True)
+    res = submit_generic_job(job, queue=True)
     if not res[0]:
         manager.fulfill_job(job.key)
     return success({
@@ -170,10 +170,10 @@ def api_submit_fc_job():
     if type(part1_job) is str:
         return error(part1_job)
     part1_job.prerequisite = job.key
-    part1_res = submit_generic_job(part1_job, no_response=True)
+    part1_res = submit_generic_job(part1_job)
     if not part1_res[0]:
         return error(part1_res[1])
-    res = submit_generic_job(job, queue=True, no_response=True)
+    res = submit_generic_job(job, queue=True)
     return success({
         'fc' : res[1].key if res[0] else '',
         'id0' : part1_res[1].key
@@ -191,7 +191,7 @@ def api_submit_part1_job():
     # returns error message if job json is invalid
     if type(job) is str:
         return error(job)
-    res = submit_generic_job(job, queue=job.has_part1(), no_response=True)
+    res = submit_generic_job(job, queue=job.has_part1())
     if res[0]:
         return success({'key': res[1].key})
     elif manager.job_exists(job.key) and manager.check_job_status(job.key) == 'need_part1':
@@ -202,7 +202,7 @@ def api_submit_part1_job():
         else:
             return error('need_part1')
     else:
-        return submit_generic_job(job, queue=job.has_part1())
+        return error(res[1])
 
 @app.route('/api/add_part1/<id0>', methods=['POST'])
 def api_add_part1(id0):
@@ -390,7 +390,7 @@ def download_movable(id0):
 
 # manager action wrappers
 
-def submit_generic_job(job, queue=False, no_response=False):
+def submit_generic_job(job, queue=False):
     # check for existing job
     status = None
     try:
@@ -401,7 +401,7 @@ def submit_generic_job(job, queue=False, no_response=False):
             manager.delete_job(job.key)
             status = None
         if status:
-            return (False, 'Duplicate job') if no_response else error('Duplicate job')
+            return (False, 'Duplicate job')
     except: # job does not exist
         pass
     # submit and queue
@@ -409,7 +409,7 @@ def submit_generic_job(job, queue=False, no_response=False):
     if queue:
         manager.queue_job(job.key)
     app.logger.info(f'{log_prefix(job.key)} submitted ({job.type})')
-    return (True, job) if no_response else success({'key': job.key})
+    return (True, job)
 
 def release_dead_jobs():
     released = manager.release_dead_jobs()
