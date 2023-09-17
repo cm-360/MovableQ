@@ -356,10 +356,6 @@ def get_max_offset(lfcs):
 	return max_offsets[len(distances) - 1] + 10
 
 def cleanup_mining_files():
-	lfcs = []
-	ftune = []
-	lfcs_new = []
-	ftune_new = []
 	to_remove = ['movable.sed', 'movable_part1.sed']
 	for filename in to_remove:
 		try:
