@@ -10,6 +10,7 @@ pillow = "*"
 pyzbar = {path = "./pyzbar"}
 python-dotenv = "*"
 transitions = "*"
+pycryptodome = "*"
 
 [dev-packages]
 

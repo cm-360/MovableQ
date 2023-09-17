@@ -5,8 +5,10 @@ from datetime import datetime, timedelta, timezone
 import json
 import os
 from threading import RLock
+import base64
 
 
+mii_part1_path = os.getenv('MIIP1S_PATH', './miip1s')
 movable_path = os.getenv('MSEDS_PATH', './mseds')
 job_lifetime = timedelta(minutes=5)
 miner_lifetime = timedelta(minutes=10)
@@ -23,9 +25,9 @@ class JobManager():
     # adds a job to the current job list, raises a ValueError if it exists already
     def submit_job(self, job):
         with self.lock:
-            if self.job_exists(job.id0):
-                raise ValueError(f'Duplicate job: {job.id0}')
-            self.jobs[job.id0] = job
+            if self.job_exists(job.key):
+                raise ValueError(f'Duplicate job: {job.key}')
+            self.jobs[job.key] = job
 
     # adds a part1 file to a job
     def add_part1(self, id0, part1):
@@ -33,62 +35,62 @@ class JobManager():
             self.jobs[id0].add_part1(part1)
 
     # set job status to canceled, KeyError if it does not exist
-    def cancel_job(self, id0):
+    def cancel_job(self, key):
         with self.lock:
-            job = self.jobs[id0]
+            job = self.jobs[key]
             job.to_canceled()
-            self._unqueue_job(id0)
+            self._unqueue_job(key)
 
     # reset a canceled job
-    def reset_job(self, id0):
+    def reset_job(self, key):
         with self.lock:
-            job = self.jobs[id0]
+            job = self.jobs[key]
             job.reset()
             job.prepare()
             if 'ready' == job.state:
-                self.queue_job(id0)
+                self.queue_job(key)
 
     # delete job from the current job list if exists
-    def delete_job(self, id0):
+    def delete_job(self, key):
         with self.lock:
-            del self.jobs[id0]
-            self._unqueue_job(id0)
+            del self.jobs[key]
+            self._unqueue_job(key)
 
     # add job id to queue
-    def _queue_job(self, id0, urgent=False):
+    def _queue_job(self, key, urgent=False):
         if urgent:
-            self.wait_queue.appendleft(id0)
+            self.wait_queue.appendleft(key)
         else:
-            self.wait_queue.append(id0)
+            self.wait_queue.append(key)
 
     # add job id to queue, raises ValueError if it was already queued
-    def queue_job(self, id0, urgent=False):
+    def queue_job(self, key, urgent=False):
         with self.lock:
-            job = self.jobs[id0]
+            job = self.jobs[key]
             job.queue()
-            self._queue_job(id0, urgent)
+            self._queue_job(key, urgent)
 
     # removes an id0 from the job queue if it was queued before
-    def _unqueue_job(self, id0):
-        if id0 in self.wait_queue:
-            self.wait_queue.remove(id0)
+    def _unqueue_job(self, key):
+        if key in self.wait_queue:
+            self.wait_queue.remove(key)
 
     # removes an id0 from the job queue, raises ValueError if it was not queued
-    def unqueue_job(self, id0):
+    def unqueue_job(self, key):
         with self.lock:
-            job = self.jobs[id0]
+            job = self.jobs[key]
             job.unqueue()
-            self._unqueue_job(job.id0)
+            self._unqueue_job(job.key)
 
     # pop from job queue, optionally filtering by type
     def _get_job(self, accepted_types=None):
         if len(self.wait_queue) == 0:
             return
         if accepted_types:
-            for id0 in self.wait_queue:
-                job = self.jobs[id0]
+            for key in self.wait_queue:
+                job = self.jobs[key]
                 if job.type in accepted_types:
-                    self.wait_queue.remove(id0)
+                    self.wait_queue.remove(key)
                     return job
         else:
             return self.jobs[self.wait_queue.popleft()]
@@ -103,16 +105,16 @@ class JobManager():
                 return job
 
     # set job status to canceled, KeyError if it does not exist
-    def release_job(self, id0):
+    def release_job(self, key):
         with self.lock:
-            job = self.jobs[id0]
+            job = self.jobs[key]
             job.release()
-            self._queue_job(id0, urgent=True)
+            self._queue_job(key, urgent=True)
 
     # returns False if a job was canceled, updates its time/miner and returns True otherwise
-    def update_job(self, id0, miner_ip=None):
+    def update_job(self, key, miner_ip=None):
         with self.lock:
-            job = self.jobs[id0]
+            job = self.jobs[key]
             if 'canceled' == job.state:
                 return False
             job.update()
@@ -131,17 +133,32 @@ class JobManager():
                 return self.miners[name]
 
     # save movable to disk and delete job
-    def complete_job(self, id0, movable):
+    def complete_job(self, key, result):
         with self.lock:
-            job = self.jobs[id0]
+            job = self.jobs[key]
             job.complete()
-            save_movable(id0, movable)
-            self.delete_job(id0)
+            if job.type == 'mii':
+                save_mii_part1(key, result)
+            elif job.type == 'part1':
+                save_movable(key, result)
+            self.fulfill_job(key, result)
+            self.delete_job(key)
+
+    # fulfill jobs that have prerequisite
+    def fulfill_job(self, key, part1=None):
+        if not part1:
+            part1 = read_mii_part1(key)
+        part1 = str(base64.b64encode(part1), 'utf-8')
+        with self.lock:
+            for job in self.jobs.values():
+                if job.type == 'part1' and job.prerequisite == key:
+                    job.add_part1(part1)
+                    self.queue_job(job.key)
 
     # mark job as failed and attach note
-    def fail_job(self, id0, note=None):
+    def fail_job(self, key, note=None):
         with self.lock:
-            job = self.jobs[id0]
+            job = self.jobs[key]
             job.fail(note)
 
     # requeue dead jobs
@@ -151,9 +168,9 @@ class JobManager():
             for job in self.jobs.values():
                 if 'working' == job.state and job.has_timed_out():
                     job.release()
-                    released.append(job.id0)
-            for id0 in released:
-                self._queue_job(id0, urgent=True)
+                    released.append(job.key)
+            for key in released:
+                self._queue_job(key, urgent=True)
             return released
 
     # delete old canceled jobs
@@ -162,31 +179,33 @@ class JobManager():
             deleted = []
             for job in self.jobs.values():
                 if 'canceled' == job.state and job.has_timed_out():
-                    deleted.append(job.id0)
-            for id0 in deleted:
-                self.delete_job(id0)
+                    deleted.append(job.key)
+            for key in deleted:
+                self.delete_job(key)
             return deleted
 
     # True if current job exists
-    def job_exists(self, id0):
+    def job_exists(self, key):
         with self.lock:
-            return id0 in self.jobs
+            return key in self.jobs
 
     # return job status if found, finished if movable exists, KeyError if neither
-    def check_job_status(self, id0, extra_info=False):
+    def check_job_status(self, key, extra_info=False):
         with self.lock:
             try:
-                job = self.jobs[id0]
+                job = self.jobs[key]
                 return job.state
             except KeyError as e:
-                if movable_exists(id0):
+                if len(key) == 16 and mii_part1_exists(key):
+                    return 'done'
+                elif len(key) == 32 and movable_exists(key):
                     return 'done'
                 else:
                     raise e
 
-    def get_mining_stats(self, id0):
+    def get_mining_stats(self, key):
         with self.lock:
-            job = self.jobs[id0]
+            job = self.jobs[key]
             return {
                 'assignee': job.get_assignee_name(),
                 'rate': job.mining_rate,
@@ -272,14 +291,14 @@ class Job(Machine):
     ]
 
     # note that _type is used instead of just type (avoids keyword collision)
-    def __init__(self, id0, _type):
+    def __init__(self, key, _type):
         super().__init__(
             states=Job.states,
             transitions=Job.transitions,
             initial='submitted'
         )
         # job properties
-        self.id0 = id0
+        self.key = key
         self.type = _type
         self.note = None
         # for queue
@@ -309,7 +328,7 @@ class Job(Machine):
 
     def __iter__(self):
         # job properties
-        yield 'id0', self.id0
+        yield 'key', self.key
         yield 'type', self.type
         yield 'status', self.state
         yield 'note', self.note
@@ -324,13 +343,12 @@ class Job(Machine):
 
 class MiiJob(Job):
 
-    def __init__(self, id0, model, year, mii):
+    def __init__(self, id0, model, year, final):
         super().__init__(id0, 'mii')
         self.add_transition('prepare', 'submitted', 'ready')
         # mii-specific job properties
         self.console_model = model
         self.console_year = year
-        self.mii = mii
         # mii jobs are ready immediately
         self.prepare()
 
@@ -338,19 +356,34 @@ class MiiJob(Job):
         yield from super().__iter__()
         yield 'model', self.console_model
         yield 'year', self.console_year
-        yield 'mii', self.mii
+        yield 'final', self.key
+
+
+class FCJob(Job):
+
+    def __init__(self, friend_code=None):
+        super().__init__(friend_code, 'fc')
+        self.add_transition('prepare', 'submitted', 'ready')
+        # part1-specific job properties
+        self.friend_code = friend_code
+        # part1 jobs need part1 (duh)
+        self.prepare()
+
+    def __iter__(self):
+        yield from super().__iter__()
+        yield 'friend_code', self.key
 
 
 class Part1Job(Job):
 
-    def __init__(self, id0, friend_code=None, part1=None):
+    def __init__(self, id0, part1=None, prerequisite=None):
         super().__init__(id0, 'part1')
         self.add_state('need_part1')
         self.add_transition('prepare', 'submitted', 'need_part1', after='on_prepare')
         self.add_transition('add_part1', 'need_part1', 'ready', before='on_add_part1')
         # part1-specific job properties
-        self.friend_code = friend_code
         self.part1 = part1
+        self.prerequisite = prerequisite
         # part1 jobs need part1 (duh)
         self.prepare(part1)
 
@@ -371,8 +404,9 @@ class Part1Job(Job):
 
     def __iter__(self):
         yield from super().__iter__()
-        yield 'friend_code', self.friend_code
+        yield 'id0', self.key
         yield 'part1', self.part1
+        yield 'prerequisite', self.prerequisite
 
 
 class Miner():
@@ -397,6 +431,27 @@ class Miner():
         yield 'last_update', self.last_update.isoformat()
 
 
+def mii_final_to_part1_path(final, create=False):
+    dir = os.path.join(mii_part1_path, f'{final[0:2]}/{final[2:4]}')
+    if create:
+        os.makedirs(dir, exist_ok=True)
+    return os.path.join(dir, final)
+
+def mii_part1_exists(final):
+    part1_path = mii_final_to_part1_path(final)
+    return os.path.isfile(part1_path)
+
+def save_mii_part1(final, part1):
+    with open(mii_final_to_part1_path(final, create=True), 'wb') as part1_file:
+        part1_file.write(part1)
+
+def read_mii_part1(final):
+    if not mii_part1_exists(final):
+        return
+    with open(mii_final_to_part1_path(final), 'rb') as part1_file:
+        return part1_file.read()
+
+
 def id0_to_movable_path(id0, create=False):
     dir = os.path.join(movable_path, f'{id0[0:2]}/{id0[2:4]}')
     if create:
@@ -416,6 +471,7 @@ def read_movable(id0):
         return
     with open(id0_to_movable_path(id0), 'rb') as movable_file:
         return movable_file.read()
+
 
 def count_total_mined():
     return sum(len(files) for _, _, files in os.walk(movable_path))

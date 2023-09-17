@@ -62,7 +62,7 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
       const jobStr = jobStrings[i];
       if (!jobFilter.value || jobStr.includes(jobFilter.value)) {
         jobsTableBody.appendChild(createJobRow(job));
-        if (inspectedJobs.has(job.id0)) {
+        if (inspectedJobs.has(job.key)) {
           jobsTableBody.appendChild(createJobInspectRow(job));
         }
       }
@@ -81,7 +81,7 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
     row.className = "align-middle";
 
     const idCell = document.createElement("td");
-    idCell.innerText = job.id0;
+    idCell.innerText = job.key;
     row.appendChild(idCell);
 
     const typeCell = document.createElement("td");
@@ -115,13 +115,13 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
     const cancelText = document.createElement("div");
     cancelText.className = "visually-hidden";
     if ("canceled" === job.status) {
-      cancelButton.addEventListener("click", event => resetJob(job.id0));
+      cancelButton.addEventListener("click", event => resetJob(job.key));
       cancelButton.title = "Reset job";
       cancelButton.className = "btn btn-warning px-2";
       cancelIcon.className = "fa-solid fa-fw fa-arrow-rotate-left";
       cancelText.innerText = "Reset job";
     } else {
-      cancelButton.addEventListener("click", event => cancelJob(job.id0));
+      cancelButton.addEventListener("click", event => cancelJob(job.key));
       cancelButton.title = "Cancel job";
       cancelButton.className = "btn btn-danger px-2";
       cancelIcon.className = "fa-solid fa-fw fa-xmark";
@@ -133,7 +133,7 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
     actionsCell.appendChild(document.createTextNode(" "));
 
     const inspectButton = document.createElement("button");
-    inspectButton.addEventListener("click", event => inspectJob(job.id0));
+    inspectButton.addEventListener("click", event => inspectJob(job.key));
     inspectButton.type = "button";
     inspectButton.className = "btn btn-primary px-2";
     inspectButton.title = "Inspect job";
@@ -190,10 +190,10 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
   }
 
 
-  async function cancelJob(id0) {
+  async function cancelJob(key) {
     let response;
     try {
-      response = await fetch("{{ url_for('api_cancel_job', id0='') }}" + id0);
+      response = await fetch("{{ url_for('api_cancel_job', key='') }}" + key);
       const responseJson = await response.json();
       if (!response.ok) {
         throw new Error(responseJson.message);
@@ -210,10 +210,10 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
     refreshJobs();
   }
 
-  async function resetJob(id0) {
+  async function resetJob(key) {
     let response;
     try {
-      response = await fetch("{{ url_for('api_reset_job', id0='') }}" + id0);
+      response = await fetch("{{ url_for('api_reset_job', key='') }}" + key);
       const responseJson = await response.json();
       if (!response.ok) {
         throw new Error(responseJson.message);
@@ -230,11 +230,11 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
     refreshJobs();
   }
 
-  async function inspectJob(id0) {
-    if (inspectedJobs.has(id0)) {
-      inspectedJobs.delete(id0);
+  async function inspectJob(key) {
+    if (inspectedJobs.has(key)) {
+      inspectedJobs.delete(key);
     } else {
-      inspectedJobs.add(id0);
+      inspectedJobs.add(key);
     }
     updateJobsTable();
   }

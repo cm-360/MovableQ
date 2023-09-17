@@ -2,6 +2,7 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
 
 (() => {
 
+  let mii;
   let id0;
   let intervalId = 0;
 
@@ -15,9 +16,11 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
   const miiUploadFile = document.getElementById("mii_file");
   const miiUploadUrl = document.getElementById("mii_url");
 
+  const miningMii = document.getElementById("miningMii");
   const miningId0 = document.getElementById("miningId0");
   const miningStatus = document.getElementById("miningStatus");
-  const miningAssignee = document.getElementById("miningAssignee");
+  const miningMiiAssignee = document.getElementById("miningMiiAssignee");
+  const miningId0Assignee = document.getElementById("miningId0Assignee");
   const miningStatsCollapse = document.getElementById("miningStatsCollapse");
   const miningRate = document.getElementById("miningRate");
   const miningOffset = document.getElementById("miningOffset");
@@ -45,10 +48,12 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
   }
 
   function showCard2(statusResponse) {
+    if (mii)
+      miningMii.innerText = mii;
     miningId0.innerText = id0;
     // mining stats
-    const miningStats = statusResponse.mining_stats
-    miningAssignee.innerText = miningStats.assignee;
+    const miningStats = statusResponse.mining_stats;
+    (mii ? miningMiiAssignee : miningId0Assignee).innerText = miningStats.assignee;
     if (miningStats.rate && miningStats.offset) {
       miningRate.innerText = miningStats.rate;
       miningOffset.innerText = miningStats.offset;
@@ -86,7 +91,12 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
   function updateCards(statusResponse) {
     switch (statusResponse.status) {
       case "done":
-        showCard3();
+        if (mii) {
+          setMii();
+          checkJob();
+        } else {
+          showCard3();
+        }
         break;
       case "waiting":
       case "working":
@@ -145,10 +155,14 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
 
   function loadID0() {
     const urlParams = new URLSearchParams(window.location.search);
+    let tmp_id0;
     if (urlParams.has("id0")) {
-      setID0(urlParams.get("id0"));
+      tmp_id0 = urlParams.get("id0");
     } else {
-      setID0(getCookie("id0"));
+      tmp_id0 = getCookie("id0");
+    }
+    if (tmp_id0.length == 32) {
+      setID0(tmp_id0);
     }
   }
 
@@ -167,6 +181,34 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
     setCookie("id0", id0, 7);
   }
 
+  function loadMii() {
+    const urlParams = new URLSearchParams(window.location.search);
+    let tmp_mii;
+    if (urlParams.has("mii")) {
+      tmp_mii = urlParams.get("mii");
+    } else {
+      tmp_mii = getCookie("mii");
+    }
+    if (tmp_mii.length == 16) {
+      setMii(tmp_mii);
+    }
+  }
+
+  function setMii(new_mii) {
+    if (new_mii) {
+      const urlParams = new URLSearchParams(window.location.search);
+      urlParams.set("mii", new_mii);
+      window.history.pushState(new_mii, "", window.location.pathname + "?" + urlParams.toString());
+    } else {
+      // avoid adding duplicate blank history entries
+      if (mii) {
+        window.history.pushState(new_mii, "", window.location.pathname);
+      }
+    }
+    mii = new_mii;
+    setCookie("mii", mii, 7);
+  }
+
   function startJobWatch() {
     cancelJobWatch();
     intervalId = setInterval(checkJob, 10000);
@@ -180,6 +222,7 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
   }
 
   function startOver() {
+    setMii("");
     setID0("");
     cancelJobWatch();
     resetMiiFormFeedback();
@@ -209,6 +252,7 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
       const responseJson = await response.json();
       if (response.ok) {
         // submission successful
+        setMii(responseJson.data.mii);
         setID0(responseJson.data.id0);
         checkJob();
       } else {
@@ -236,14 +280,15 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
   }
 
   async function checkJob() {
-    if (!id0) {
+    const key = mii || id0;
+    if (!key) {
       showCard1();
       return;
     }
     // grab job status from server
     let response;
     try {
-      response = await fetch(`{{ url_for('api_check_job_status', id0='') }}${id0}?include_stats=1`);
+      response = await fetch(`{{ url_for('api_check_job_status', key='') }}${key}?include_stats=1`);
       const responseJson = await response.json();
       if (response.ok) {
         updateCards(responseJson.data);
@@ -256,7 +301,8 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
         // syntax error from parsing non-JSON server error response
         window.alert(`Error checking job status: ${response.status} - ${response.statusText}`);
       } else if (error.message.includes("KeyError")) {
-        window.alert(`Error checking job status: ID0 ${id0} not found`);
+        const kn = key === mii ? "Mii" : "ID0";
+        window.alert(`Error checking job status: ${kn} ${id0} not found`);
       } else {
         // generic error
         window.alert(`Error checking job status: ${error.message}`);
@@ -270,9 +316,10 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
   }
 
   async function cancelJob() {
+    const key = mii || id0;
     let response;
     try {
-      response = await fetch("{{ url_for('api_cancel_job', id0='') }}" + id0);
+      response = await fetch("{{ url_for('api_cancel_job', key='') }}" + key);
       const responseJson = await response.json();
       if (!response.ok) {
         throw new Error(responseJson.message);
@@ -304,6 +351,7 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
 
     // initial setup
     toggleMiiUpload();
+    loadMii();
     loadID0();
     checkJob();
   });
