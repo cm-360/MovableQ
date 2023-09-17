@@ -49,16 +49,8 @@ dry_run = False
 
 
 
-# Don't edit below this line unless you know what you're doing
-lfcs = []
-ftune = []
-lfcs_new = []
-ftune_new = []
-err_correct = 0
-
-
 # from seedminer_launcher3.py by zoogie
-# https://github.com/zoogie/seedminer/blob/master/seedminer/seedminer_launcher3.py#L51-L114
+# https://github.com/zoogie/seedminer/blob/master/seedminer/seedminer_launcher3.py#L51-L84
 def bytes2int(s):
 	n = 0
 	for i in range(4):
@@ -79,76 +71,12 @@ def byteswap4(n):
 def endian4(n):
 	return (n & 0xFF000000) >> 24 | (n & 0x00FF0000) >> 8 | (n & 0x0000FF00) << 8 | (n & 0x000000FF) << 24
 
-def getmsed3estimate(n, isnew):
-	global err_correct
-	newbit = 0x0
-	if isnew:
-		fc = lfcs_new
-		ft = ftune_new
-		newbit = 0x80000000
-	else:
-		fc = lfcs
-		ft = ftune
-
-	fc_size = len(fc)
-	ft_size = len(ft)
-
-	if fc_size != ft_size:
-		return -1
-
-	for i in range(fc_size):
-		if n < fc[i]:
-			xs = (n - fc[i - 1])
-			xl = (fc[i] - fc[i - 1])
-			y = ft[i - 1]
-			yl = (ft[i] - ft[i - 1])
-			ys = ((xs * yl) // xl) + y
-			err_correct = ys
-			return ((n // 5) - ys) | newbit
-
-	return ((n // 5) - ft[ft_size - 1]) | newbit
-
-# from seedminer_launcher3.py by zoogie
+# from generate_part2 @ seedminer_launcher3.py by zoogie
 # https://github.com/zoogie/seedminer/blob/master/seedminer/seedminer_launcher3.py#L197-L273
-def generate_part2():
-	global err_correct
-
-	with open("saves/old-v2.dat", "rb") as f:
-		buf = f.read()
-
-	lfcs_len = len(buf) // 8
-	err_correct = 0
-
-	for i in range(lfcs_len):
-		lfcs.append(struct.unpack("<i", buf[i*8:i*8+4])[0])
-
-	for i in range(lfcs_len):
-		ftune.append(struct.unpack("<i", buf[i*8+4:i*8+8])[0])
-
-	with open("saves/new-v2.dat", "rb") as f:
-		buf = f.read()
-
-	lfcs_new_len = len(buf) // 8
-
-	for i in range(lfcs_new_len):
-		lfcs_new.append(struct.unpack("<i", buf[i*8:i*8+4])[0])
-
-	for i in range(lfcs_new_len):
-		ftune_new.append(struct.unpack("<i", buf[i*8+4:i*8+8])[0])
-
-	noobtest = b"\x00" * 0x20
-	with open("movable_part1.sed", "rb") as f:
-		seed = f.read()
-	if noobtest in seed[0x10:0x30]:
-		print("Error: ID0 has been left blank, please add an ID0")
-		print("Ex: python {} id0 abcdef012345EXAMPLEdef0123456789".format(sys.argv[0]))
-		sys.exit(1)
-	if noobtest[:4] in seed[:4]:
-		print("Error: LFCS has been left blank, did you do a complete two-way friend code exchange before dumping friendlist?")
-		sys.exit(1)
-	if len(seed) != 0x1000:
-		print("Error: movable_part1.sed is not 4KB")
-		sys.exit(1)
+def generate_part2(seed, *id0s):
+	# full should be 16? but we only use 12
+	if len(seed) < 12:
+		seed += b"\x00" * (12 - len(seed))
 
 	if seed[4:5] == b"\x02":
 		print("New3DS msed")
@@ -156,67 +84,70 @@ def generate_part2():
 	elif seed[4:5] == b"\x00":
 		print("Old3DS msed - this can happen on a New3DS")
 		isnew = False
+
+	# from getmsed3estimate @ seedminer_launcher3.py by zoogie
+	# https://github.com/zoogie/seedminer/blob/master/seedminer/seedminer_launcher3.py#L87-L114
+	fc = []
+	ft = []
+	err_correct = 0
+	msed3 = -1
+	newbit = 0x0
+	if isnew:
+		with open("saves/new-v2.dat", "rb") as f:
+			buf = f.read()
+
+		lfcs_len = len(buf) // 8
+
+		for i in range(lfcs_len):
+			fc.append(struct.unpack("<i", buf[i*8:i*8+4])[0])
+
+		for i in range(lfcs_len):
+			ft.append(struct.unpack("<i", buf[i*8+4:i*8+8])[0])
+
+		newbit = 0x80000000
 	else:
-		print("Error: can't read u8 msed[4]")
-		sys.exit(1)
+		with open("saves/old-v2.dat", "rb") as f:
+			buf = f.read()
+
+		lfcs_len = len(buf) // 8
+
+		for i in range(lfcs_len):
+			fc.append(struct.unpack("<i", buf[i*8:i*8+4])[0])
+
+		for i in range(lfcs_len):
+			ft.append(struct.unpack("<i", buf[i*8+4:i*8+8])[0])
+
+	fc_size = len(fc)
+	ft_size = len(ft)
+
+	if fc_size == ft_size:
+		n = bytes2int(seed[0:4])
+		msed3 = ((n // 5) - ft[ft_size - 1]) | newbit
+		for i in range(fc_size):
+			if n < fc[i]:
+				xs = (n - fc[i - 1])
+				xl = (fc[i] - fc[i - 1])
+				y = ft[i - 1]
+				yl = (ft[i] - ft[i - 1])
+				ys = ((xs * yl) // xl) + y
+				err_correct = ys
+				msed3 = ((n // 5) - ys) | newbit
+				break
 
 	print("LFCS	  : " + hex(bytes2int(seed[0:4])))
-	print("msed3 est : " + hex(getmsed3estimate(bytes2int(seed[0:4]), isnew)))
+	print("msed3 est : " + hex(msed3))
 	print("Error est : " + str(err_correct))
-	msed3 = getmsed3estimate(bytes2int(seed[0:4]), isnew)
 
-	offset = 0x10
 	hash_final = b""
-	i = None
-	for i in range(64):
-		try:
-			hash_init = unhexlify(seed[offset:offset + 0x20])
-		except:
-			break
+	id0s = id0s[0:64] # max 64 id0
+	for id0 in id0s:
+		hash_init = unhexlify(id0)
 		hash_single = byteswap4(hash_init[0:4]) + byteswap4(hash_init[4:8]) + byteswap4(hash_init[8:12]) + byteswap4(hash_init[12:16])
 		print("ID0 hash " + str(i) + ": " + hexlify(hash_single).decode('ascii'))
 		hash_final += hash_single
-		offset += 0x20
-	print("Hash total: " + str(i))
+	print("Hash total: " + str(len(id0s)))
 
-	part2 = seed[0:12] + int2bytes(msed3) + hash_final
-
-	pad = 0x1000 - len(part2)
-	part2 += b"\x00" * pad
-
-	with open("movable_part2.sed", "wb") as f:
-		f.write(part2)
-	print("movable_part2.sed generation success")
-
-# from seedminer_launcher3.py by zoogie
-# https://github.com/zoogie/seedminer/blob/master/seedminer/seedminer_launcher3.py#L291-L342
-def hash_clusterer(id0):
-	buf = b""
-	hashcount = 0
-
-	try:
-		with open("movable_part1.sed", "rb") as f:
-			file = f.read()
-	except IOError:
-		print("movable_part1.sed not found, generating a new one")
-		print("don't forget to add an lfcs to it!\n")
-		with open("movable_part1.sed", "wb") as f:
-			file = b"\x00" * 0x1000
-			f.write(file)
-
-	buf += str(id0).encode("ascii")
-
-	print(id0)
-
-	print("Hash added!")
-
-	file = file[:0x10]
-	pad_len = 0x1000 - len(file+buf)
-	pad = b"\x00" * pad_len
-	with open("movable_part1.sed", "wb") as f:
-		f.write(file + buf + pad)
-	print("There are now {} ID0 hashes in your movable_part1.sed!".format(len(file + buf) // 0x20))
-	print("Done!")
+	return seed[0:12] + int2bytes(msed3) + hash_final
 
 
 def validate_benchmark():
@@ -243,20 +174,13 @@ def do_benchmark():
 	dry_run = True
 	cleanup_mining_files()
 	print('Benchmarking...')
-	# write impossible part1
-	with open('movable_part1.sed', 'wb') as part1_bin:
-		content = b'\xFF\xEE\xFF'
-		part1_bin.write(content)
-		part1_bin.write(b'\0' * (0x1000 - len(content)))
 	# run and time bfCL
 	try:
-		hash_clusterer('fef0fef0fef0fef0fef0fef0fef0fef0')
-		generate_part2()
+		# impossible part1
+		buf = generate_part2(b'\xFF\xEE\xFF', 'fef0fef0fef0fef0fef0fef0fef0fef0')
 		time_target = time.time() + benchmark_target
 		# from seedminer_launcher3.py by zoogie
 		# https://github.com/zoogie/seedminer/blob/master/seedminer/seedminer_launcher3.py#L394-L402
-		with open("movable_part2.sed", "rb") as f:
-			buf = f.read()
 		keyy = hexlify(buf[:16]).decode('ascii')
 		id0 = hexlify(buf[16:32]).decode('ascii')
 		args = "msky {} {} {:08X} {:08X}".format(keyy, id0, endian4(0), endian4(5)).split()
@@ -323,19 +247,14 @@ def do_mii_mine(model, year, final, timeout=0):
 
 def do_part1_mine(id0, part1_data, timeout=0):
 	cleanup_mining_files()
-	with open('movable_part1.sed', 'wb') as part1_bin:
-		part1_bin.write(part1_data)
 	try:
 		# bfCL
 		max_offset = get_max_offset(get_lfcs(part1_data))
 		print(f'Using maximum offset: {max_offset}')
-		hash_clusterer(id0)
-		generate_part2()
 
 		# from seedminer_launcher3.py by zoogie
 		# https://github.com/zoogie/seedminer/blob/master/seedminer/seedminer_launcher3.py#L394-L402
-		with open("movable_part2.sed", "rb") as f:
-			buf = f.read()
+		buf = generate_part2(part1_data, id0)
 		keyy = hexlify(buf[:16]).decode('ascii')
 		mid0 = hexlify(buf[16:32]).decode('ascii')
 		args = "msky {} {} {:08X} {:08X}".format(keyy, mid0, endian4(0), endian4(max_offset))
