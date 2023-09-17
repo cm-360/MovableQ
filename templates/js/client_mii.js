@@ -92,7 +92,7 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
     switch (statusResponse.status) {
       case "done":
         if (mii) {
-          setMii();
+          setMii("");
           checkJob();
         } else {
           showCard3();
