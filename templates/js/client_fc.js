@@ -2,6 +2,7 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
 
 (() => {
 
+  let fc;
   let id0;
   let intervalId = 0;
 
@@ -102,18 +103,32 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
   function updateCards(statusResponse) {
     switch (statusResponse.status) {
       case "done":
-        showCard4();
+        if (fc) {
+          setFC("");
+          checkJob();
+        } else {
+          showCard4();
+        }
         break;
       case "waiting":
       case "working":
-        showCard3(statusResponse);
+        if (fc) {
+          showCard2();
+        } else {
+          showCard3(statusResponse);
+        }
         break;
       case "need_part1":
         showCard2();
         break;
       case "canceled":
-        cancelJobWatch();
-        canceledModal.show();
+        if (fc) {
+          setFC("");
+          checkJob();
+        } else {
+          cancelJobWatch();
+          canceledModal.show();
+        }
         break;
       case "failed":
         cancelJobWatch();
@@ -167,6 +182,35 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
 
 
   // actions
+
+  function loadFC() {
+    const urlParams = new URLSearchParams(window.location.search);
+    let tmp_fc;
+    if (urlParams.has("fc")) {
+      tmp_fc = urlParams.get("fc");
+    } else {
+      tmp_fc = getCookie("fc");
+    }
+    // crude fc check
+    if (tmp_fc.length == 12) {
+      setFC(tmp_fc);
+    }
+  }
+
+  function setFC(new_fc) {
+    if (new_fc) {
+      const urlParams = new URLSearchParams(window.location.search);
+      urlParams.set("fc", new_fc);
+      window.history.pushState(new_fc, "", window.location.pathname + "?" + urlParams.toString());
+    } else {
+      // avoid adding duplicate blank history entries
+      if (fc) {
+        window.history.pushState(new_fc, "", window.location.pathname);
+      }
+    }
+    fc = new_fc;
+    setCookie("fc", fc, 7);
+  }
 
   function loadID0() {
     const urlParams = new URLSearchParams(window.location.search);
@@ -222,14 +266,15 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
     // submit job to server
     let response;
     try {
-      response = await fetch("{{ url_for('api_submit_part1_job') }}", {
+      response = await fetch("{{ url_for('api_submit_fc_job') }}", {
         method: "POST",
         body: formData
       });
       const responseJson = await response.json();
       if (response.ok) {
         // submission successful
-        setID0(responseJson.data.key);
+        setFC(responseJson.data.fc);
+        setID0(responseJson.data.id0);
         checkJob();
       } else {
         // throw error with server message
@@ -271,7 +316,7 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
     // submit job to server
     let response;
     try {
-      response = await fetch("{{ url_for('api_add_part1', key='') }}" + id0, {
+      response = await fetch("{{ url_for('api_add_part1', id0='') }}" + id0, {
         method: "POST",
         body: formData
       });
@@ -298,14 +343,15 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
   }
 
   async function checkJob() {
-    if (!id0) {
+    const key = fc || id0;
+    if (!key) {
       showCard1();
       return;
     }
     // grab job status from server
     let response;
     try {
-      response = await fetch(`{{ url_for('api_check_job_status', key='') }}${id0}?include_stats=1`);
+      response = await fetch(`{{ url_for('api_check_job_status', key='') }}${key}?include_stats=1`);
       const responseJson = await response.json();
       if (response.ok) {
         updateCards(responseJson.data);
@@ -318,7 +364,8 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
         // syntax error from parsing non-JSON server error response
         window.alert(`Error checking job status: ${response.status} - ${response.statusText}`);
       } else if (error.message.includes("KeyError")) {
-          window.alert(`Error checking job status: ID0 ${id0} not found`);
+          const kn = key === fc ? "Friend Code" : "ID0";
+          window.alert(`Error checking job status: ${kn} ${key} not found`);
       } else {
         // generic error
         window.alert(`Error checking job status: ${error.message}`);
@@ -370,6 +417,7 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
 
     // initial setup
     togglePart1Upload();
+    loadFC();
     loadID0();
     checkJob();
   });

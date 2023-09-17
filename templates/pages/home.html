@@ -12,7 +12,7 @@
 		</div>
 	</div>
 	<div class="row row-cols-1 row-cols-md-2 g-3">
-		<!--div class="col">
+		<div class="col">
 			<div class="card">
 				<h5 class="card-header">Friend Code</h5>
 				<div class="card-body">
@@ -20,7 +20,7 @@
 					<a href="{{ url_for('page_fc') }}" class="btn btn-primary">Get started <i class="fa-solid fa-arrow-right"></i></a>
 				</div>
 			</div>
-		</div-->
+		</div>
 		<div class="col">
 			<div class="card">
 				<h5 class="card-header">Mii Mining</h5>
@@ -30,15 +30,16 @@
 				</div>
 			</div>
 		</div>
-		<div class="col">
+		<!-- Make part1 mining hidden? -->
+		<!--div class="col">
 			<div class="card">
 				<h5 class="card-header">Part1 Mining</h5>
 				<div class="card-body">
-					<p class="card-text">This uses the data obtained from a two-way friend exchange as a starting point for bruteforcing.</p>
+					<p class="card-text">This uses the user provided movable_part1.sed as a starting point for bruteforcing.</p>
 					<a href="{{ url_for('page_part1') }}" class="btn btn-primary">Get started <i class="fa-solid fa-arrow-right"></i></a>
 				</div>
 			</div>
-		</div>
+		</div-->
 	</div>
 </div>
 {% endblock %}
