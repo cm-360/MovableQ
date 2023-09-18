@@ -8,7 +8,8 @@ from threading import RLock
 import base64
 
 
-part1s_path = os.getenv('PART1S_PATH', './part1s')
+fc_lfcses_path = os.getenv('FC_LFCSES_PATH', './lfcses/fc')
+sid_lfcses_path = os.getenv('SID_LFCSES_PATH', './lfcses/sid')
 mseds_path = os.getenv('MSEDS_PATH', './mseds')
 
 job_lifetime = timedelta(minutes=5)
@@ -145,15 +146,21 @@ class JobManager():
                     self.miners[name] = Miner(name, ip)
                 return self.miners[name]
 
+    def _save_job_result(self, key, result):
+        job = self.jobs[key]
+        if 'mii' == job.type:
+            sid_save_lfcs(key, result)
+        elif 'fc' == job.type:
+            fc_save_lfcs(key, result)
+        elif 'part1' == job.type:
+            save_movable(key, result)
+
     # save result to disk and delete job
     def complete_job(self, key, result):
         with self.lock:
             job = self.jobs[key]
             job.complete()
-            if job.type == 'mii':
-                save_part1(key, result)
-            elif job.type == 'part1':
-                save_movable(key, result)
+            self._save_job_result(key, result)
             self.fulfill_dependents(key, result)
             self.delete_job(key)
 
@@ -464,30 +471,61 @@ class Miner():
         yield 'last_update', self.last_update.isoformat()
 
 
-def system_id_to_part1_path(system_id, create=False):
-    part1_dir = os.path.join(part1s_path, f'{system_id[0:2]}/{system_id[2:4]}')
+# lfcs storage by system id
+
+def system_id_to_lfcs_path(system_id, create=False):
+    lfcs_dir = os.path.join(sid_lfcses_path, f'{system_id[0:2]}/{system_id[2:4]}')
     if create:
-        os.makedirs(part1_dir, exist_ok=True)
-    return os.path.join(part1_dir, system_id)
+        os.makedirs(lfcs_dir, exist_ok=True)
+    return os.path.join(lfcs_dir, system_id)
 
-def part1_exists(system_id):
-    part1_path = system_id_to_part1_path(system_id)
-    return os.path.isfile(part1_path)
+def sid_lfcs_exists(system_id):
+    lfcs_path = system_id_to_lfcs_path(system_id)
+    return os.path.isfile(lfcs_path)
 
-def save_part1(system_id, part1):
-    with open(system_id_to_part1_path(system_id, create=True), 'wb') as part1_file:
-        part1_file.write(part1)
+def sid_save_lfcs(system_id, lfcs):
+    with open(system_id_to_lfcs_path(system_id, create=True), 'wb') as lfcs_file:
+        lfcs_file.write(lfcs)
 
-def read_part1(system_id):
-    if not part1_exists(system_id):
+def sid_read_lfcs(system_id):
+    if not lfcs_exists(system_id):
         return
-    with open(system_id_to_part1_path(system_id), 'rb') as part1_file:
-        lfcs = part1_file.read()
+    with open(system_id_to_lfcs_path(system_id), 'rb') as lfcs_file:
+        lfcs = lfcs_file.read()
         if len(lfcs) < 5: # broken file?
             return
         else:
             return lfcs[:5]
 
+
+# lfcs storage by friend code
+
+def friend_code_to_lfcs_path(friend_code, create=False):
+    lfcs_dir = os.path.join(fc_lfcses_path, f'{friend_code[0:2]}/{friend_code[2:4]}')
+    if create:
+        os.makedirs(lfcs_dir, exist_ok=True)
+    return os.path.join(lfcs_dir, friend_code)
+
+def fc_lfcs_exists(friend_code):
+    lfcs_path = friend_code_to_lfcs_path(friend_code)
+    return os.path.isfile(lfcs_path)
+
+def fc_save_lfcs(friend_code, lfcs):
+    with open(friend_code_to_lfcs_path(friend_code, create=True), 'wb') as lfcs_file:
+        lfcs_file.write(lfcs)
+
+def fc_read_lfcs(friend_code):
+    if not lfcs_exists(friend_code):
+        return
+    with open(friend_code_to_lfcs_path(friend_code), 'rb') as lfcs_file:
+        lfcs = lfcs_file.read()
+        if len(lfcs) < 5: # broken file?
+            return
+        else:
+            return lfcs[:5]
+
+
+# msed storage by id0
 
 def id0_to_movable_path(id0, create=False):
     movable_dir = os.path.join(mseds_path, f'{id0[0:2]}/{id0[2:4]}')
@@ -516,8 +554,11 @@ def read_movable(id0):
             return
 
 
-def count_part1s_collected():
-    return sum(len(files) for _, _, files in os.walk(part1s_path))
+def count_lfcses_mined():
+    return sum(len(files) for _, _, files in os.walk(sid_lfcses_path))
+
+def count_lfcses_dumped():
+    return sum(len(files) for _, _, files in os.walk(fc_lfcses_path))
 
 def count_mseds_mined():
     return sum(len(files) for _, _, files in os.walk(mseds_path))
