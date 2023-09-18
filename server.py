@@ -230,9 +230,11 @@ def api_request_job():
     app.logger.info(f'{log_prefix()} {miner_name} requests work')
     # reject old versions
     try:
-        miner_version = request.args['version']
+        miner_version = request.args.get('version')
+        if not miner_version:
+            return error('Client version not provided')
         if compare_versions(miner_version, mining_client_version) < 0:
-            return error('Outdated client version')
+            return error(f'Outdated client version, {miner_version} < {mining_client_version}')
     except Exception as e:
         app.logger.exception(e)
         return error('Unknown client version')
