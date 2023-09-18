@@ -142,7 +142,7 @@ class JobManager():
             job = self.jobs[key]
             job.complete()
             if job.type == 'mii':
-                save_mii_part1(key, result)
+                save_part1(key, result)
             elif job.type == 'part1':
                 save_movable(key, result)
             self.fulfill_job(key, result)
@@ -151,7 +151,7 @@ class JobManager():
     # fulfill jobs that have prerequisite
     def fulfill_job(self, key, part1=None):
         if not part1:
-            part1 = read_mii_part1(key)
+            part1 = read_part1(key)
         if not part1:
             return
         part1 = str(base64.b64encode(part1), 'utf-8')
@@ -202,7 +202,7 @@ class JobManager():
                 job = self.jobs[key]
                 return job.state
             except KeyError as e:
-                if len(key) == 16 and mii_part1_exists(key):
+                if len(key) == 16 and part1_exists(key):
                     return 'done'
                 elif len(key) == 32 and movable_exists(key):
                     return 'done'
@@ -217,6 +217,9 @@ class JobManager():
                 'rate': job.mining_rate,
                 'offset': job.mining_offset
             }
+
+    def get_chain_status(self, key):
+
 
     # returns all current jobs, optionally only those with a specific status
     def list_jobs(self, status_filter=None):
@@ -243,6 +246,7 @@ class JobManager():
         return len(self.list_miners(active_only))
 
 
+# Generic mining job class
 class Job(Machine):
 
     # states
@@ -347,6 +351,26 @@ class Job(Machine):
         yield 'mining_offset', self.mining_offset
 
 
+# Job class for jobs that are only ready once another job supplies a prerequisite
+class ChainJob(Job):
+
+    def __init__(self, key, _type, prereq_key):
+        super().__init__(key, _type)
+        self.add_state('need_prereq')
+        self.add_transition('prepare', 'submitted', 'need_prereq', after='on_prepare')
+        self.add_transition('pass_prereq', 'need_prereq', 'ready', before='on_pass_prereq')
+        # chain-specific job properties
+        self.prereq_key = prereq_key
+
+    def on_prepare(self):
+        if not self.prereq_key:
+            self.to_ready()
+
+    def __iter__(self):
+        yield from super().__iter__()
+        yield 'prereq_key', self.prereq_key
+
+
 # Job to obtain movable_part1.sed from the LFCS hash in Mii data
 class MiiJob(Job):
 
@@ -383,26 +407,22 @@ class FCJob(Job):
 
 
 # Job to obtain movable.sed using a part1 file
-class Part1Job(Job):
+class Part1Job(ChainJob):
 
-    def __init__(self, id0, part1=None, prerequisite=None):
-        super().__init__(id0, 'part1')
-        self.add_state('need_part1')
-        self.add_transition('prepare', 'submitted', 'need_part1', after='on_prepare')
-        self.add_transition('add_part1', 'need_part1', 'ready', before='on_add_part1')
+    def __init__(self, id0, part1=None, prereq_key=None):
+        super().__init__(id0, 'part1', prereq_key)
+        if not prereq_key and not part1:
+            raise ValueError('Must supply either part1 or a prerequisite job key')
         # part1-specific job properties
         self.part1 = part1
-        self.prerequisite = prerequisite
         # part1 jobs need part1 (duh)
-        self.prepare(part1)
+        self.prepare()
 
-    def on_prepare(self, part1=None):
-        if part1:
-            self.add_part1(part1)
-        elif self.part1:
+    def on_prepare(self):
+        if self.part1:
             self.to_ready()
     
-    def on_add_part1(self, part1):
+    def on_pass_prereq(self, part1):
         self.part1 = part1
 
     def has_part1(self):
