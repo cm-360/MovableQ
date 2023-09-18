@@ -126,6 +126,15 @@ def get_mining_client():
 
 # api routes
 
+@app.route('/api/submit_job_chain', methods=['POST'])
+def api_submit_job_chain():
+    submission = request.get_json(silent=True)
+    if not submission:
+        return error('Missing request JSON')
+    chain = parse_job_chain_submission(submission)
+    manager.submit_job_chain(chain)
+    return success()
+
 @app.route('/api/submit_mii_job', methods=['POST'])
 def api_submit_mii_job():
     main_job = None
@@ -488,103 +497,86 @@ def compare_versions(version_a, version_b):
 def compare(a, b):
     return (a > b) - (a < b) 
 
-def parse_mii_job_submission(submission, mii_file=None):
+def parse_job_chain(chain_data):
+    jobs = []
+    for entry in chain_data:
+        entry_type = entry['type']
+        if 'mii' == entry_type:
+            jobs.append(parse_mii_job(entry))
+        elif 'fc' == entry_type:
+            jobs.append(parse_fc_job(entry))
+        elif 'part1' == entry_type:
+            jobs.append(parse_part1_job(entry))
+        else:
+            raise ValueError(f'Invalid job type "{entry_type}"')
+    return jobs
+
+def parse_mii_job(job_data):
     invalid = []
     try:
-        # id0
-        id0 = submission['id0']
-        if not is_id0(id0):
-            invalid.append('id0')
         # model
-        model = submission['model'].lower()
+        model = job_data['model'].lower()
         if model not in ['old', 'new']:
             invalid.append('model')
         # year
-        year = None
-        if submission['year']:
+        year = job_data.get('year')
+        if year:
             try:
-                year = int(submission['year'])
+                year = int(year)
                 if year < 2011 or year > 2020:
                     invalid.append('year')
             except (ValueError, TypeError) as e:
                 invalid.append('year')
-        # mii data
-        lfcs_hash = submission.get('lfcs_hash')
-        if mii_file:
-            lfcs_hash = process_mii_file(mii_file)
+        # lfcs hash
+        lfcs_hash = get_lfcs_hash_from_mii_job(job_data)
         if not lfcs_hash:
-            invalid.append('mii')
+            invalid.append('lfcs_hash')
         if invalid:
-            return 'invalid:' + ','.join(invalid)
+            raise ValueError('invalid:' + ','.join(invalid))
         else:
             return MiiJob(lfcs_hash, model, year)
     except KeyError as e:
         raise KeyError(f'Missing parameter "{e}"')
 
-def parse_fc_job_submission(submission):
-    invalid = []
+def get_lfcs_hash_from_mii_job(job_data):
     try:
-        # id0
-        id0 = submission['id0']
-        if not is_id0(id0):
-            invalid.append('id0')
-        # friend code
-        friend_code = submission.get('friend_code').replace('-', '')
-        if friend_code and not is_friend_code(friend_code):
-            invalid.append('friend_code')
-        if invalid:
-            return 'invalid:' + ','.join(invalid)
-        else:
-            return FCJob(friend_code)
-    except KeyError as e:
-        raise KeyError(f'Missing parameter "{e}"')
+        # explictly declared
+        lfcs_hash = job_data.get('lfcs_hash')
+        if lfcs_hash:
+            return lfcs_hash
+        # uploaded a mii qr or encrypted bin
+        lfcs_hash = get_lfcs_hash_from_mii_file(job_data)
+        if lfcs_hash:
+            return lfcs_hash
+    except ValueError as e:
+        raise e
+    except Exception as e:
+        raise ValueError('Could not get LFCS hash from submission') from e
 
-def parse_part1_job_submission(submission, part1_file=None):
-    invalid = []
-    try:
-        # id0
-        id0 = submission['id0']
-        if not is_id0(id0):
-            invalid.append('id0')
-        # part1 data
-        part1_data = parse_part1_upload(submission, part1_file)
-        if invalid:
-            return 'invalid:' + ','.join(invalid)
-        else:
-            return Part1Job(id0, part1=part1_data)
-    except KeyError as e:
-        raise KeyError(f'Missing parameter "{e}"')
-
-def parse_part1_upload(submission, part1_file=None):
-    try:
-        part1_data = submission.get('part1_data')
-        if part1_file:
-            part1_data = process_part1_file(part1_file)
-        return part1_data
-    except:
-        raise ValueError('Could not parse part1 data')
-
-def process_mii_file(mii_file):
-    filename = mii_file.filename.lower()
-    raw_data = None
-    # determine upload type
-    if mii_file.mimetype == 'application/octet-stream' or filename.endswith('.bin'):
-        raw_data = mii_file.read()
+def get_lfcs_hash_from_mii_file(job_data):
+    mii_data = base64.b64decode(job_data['mii_data'])
+    mii_filename = job_data.get('mii_filename', '')
+    mii_mimetype = job_data.get('mii_mimetype')
+    # determine uploaded file type and get encrypted mii data
+    mii_data_enc = None
+    if 'application/octet-stream' == mii_mimetype or mii_filename.lower().endswith('.bin'):
+        mii_data_enc = mii_data
     else:
         try:
-            decoded = qr_decode(Image.open(mii_file), binary=True)
+            decoded = qr_decode(Image.open(mii_data), binary=True)
             if not decoded:
                 return
-            raw_data = decoded[0].data
+            mii_data_enc = decoded[0].data
         except:
             pass
-    if raw_data:
-        return get_lfcs_hash_from_mii(raw_data)
+    # get lfcs from encrypted mii data
+    if mii_data_enc:
+        return get_lfcs_hash_from_enc_mii(mii_data_enc)
 
 # Modified from seedminer_launcher3.py by zoogie
 # https://github.com/zoogie/seedminer/blob/master/seedminer/seedminer_launcher3.py#L126-L130
-def get_lfcs_hash_from_mii(mii_data_enc):
-    if 112 != len(mii_data):
+def get_lfcs_hash_from_enc_mii(mii_data_enc):
+    if 112 != len(mii_data_enc):
         raise ValueError('Incorrect Mii data length')
     # decrypt mii data
     nonce = mii_data_enc[:8] + (b'\x00' * 4)
@@ -595,11 +587,56 @@ def get_lfcs_hash_from_mii(mii_data_enc):
     app.logger.debug(f'Got LFCS hash: {lfcs_hash}')
     return lfcs_hash
 
-def process_part1_file(part1_file):
-    raw_data = part1_file.read()
-    # base64 encode
-    if raw_data and len(raw_data) > 0: # better size checking once I'm sure, 0x1000 bytes?
-        return str(base64.b64encode(raw_data), 'utf-8')
+def parse_fc_job(job_data):
+    try:
+        # friend code
+        friend_code = job_data['friend_code'].replace('-', '')
+        if not is_friend_code(friend_code):
+            raise ValueError('invalid:friend_code')
+        else:
+            return FCJob(friend_code)
+    except KeyError as e:
+        raise KeyError(f'Missing parameter "{e}"')
+
+def parse_part1_job(job_data):
+    invalid = []
+    try:
+        # id0
+        id0 = job_data['id0']
+        if not is_id0(id0):
+            invalid.append('id0')
+        # lfcs
+        lfcs = get_lfcs_from_part1_job(job_data)
+        if not lfcs:
+            invalid.append('part1')
+        if invalid:
+            raise ValueError('invalid:' + ','.join(invalid))
+        else:
+            return Part1Job(id0, part1=lfcs)
+    except KeyError as e:
+        raise KeyError(f'Missing parameter "{e}"')
+
+def get_lfcs_from_part1_job(job_data):
+    try:
+        # explictly declared
+        lfcs = job_data.get('lfcs')
+        if lfcs:
+            return lfcs
+        # uploaded movable_part1.sed
+        lfcs = get_lfcs_from_part1_file(job_data)
+        if lfcs:
+            return lfcs
+    except ValueError as e:
+        raise e
+    except Exception as e:
+        raise ValueError('Could not get LFCS from submission') from e
+
+def get_lfcs_from_part1_file(job_data):
+    part1_data = base64.b64decode(job_data['part1_data'])
+    lfcs = hexlify(part1_data[:5]).decode('ascii')
+    app.logger.debug(f'Got LFCS: {lfcs}')
+    return lfcs
+
 
 def get_request_ip():
     if request.environ.get('HTTP_X_FORWARDED_FOR') is None:

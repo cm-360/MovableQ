@@ -30,6 +30,15 @@ class JobManager():
                 raise ValueError(f'Duplicate job: {job.key}')
             self.jobs[job.key] = job
 
+    def submit_job_chain(self, chain):
+        with self.lock:
+            # loop twice so we submit no jobs if any are duplicates
+            for job in chain:
+                if self.job_exists(job.key):
+                    raise ValueError(f'Duplicate job: {job.key}')
+            for job in chain:
+                self.jobs[job.key] = job
+
     # adds a part1 file to a job
     def add_part1(self, id0, part1):
         with self.lock:
@@ -219,7 +228,7 @@ class JobManager():
             }
 
     def get_chain_status(self, key):
-
+        pass
 
     # returns all current jobs, optionally only those with a specific status
     def list_jobs(self, status_filter=None):
