@@ -93,29 +93,20 @@ def generate_part2(seed, *id0s):
 	msed3 = -1
 	newbit = 0x0
 	if isnew:
+		newbit = 0x80000000
 		with open("saves/new-v2.dat", "rb") as f:
 			buf = f.read()
-
-		lfcs_len = len(buf) // 8
-
-		for i in range(lfcs_len):
-			fc.append(struct.unpack("<i", buf[i*8:i*8+4])[0])
-
-		for i in range(lfcs_len):
-			ft.append(struct.unpack("<i", buf[i*8+4:i*8+8])[0])
-
-		newbit = 0x80000000
 	else:
 		with open("saves/old-v2.dat", "rb") as f:
 			buf = f.read()
 
-		lfcs_len = len(buf) // 8
+	lfcs_len = len(buf) // 8
 
-		for i in range(lfcs_len):
-			fc.append(struct.unpack("<i", buf[i*8:i*8+4])[0])
+	for i in range(lfcs_len):
+		fc.append(struct.unpack("<i", buf[i*8:i*8+4])[0])
 
-		for i in range(lfcs_len):
-			ft.append(struct.unpack("<i", buf[i*8+4:i*8+8])[0])
+	for i in range(lfcs_len):
+		ft.append(struct.unpack("<i", buf[i*8+4:i*8+8])[0])
 
 	fc_size = len(fc)
 	ft_size = len(ft)
@@ -222,7 +213,6 @@ def do_mii_mine(model, year, final, timeout=0):
 				start_lfcs = 0x0A000000
 			elif year == 2017:
 				start_lfcs = 0x0A800000
-				#start_lfcs = 0x0A650000
 		elif model == "new":
 			model_str = b"\x02\x00"
 			if year == 2014:
@@ -321,12 +311,12 @@ def get_max_offset(lfcs):
 
 	# determine offsets/distances and load LFCSes for appropriate console type
 	if 2 == is_new:
-		max_offsets = [	 16,	  16,	  20]
+		max_offsets = [     16,      16,      20]
 		distances   = [0x00000, 0x00100, 0x00200]
 		with open("saves/new-v2.dat", "rb") as lfcs_file:
 			lfcs_buffer = lfcs_file.read()
 	elif 0 == is_new:
-		max_offsets = [	 18,	  18,	  20]
+		max_offsets = [     18,      18,      20]
 		distances   = [0x00000, 0x00100, 0x00200]
 		with open("saves/old-v2.dat", "rb") as lfcs_file:
 			lfcs_buffer = lfcs_file.read()
