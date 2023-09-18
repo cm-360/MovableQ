@@ -261,7 +261,12 @@ def do_part1_mine(id0, part1_data, timeout=0):
 def run_bfcl(key, args, rws = force_reduced_work_size):
 	try:
 		# start mining
-		process = subprocess.Popen(['bfcl' if os.name == 'nt' else './bfcl'] + args + (['rws'] if rws else ['sws', 'sm']))
+		bfcl_args = [
+			('bfcl' if os.name == 'nt' else './bfcl'),
+			*args,
+			*(['rws'] if rws else ['sws', 'sm'])
+		]
+		process = subprocess.Popen(bfcl_args)
 		try:
 			timer = 0
 			while process.poll() is None:
@@ -355,7 +360,12 @@ def cleanup_mining_files():
 def request_job():
 	if dry_run:
 		return
-	response = requests.get(f'{base_url}/api/request_job?version={client_version}&name={miner_name}&types={acceptable_job_types}').json()
+	request_params = '&'.join([
+		f'version={client_version}',
+		f'name={miner_name}',
+		f'types={acceptable_job_types}'
+	])
+	response = requests.get(f'{base_url}/api/request_job?{request_params}').json()
 	result = response['result']
 	if 'success' != result:
 		error_message = response['message']
