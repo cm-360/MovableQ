@@ -9,7 +9,7 @@ from PIL import Image
 
 #from Cryptodome.Cipher import AES
 from Crypto.Cipher import AES
-from binascii import hexlify
+from binascii import hexlify, unhexlify
 
 from dotenv import load_dotenv
 
@@ -19,7 +19,7 @@ import os
 import re
 
 from jobs import JobManager, MiiJob, FCJob, Part1Job, read_movable, count_mseds_mined
-from validators import is_job_key, is_id0, is_system_id, is_friend_code
+from validators import is_job_key, is_id0, is_system_id, is_friend_code, validate_job_result
 
 
 # AES keys
@@ -236,14 +236,28 @@ def api_complete_job(key):
     global mseds_mined
     if not is_job_key(key):
         return error('Invalid Job Key')
-    result = base64.b64decode(request.json['result'])
-    if validate_job_result(key, result):
-        manager.complete_job(key, result)
-        app.logger.info(f'{log_prefix(key)} completed')
-        mseds_mined += 1
-    else:
-        app.logger.info(f'{log_prefix(key)} uploaded faulty result')
-        manager.fail_job(key, 'miner uploaded faulty result') # probably shouldn't fail?
+    # get raw result data
+    result = None
+    try:
+        result_format = request.json['format']
+        if 'b64' == result_format:
+            result = base64.b64decode(request.json['result'])
+        elif 'hex' == result_format:
+            result = unhexlify(request.json['result'])
+        else:
+            raise ValueError(f'Unknown result format {result_format}')
+    except KeyError as e:
+        raise KeyError(f'Missing parameter "{e}"')
+    # validate result
+    job_type = manager.get_job(key).type
+    if not validate_job_result(job_type, result):
+        app.logger.warning(f'{log_prefix(key)} got faulty result')
+        manager.release_job(key)
+        return error('Faulty result')
+    # complete job
+    manager.complete_job(key, result)
+    app.logger.info(f'{log_prefix(key)} completed')
+    mseds_mined += 1
     return success()
 
 @app.route('/api/fail_job/<key>', methods=['POST'])
@@ -369,25 +383,7 @@ def trim_canceled_jobs():
             app.logger.info(f'\t{key}')
 
 
-# helpers
-
-def validate_job_result(key, result):
-    if len(key) == 16: # mii -> lfcs
-        if len(result) < 5:
-            return False
-        if b"\0\0\0\0" in result[:4]:
-            return False
-        #if result[4:5] != b"\x00" && result[4:5] != b"\x02":
-        #    return False
-        return True
-
-    elif len(key) == 32: # part1 -> mkey
-        if len(result) != 16:
-            return False
-        return True
-
-    else:
-        return False
+# helper functions
 
 # Modified from https://stackoverflow.com/a/28568003
 def parse_version_string(version_str, point_max_len=10):

@@ -24,6 +24,10 @@ class JobManager():
         self.miners = {}
         self.lock = RLock()
 
+    def get_job(self, key):
+        with self.lock:
+            return self.jobs[key]
+
     # adds a job to the current job list, raises a ValueError if it exists already
     def submit_job(self, job):
         with self.lock:
@@ -97,7 +101,7 @@ class JobManager():
             self._unqueue_job(job.key)
 
     # pop from job queue, optionally filtering by type
-    def _get_job(self, accepted_types=None):
+    def _request_job(self, accepted_types=None):
         if len(self.wait_queue) == 0:
             return
         if accepted_types:
@@ -113,7 +117,7 @@ class JobManager():
     def request_job(self, miner_name=None, miner_ip=None, accepted_types=None):
         with self.lock:
             miner = self.update_miner(miner_name, miner_ip)
-            job = self._get_job(accepted_types)
+            job = self._request_job(accepted_types)
             if job:
                 job.assign(miner)
                 return job
