@@ -347,10 +347,11 @@ class Job(Machine):
         yield 'mining_offset', self.mining_offset
 
 
+# Job to obtain movable_part1.sed from the LFCS hash in Mii data
 class MiiJob(Job):
 
-    def __init__(self, id0, model, year, lfcs_hash):
-        super().__init__(id0, 'mii')
+    def __init__(self, lfcs_hash, model, year):
+        super().__init__(lfcs_hash, 'mii')
         self.add_transition('prepare', 'submitted', 'ready')
         # mii-specific job properties
         self.console_model = model
@@ -365,14 +366,15 @@ class MiiJob(Job):
         yield 'lfcs_hash', self.key
 
 
+# Job to obtain movable_part1.sed from a friend exchange
 class FCJob(Job):
 
-    def __init__(self, friend_code=None):
+    def __init__(self, friend_code):
         super().__init__(friend_code, 'fc')
         self.add_transition('prepare', 'submitted', 'ready')
-        # part1-specific job properties
+        # fc-specific job properties
         self.friend_code = friend_code
-        # part1 jobs need part1 (duh)
+        # fc jobs are ready immediately
         self.prepare()
 
     def __iter__(self):
@@ -380,6 +382,7 @@ class FCJob(Job):
         yield 'friend_code', self.key
 
 
+# Job to obtain movable.sed using a part1 file
 class Part1Job(Job):
 
     def __init__(self, id0, part1=None, prerequisite=None):

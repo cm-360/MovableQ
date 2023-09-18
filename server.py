@@ -517,7 +517,7 @@ def parse_mii_job_submission(submission, mii_file=None):
         if invalid:
             return 'invalid:' + ','.join(invalid)
         else:
-            return MiiJob(lfcs_hash, model, year, lfcs_hash)
+            return MiiJob(lfcs_hash, model, year)
     except KeyError as e:
         raise KeyError(f'Missing parameter "{e}"')
 
