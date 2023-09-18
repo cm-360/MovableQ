@@ -351,27 +351,6 @@ def handle_exception(e):
 
 # manager action wrappers
 
-def submit_generic_job(job, queue=False):
-    # check for existing job
-    status = None
-    try:
-        status = manager.check_job_status(job.key)
-        # delete existing job if it is canceled
-        if 'canceled' == status:
-            app.logger.info(f'{log_prefix(job.key)} overwritten')
-            manager.delete_job(job.key)
-            status = None
-        if status:
-            return (False, 'Duplicate job')
-    except: # job does not exist
-        pass
-    # submit and queue
-    manager.submit_job(job)
-    if queue:
-        manager.queue_job(job.key)
-    app.logger.info(f'{log_prefix(job.key)} submitted ({job.type})')
-    return (True, job)
-
 def release_dead_jobs():
     released = manager.release_dead_jobs()
     if released:
