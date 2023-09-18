@@ -134,84 +134,15 @@ def api_submit_job_chain():
 
 @app.route('/api/submit_mii_job', methods=['POST'])
 def api_submit_mii_job():
-    main_job = None
-    part1_job = None
-    # parse job submission
-    submission = request.get_json(silent=True)
-    if submission:
-        main_job  = parse_mii_job_submission(request.json)
-        part1_job = parse_part1_job_submission(request.json)
-    else:
-        main_job  = parse_mii_job_submission(request.form, mii_file=request.files['mii_file'])
-        part1_job = parse_part1_job_submission(request.form)
-    # returns error message if job json is invalid
-    if type(main_job) is str:
-        return error(mii_job)
-    if type(part1_job) is str:
-        return error(part1_job)
-    part1_job.prerequisite = main_job.key
-    part1_res = submit_generic_job(part1_job)
-    if not part1_res[0]:
-        return error(part1_res[1])
-    res = submit_generic_job(main_job, queue=True)
-    if not res[0]:
-        manager.fulfill_job(main_job.key)
-    return success({
-        'mii' : res[1].key if res[0] else '',
-        'id0' : part1_res[1].key
-    })
+    return error('Not implemented')
 
 @app.route('/api/submit_fc_job', methods=['POST'])
 def api_submit_fc_job():
-    main_job = None
-    part1_job = None
-    # parse job submission
-    submission = request.get_json(silent=True)
-    if submission:
-        main_job  = parse_fc_job_submission(request.json)
-        part1_job = parse_part1_job_submission(request.json)
-    else:
-        main_job  = parse_fc_job_submission(request.form)
-        part1_job = parse_part1_job_submission(request.form)
-    # returns error message if job json is invalid
-    if type(main_job) is str:
-        return error(main_job)
-    if type(part1_job) is str:
-        return error(part1_job)
-    part1_job.prerequisite = job.key
-    part1_res = submit_generic_job(part1_job)
-    if not part1_res[0]:
-        return error(part1_res[1])
-    res = submit_generic_job(job, queue=True)
-    return success({
-        'fc' : res[1].key if res[0] else '',
-        'id0' : part1_res[1].key
-    })
+    return error('Not implemented')
 
 @app.route('/api/submit_part1_job', methods=['POST'])
 def api_submit_part1_job():
-    job = None
-    # parse job submission
-    submission = request.get_json(silent=True)
-    if submission:
-        job = parse_part1_job_submission(request.json)
-    else:
-        job = parse_part1_job_submission(request.form, part1_file=request.files.get('part1_file'))
-    # returns error message if job json is invalid
-    if type(job) is str:
-        return error(job)
-    res = submit_generic_job(job, queue=job.has_part1())
-    if res[0]:
-        return success({'key': res[1].key})
-    elif manager.job_exists(job.key) and manager.check_job_status(job.key) == 'need_part1':
-        if job.has_part1():
-            manager.add_part1(job.key, job.part1)
-            manager.queue_job(job.key)
-            return success({'key': job.key})
-        else:
-            return error('need_part1')
-    else:
-        return error(res[1])
+    return error('Not implemented')
 
 @app.route('/api/add_part1/<id0>', methods=['POST'])
 def api_add_part1(id0):
