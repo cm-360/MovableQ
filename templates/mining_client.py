@@ -47,9 +47,26 @@ benchmark_filename = 'benchmark'
 dry_run = False
 
 
+# LFCS bruteforce starting points from seedminer_launcher3.py by zoogie
+# https://github.com/zoogie/seedminer/blob/master/seedminer/seedminer_launcher3.py#L140-L184
+lfcs_starts_old = {
+	2011: 0x01000000,
+	2012: 0x04000000,
+	2013: 0x07000000,
+	2014: 0x09000000,
+	2015: 0x09800000,
+	2016: 0x0A000000,
+	2017: 0x0A800000
+}
+lfcs_starts_new = {
+	2014: 0x00800000,
+	2015: 0x01800000,
+	2016: 0x03000000,
+	2017: 0x04000000
+}
 
 
-# from seedminer_launcher3.py by zoogie
+# Helper functions from seedminer_launcher3.py by zoogie
 # https://github.com/zoogie/seedminer/blob/master/seedminer/seedminer_launcher3.py#L51-L84
 def bytes2int(s):
 	n = 0
@@ -141,6 +158,17 @@ def generate_part2(seed, *id0s):
 	return seed[0:12] + int2bytes(msed3) + hash_final
 
 
+def get_lfcs_start_and_flags(model, year):
+	if 'old' == model:
+		model_bytes = b'\x00\x00'
+		start_lfcs = lfcs_starts_old.get(year, 0x0B000000 // 2)
+	elif 'new' == model:
+		model_bytes = b'\x02\x00'
+		start_lfcs = lfcs_starts_new.get(year, 0x05000000 // 2)
+	else:
+		raise ValueError('Invalid model')
+	return start_lfcs, model_bytes
+
 def validate_benchmark():
 	if os.path.isfile(benchmark_filename):
 		return True
@@ -190,46 +218,17 @@ def do_benchmark():
 		cleanup_mining_files()
 		dry_run = False
 
-def do_mii_mine(model, year, final, timeout=0):
+def do_mii_mine(model, year, lfcs_hash, timeout=0):
 	cleanup_mining_files()
-
 	try:
-		# from seedminer_launcher3.py by zoogie
-		# https://github.com/zoogie/seedminer/blob/master/seedminer/seedminer_launcher3.py#L140-L184
-		start_lfcs = (0x0B000000 if model == "old" else 0x05000000) // 2
-		if model == "old":
-			model_str = b"\x00\x00"
-			if year == 2011:
-				start_lfcs = 0x01000000
-			elif year == 2012:
-				start_lfcs = 0x04000000
-			elif year == 2013:
-				start_lfcs = 0x07000000
-			elif year == 2014:
-				start_lfcs = 0x09000000
-			elif year == 2015:
-				start_lfcs = 0x09800000
-			elif year == 2016:
-				start_lfcs = 0x0A000000
-			elif year == 2017:
-				start_lfcs = 0x0A800000
-		elif model == "new":
-			model_str = b"\x02\x00"
-			if year == 2014:
-				start_lfcs = 0x00800000
-			elif year == 2015:
-				start_lfcs = 0x01800000
-			elif year == 2016:
-				start_lfcs = 0x03000000
-			elif year == 2017:
-				start_lfcs = 0x04000000
-		args = "lfcs {:08X} {} {} {:08X}".format(endian4(start_lfcs), hexlify(model_str).decode('ascii'), final, endian4(0))
+		start_lfcs, model_bytes = get_lfcs_start_and_flags(model, year)
+		args = "lfcs {:08X} {} {} {:08X}".format(endian4(start_lfcs), hexlify(model_bytes).decode('ascii'), lfcs_hash, endian4(0))
 		print(f'bfcl args:' + args)
-		run_bfcl(final, args.split())
+		run_bfcl(lfcs_hash, args.split())
 		# check output
 		if os.path.isfile('movable_part1.sed'):
 			print(f'Mining complete! Uploading movable_part1...')
-			upload_part1(final)
+			upload_part1(lfcs_hash)
 		else:
 			print(f'bfCL was not able to complete the mining job!')
 	finally:
@@ -368,13 +367,13 @@ def do_job(job):
 	job_type = job['type']
 	if 'mii' == job_type:
 		print('Mii job received:')
-		print(f'  Model: {job["model"]}')
-		print(f'  Year:  {job["year"]}')
-		print(f'  Final: {job["final"]}')
+		print(f'  Model:     {job["model"]}')
+		print(f'  Year:      {job["year"]}')
+		print(f'  LFCS Hash: {job["lfcs_hash"]}')
 		do_mii_mine(
 			job['model'],
 			job['year'],
-			job['final']
+			job['lfcs_hash']
 		)
 	elif 'part1' == job_type:
 		print('Part1 job received:')
@@ -414,12 +413,12 @@ def upload_movable(id0):
 			json={'result': str(base64.b64encode(movable.read()[0x110:0x120]), 'utf-8')}
 		).json()
 
-def upload_part1(final):
+def upload_part1(lfcs_hash):
 	if dry_run:
 		return
 	with open('movable_part1.sed', 'rb') as part1:
 		response = requests.post(
-			f'{base_url}/api/complete_job/{final}',
+			f'{base_url}/api/complete_job/{lfcs_hash}',
 			json={'result': str(base64.b64encode(part1.read()[:5]), 'utf-8')}
 		).json()
 
