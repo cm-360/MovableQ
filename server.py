@@ -21,13 +21,16 @@ import re
 import secrets
 import struct
 
-from jobs import JobManager, MiiJob, FCJob, Part1Job, read_movable, count_total_mined
+from jobs import JobManager, MiiJob, FCJob, Part1Job, read_movable, count_mseds_mined
 
 
 # constants
 id0_regex = re.compile(r'(?![0-9a-fA-F]{4}(01|00)[0-9a-fA-F]{18}00[0-9a-fA-F]{6})[0-9a-fA-F]{32}')
 mii_final_regex = re.compile(r'[a-fA-F0-9]{16}')
 version_split_regex = re.compile(r'[.+-]')
+
+# AES keys
+slot0x31KeyN = 0x59FC817E6446EA6190347B20E9BDCE52
 
 # logging config
 dictConfig({
@@ -56,11 +59,12 @@ app.config['TEMPLATES_AUTO_RELOAD'] = True
 # job manager
 manager = JobManager()
 
-# mining client version
+# mining client info
+mining_client_filename = 'mining_client.py'
 mining_client_version = '1.0.0-fix1'
 
 # total movables mined
-total_mined = 0
+mseds_mined = 0
 
 
 def check_auth(username, password):
@@ -114,10 +118,9 @@ def serve_js(filename):
 
 @app.route('/get_mining_client')
 def get_mining_client():
-    client_filename = 'mining_client.py'
-    response = make_response(render_template(client_filename, client_version=mining_client_version))
+    response = make_response(render_template(mining_client_filename, client_version=mining_client_version))
     response.headers.set('Content-Type', 'application/octet-stream')
-    response.headers.set('Content-Disposition', 'attachment', filename=client_filename)
+    response.headers.set('Content-Disposition', 'attachment', filename=mining_client_filename)
     return response
 
 
@@ -125,28 +128,28 @@ def get_mining_client():
 
 @app.route('/api/submit_mii_job', methods=['POST'])
 def api_submit_mii_job():
-    job = None
+    main_job = None
     part1_job = None
     # parse job submission
     submission = request.get_json(silent=True)
     if submission:
-        job = parse_mii_job_submission(request.json)
+        main_job  = parse_mii_job_submission(request.json)
         part1_job = parse_part1_job_submission(request.json)
     else:
-        job = parse_mii_job_submission(request.form, mii_file=request.files['mii_file'])
+        main_job  = parse_mii_job_submission(request.form, mii_file=request.files['mii_file'])
         part1_job = parse_part1_job_submission(request.form)
     # returns error message if job json is invalid
-    if type(job) is str:
-        return error(job)
+    if type(main_job) is str:
+        return error(mii_job)
     if type(part1_job) is str:
         return error(part1_job)
-    part1_job.prerequisite = job.key
+    part1_job.prerequisite = main_job.key
     part1_res = submit_generic_job(part1_job)
     if not part1_res[0]:
         return error(part1_res[1])
-    res = submit_generic_job(job, queue=True)
+    res = submit_generic_job(main_job, queue=True)
     if not res[0]:
-        manager.fulfill_job(job.key)
+        manager.fulfill_job(main_job.key)
     return success({
         'mii' : res[1].key if res[0] else '',
         'id0' : part1_res[1].key
@@ -154,19 +157,19 @@ def api_submit_mii_job():
 
 @app.route('/api/submit_fc_job', methods=['POST'])
 def api_submit_fc_job():
-    job = None
+    main_job = None
     part1_job = None
     # parse job submission
     submission = request.get_json(silent=True)
     if submission:
-        job = parse_fc_job_submission(request.json)
+        main_job  = parse_fc_job_submission(request.json)
         part1_job = parse_part1_job_submission(request.json)
     else:
-        job = parse_fc_job_submission(request.form)
+        main_job  = parse_fc_job_submission(request.form)
         part1_job = parse_part1_job_submission(request.form)
     # returns error message if job json is invalid
-    if type(job) is str:
-        return error(job)
+    if type(main_job) is str:
+        return error(main_job)
     if type(part1_job) is str:
         return error(part1_job)
     part1_job.prerequisite = job.key
@@ -291,14 +294,14 @@ def api_reset_job(key):
 
 @app.route('/api/complete_job/<key>', methods=['POST'])
 def api_complete_job(key):
-    global total_mined
+    global mseds_mined
     if not is_job_key(key):
         return error('Invalid Job Key')
     result = base64.b64decode(request.json['result'])
     if validate_job_result(key, result):
         manager.complete_job(key, result)
         app.logger.info(f'{log_prefix(key)} completed')
-        total_mined += 1
+        mseds_mined += 1
     else:
         app.logger.info(f'{log_prefix(key)} uploaded faulty result')
         manager.fail_job(key, 'miner uploaded faulty result') # probably shouldn't fail?
@@ -318,7 +321,7 @@ def api_check_network_stats():
         'waiting': manager.count_jobs('waiting'),
         'working': manager.count_jobs('working'),
         'miners': manager.count_miners(active_only=True),
-        'totalMined': total_mined
+        'totalMined': mseds_mined
     })
 
 @app.route('/api/admin/list_jobs')
@@ -573,17 +576,22 @@ def process_mii_file(mii_file):
             raw_data = decoded[0].data
         except:
             pass
-    if raw_data and len(raw_data) == 112:
-        # from seedminer_launcher3.py by zoogie
-        # https://github.com/zoogie/seedminer/blob/master/seedminer/seedminer_launcher3.py#L126-L130
-        nonce = raw_data[:8] + b"\x00" * 4
-        nk31 = 0x59FC817E6446EA6190347B20E9BDCE52
-        cipher = AES.new(nk31.to_bytes(16, 'big'), AES.MODE_CCM, nonce)
-        dec = cipher.decrypt(raw_data[8:0x60])
-        nonce = nonce[:8]
-        final = dec[:12] + nonce + dec[12:]
-        app.logger.info(hexlify(final[4:4 + 8]).decode('ascii'))
-        return hexlify(final[4:4 + 8]).decode('ascii')
+    if raw_data:
+        return get_lfcs_hash_from_mii(raw_data)
+
+# Modified from seedminer_launcher3.py by zoogie
+# https://github.com/zoogie/seedminer/blob/master/seedminer/seedminer_launcher3.py#L126-L130
+def get_lfcs_hash_from_mii(mii_data_enc):
+    if 112 != len(mii_data):
+        raise ValueError('Incorrect Mii data length')
+    # decrypt mii data
+    nonce = mii_data_enc[:8] + (b'\x00' * 4)
+    cipher = AES.new(slot0x31KeyN.to_bytes(16, 'big'), AES.MODE_CCM, nonce)
+    mii_data_dec = cipher.decrypt(mii_data_enc[8:0x60])
+    # get lfcs hash
+    lfcs_hash = hexlify(mii_data_dec[4:12]).decode('ascii')
+    app.logger.debug(f'Got LFCS hash: {lfcs_hash}')
+    return lfcs_hash
 
 def process_part1_file(part1_file):
     raw_data = part1_file.read()
@@ -602,7 +610,7 @@ def get_request_ip():
 
 if __name__ == '__main__':
     load_dotenv()
-    total_mined = count_total_mined()
-    app.logger.info(f'mined {total_mined} movables previously')
+    mseds_mined = count_mseds_mined()
+    app.logger.info(f'mined {mseds_mined} movables previously')
     from waitress import serve
     serve(app, host=os.getenv('HOST_ADDR', '127.0.0.1'), port=os.getenv('HOST_PORT', 7799))

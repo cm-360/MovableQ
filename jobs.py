@@ -8,8 +8,9 @@ from threading import RLock
 import base64
 
 
-mii_part1_path = os.getenv('MIIP1S_PATH', './miip1s')
-movable_path = os.getenv('MSEDS_PATH', './mseds')
+part1s_path = os.getenv('PART1S_PATH', './part1s')
+mseds_path = os.getenv('MSEDS_PATH', './mseds')
+
 job_lifetime = timedelta(minutes=5)
 miner_lifetime = timedelta(minutes=10)
 
@@ -348,7 +349,7 @@ class Job(Machine):
 
 class MiiJob(Job):
 
-    def __init__(self, id0, model, year, final):
+    def __init__(self, id0, model, year, lfcs_hash):
         super().__init__(id0, 'mii')
         self.add_transition('prepare', 'submitted', 'ready')
         # mii-specific job properties
@@ -361,7 +362,7 @@ class MiiJob(Job):
         yield from super().__iter__()
         yield 'model', self.console_model
         yield 'year', self.console_year
-        yield 'final', self.key
+        yield 'lfcs_hash', self.key
 
 
 class FCJob(Job):
@@ -436,24 +437,24 @@ class Miner():
         yield 'last_update', self.last_update.isoformat()
 
 
-def mii_final_to_part1_path(final, create=False):
-    dir = os.path.join(mii_part1_path, f'{final[0:2]}/{final[2:4]}')
+def lfcs_hash_to_part1_path(lfcs_hash, create=False):
+    part1_dir = os.path.join(part1s_path, f'{lfcs_hash[0:2]}/{lfcs_hash[2:4]}')
     if create:
-        os.makedirs(dir, exist_ok=True)
-    return os.path.join(dir, final)
+        os.makedirs(part1_dir, exist_ok=True)
+    return os.path.join(part1_dir, lfcs_hash)
 
-def mii_part1_exists(final):
-    part1_path = mii_final_to_part1_path(final)
+def part1_exists(lfcs_hash):
+    part1_path = lfcs_hash_to_part1_path(lfcs_hash)
     return os.path.isfile(part1_path)
 
-def save_mii_part1(final, part1):
-    with open(mii_final_to_part1_path(final, create=True), 'wb') as part1_file:
+def save_part1(lfcs_hash, part1):
+    with open(lfcs_hash_to_part1_path(lfcs_hash, create=True), 'wb') as part1_file:
         part1_file.write(part1)
 
-def read_mii_part1(final):
-    if not mii_part1_exists(final):
+def read_part1(lfcs_hash):
+    if not part1_exists(lfcs_hash):
         return
-    with open(mii_final_to_part1_path(final), 'rb') as part1_file:
+    with open(lfcs_hash_to_part1_path(lfcs_hash), 'rb') as part1_file:
         lfcs = part1_file.read()
         if len(lfcs) < 5: # broken file?
             return
@@ -462,14 +463,14 @@ def read_mii_part1(final):
 
 
 def id0_to_movable_path(id0, create=False):
-    dir = os.path.join(movable_path, f'{id0[0:2]}/{id0[2:4]}')
+    movable_dir = os.path.join(mseds_path, f'{id0[0:2]}/{id0[2:4]}')
     if create:
-        os.makedirs(dir, exist_ok=True)
-    return os.path.join(dir, id0)
+        os.makedirs(movable_dir, exist_ok=True)
+    return os.path.join(movable_dir, id0)
 
 def movable_exists(id0):
     movable_path = id0_to_movable_path(id0)
-    return os.path.isfile(movable_path)
+    return os.path.isfile(mseds_path)
 
 def save_movable(id0, movable):
     with open(id0_to_movable_path(id0, create=True), 'wb') as movable_file:
@@ -488,5 +489,8 @@ def read_movable(id0):
             return
 
 
-def count_total_mined():
-    return sum(len(files) for _, _, files in os.walk(movable_path))
+def count_part1s_collected():
+    return sum(len(files) for _, _, files in os.walk(part1s_path))
+
+def count_mseds_mined():
+    return sum(len(files) for _, _, files in os.walk(mseds_path))
