@@ -18,7 +18,7 @@ import json
 import os
 import re
 
-from jobs import JobManager, MiiJob, FCJob, Part1Job, read_movable, count_mseds_mined
+from jobs import JobManager, MiiJob, FCJob, Part1Job, read_movable, count_mseds_mined, count_lfcses_mined, count_lfcses_dumped
 from validators import is_job_key, is_id0, is_system_id, is_friend_code, validate_job_result
 
 
@@ -57,8 +57,28 @@ mining_client_filename = 'mining_client.py'
 mining_client_version = '1.0.0-fix1'
 version_split_regex = re.compile(r'[.+-]')
 
-# total movables mined
+# completion totals
 mseds_mined = 0
+lfcses_mined = 0
+lfcses_dumped = 0
+
+
+# authentication
+
+def check_auth(username, password):
+    return username == os.getenv('ADMIN_USER', 'admin') and password == os.getenv('ADMIN_PASS', 'INSECURE')
+
+# https://stackoverflow.com/questions/22919182/flask-http-basicauth-how-does-it-work
+def login_required(f):
+    @wraps(f)
+    def wrapped_view(**kwargs):
+        auth = request.authorization
+        if not (auth and check_auth(auth.username, auth.password)):
+            return ('Unauthorized', 401, {
+                'WWW-Authenticate': 'Basic realm="Login Required"'
+            })
+        return f(**kwargs)
+    return wrapped_view
 
 
 # frontend routes
@@ -257,7 +277,9 @@ def api_complete_job(key):
     # complete job
     manager.complete_job(key, result)
     app.logger.info(f'{log_prefix(key)} completed')
-    mseds_mined += 1
+    # update counter
+    if 'part1' == job_type:
+        mseds_mined += 1
     return success()
 
 @app.route('/api/fail_job/<key>', methods=['POST'])
@@ -295,7 +317,7 @@ def api_admin_list_miners():
         })
 
 
-# response templates
+# flask helpers
 
 def success(data={}):
     response_json = json.dumps({
@@ -311,29 +333,11 @@ def error(message, code=400):
     })
     return make_response(response_json, code)
 
-
-# flask helpers
-
 def log_prefix(key=None):
     prefix = '(' + get_request_ip() + ')'
     if key:
         prefix += f' {key}'
     return prefix
-
-def check_auth(username, password):
-    return username == os.getenv('ADMIN_USER', 'admin') and password == os.getenv('ADMIN_PASS', 'INSECURE')
-
-# https://stackoverflow.com/questions/22919182/flask-http-basicauth-how-does-it-work
-def login_required(f):
-    @wraps(f)
-    def wrapped_view(**kwargs):
-        auth = request.authorization
-        if not (auth and check_auth(auth.username, auth.password)):
-            return ('Unauthorized', 401, {
-                'WWW-Authenticate': 'Basic realm="Login Required"'
-            })
-        return f(**kwargs)
-    return wrapped_view
 
 @app.errorhandler(Exception)
 def handle_exception(e):
@@ -578,7 +582,14 @@ class InvalidSubmissionFieldError(Exception):
 
 if __name__ == '__main__':
     load_dotenv()
+    # count previous stats
     mseds_mined = count_mseds_mined()
-    app.logger.info(f'mined {mseds_mined} movables previously')
+    lfcses_mined = count_lfcses_mined()
+    lfcses_dumped = count_lfcses_dumped()
+    app.logger.info('Previous totals:')
+    app.logger.info(f'  {mseds_mined} mseds mined')
+    app.logger.info(f'  {lfcses_mined} lfcses mined')
+    app.logger.info(f'  {lfcses_dumped} dumped')
+    # start web server
     from waitress import serve
     serve(app, host=os.getenv('HOST_ADDR', '127.0.0.1'), port=os.getenv('HOST_PORT', 7799))
