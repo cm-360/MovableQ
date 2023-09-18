@@ -29,18 +29,28 @@ class JobManager():
             return self.jobs[key]
 
     # adds a job to the current job list, raises a ValueError if it exists already
-    def submit_job(self, job):
+    def submit_job(self, job, overwrite_canceled=False):
         with self.lock:
             if self.job_exists(job.key):
-                raise ValueError(f'Duplicate job: {job.key}')
+                if overwrite_canceled and 'canceled' == self.jobs[job.key].state:
+                    self.delete_job(job.key)
+                else:
+                    raise ValueError(f'Duplicate job: {job.key}')
             self.jobs[job.key] = job
 
-    def submit_job_chain(self, chain):
+    def submit_job_chain(self, chain, overwrite_canceled=False):
         with self.lock:
+            to_delete = []
             # loop twice so we submit no jobs if any are duplicates
             for job in chain:
                 if self.job_exists(job.key):
+                    continue
+                if overwrite_canceled and 'canceled' == self.jobs[job.key].state:
+                    to_delete.append(job.key)
+                else:
                     raise ValueError(f'Duplicate job: {job.key}')
+            for key in to_delete:
+                self.delete_job(key)
             for job in chain:
                 self.jobs[job.key] = job
 
