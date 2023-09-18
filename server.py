@@ -26,7 +26,7 @@ from jobs import JobManager, MiiJob, FCJob, Part1Job, read_movable, count_mseds_
 
 # constants
 id0_regex = re.compile(r'(?![0-9a-fA-F]{4}(01|00)[0-9a-fA-F]{18}00[0-9a-fA-F]{6})[0-9a-fA-F]{32}')
-mii_final_regex = re.compile(r'[a-fA-F0-9]{16}')
+lfcs_hash_regex = re.compile(r'[a-fA-F0-9]{16}')
 version_split_regex = re.compile(r'[.+-]')
 
 # AES keys
@@ -434,13 +434,13 @@ def trim_canceled_jobs():
 # helpers
 
 def is_job_key(value):
-    return is_id0 or is_mii_final or is_friend_code
+    return is_id0 or is_lfcs_hash or is_friend_code
 
 def is_id0(value):
     return bool(id0_regex.fullmatch(value))
 
-def is_mii_final(value):
-    return bool(mii_final_regex.fullmatch(value))
+def is_lfcs_hash(value):
+    return bool(lfcs_hash_regex.fullmatch(value))
 
 # Modified from https://github.com/nh-server/Kurisu/blob/main/cogs/friendcode.py#L28
 def is_friend_code(value):
@@ -509,15 +509,15 @@ def parse_mii_job_submission(submission, mii_file=None):
             except (ValueError, TypeError) as e:
                 invalid.append('year')
         # mii data
-        mii_final = submission.get('mii_final')
+        lfcs_hash = submission.get('lfcs_hash')
         if mii_file:
-            mii_final = process_mii_file(mii_file)
-        if not mii_final:
+            lfcs_hash = process_mii_file(mii_file)
+        if not lfcs_hash:
             invalid.append('mii')
         if invalid:
             return 'invalid:' + ','.join(invalid)
         else:
-            return MiiJob(mii_final, model, year, mii_final)
+            return MiiJob(lfcs_hash, model, year, lfcs_hash)
     except KeyError as e:
         raise KeyError(f'Missing parameter "{e}"')
 
