@@ -272,7 +272,7 @@ def do_mii_mine(model, year, system_id, timeout=0):
 		# check output
 		if os.path.isfile('movable_part1.sed'):
 			print(f'Mining complete! Uploading movable_part1...')
-			upload_part1(system_id)
+			upload_lfcs(system_id)
 		else:
 			print(f'bfCL was not able to complete the mining job!')
 	finally:
@@ -488,7 +488,7 @@ def run_client():
 					do_job(job)
 				else:
 					print(f'No mining jobs, waiting {request_cooldown} seconds...', end='\r')
-				time.sleep(request_cooldown)
+					time.sleep(request_cooldown)
 			finally:
 				print() # wait message carriage return fix
 		except KeyboardInterrupt:
