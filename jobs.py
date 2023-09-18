@@ -145,7 +145,7 @@ class JobManager():
                     self.miners[name] = Miner(name, ip)
                 return self.miners[name]
 
-    # save movable to disk and delete job
+    # save result to disk and delete job
     def complete_job(self, key, result):
         with self.lock:
             job = self.jobs[key]
@@ -154,21 +154,17 @@ class JobManager():
                 save_part1(key, result)
             elif job.type == 'part1':
                 save_movable(key, result)
-            self.fulfill_job(key, result)
+            self.fulfill_dependents(key, result)
             self.delete_job(key)
 
-    # fulfill jobs that have prerequisite
-    def fulfill_job(self, key, part1=None):
-        if not part1:
-            part1 = read_part1(key)
-        if not part1:
-            return
-        part1 = str(base64.b64encode(part1), 'utf-8')
+    # fulfill any jobs that have the given job as a prerequisite
+    def fulfill_dependents(self, key, result):
         with self.lock:
             for job in self.jobs.values():
-                if job.type == 'part1' and job.prerequisite == key:
-                    job.add_part1(part1)
+                if job.prereq_key == key:
+                    job.pass_prereq(result)
                     self.queue_job(job.key)
+            # str(base64.b64encode(part1), 'utf-8')
 
     # mark job as failed and attach note
     def fail_job(self, key, note=None):
@@ -418,24 +414,24 @@ class FCJob(Job):
 # Job to obtain movable.sed using a part1 file
 class Part1Job(ChainJob):
 
-    def __init__(self, id0, part1=None, prereq_key=None):
+    def __init__(self, id0, lfcs=None, prereq_key=None):
         super().__init__(id0, 'part1', prereq_key)
-        if not prereq_key and not part1:
-            raise ValueError('Must supply either part1 or a prerequisite job key')
+        if not prereq_key and not lfcs:
+            raise ValueError('Must supply either a LFCS or a prerequisite job key')
         # part1-specific job properties
-        self.part1 = part1
+        self.lfcs = lfcs
         # part1 jobs need part1 (duh)
         self.prepare()
 
     def on_prepare(self):
-        if self.part1:
+        if self.lfcs:
             self.to_ready()
     
-    def on_pass_prereq(self, part1):
-        self.part1 = part1
+    def on_pass_prereq(self, lfcs):
+        self.lfcs = lfcs
 
-    def has_part1(self):
-        if self.part1:
+    def has_lfcs(self):
+        if self.lfcs:
             return True
         else:
             return False
@@ -443,8 +439,7 @@ class Part1Job(ChainJob):
     def __iter__(self):
         yield from super().__iter__()
         yield 'id0', self.key
-        yield 'part1', self.part1
-        yield 'prerequisite', self.prerequisite
+        yield 'lfcs', self.lfcs
 
 
 class Miner():

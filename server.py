@@ -131,9 +131,16 @@ def api_submit_job_chain():
     submission = request.get_json(silent=True)
     if not submission:
         return error('Missing request JSON')
-    chain = parse_job_chain_submission(submission)
+    # parse and submit chain
+    chain = parse_job_chain(submission)
     manager.submit_job_chain(chain)
-    return success()
+    # queue jobs with no prerequisites
+    first_job = chain[0]
+    if 'ready' == first_job.state:
+        manager.queue_job(first_job.key)
+    # return job keys to submitter
+    chain_keys = [j.key for j in chain]
+    return success(chain_keys)
 
 @app.route('/api/submit_mii_job', methods=['POST'])
 def api_submit_mii_job():
@@ -499,16 +506,23 @@ def compare(a, b):
 
 def parse_job_chain(chain_data):
     jobs = []
+    previous_job = None
+    entry_index = 0
     for entry in chain_data:
-        entry_type = entry['type']
-        if 'mii' == entry_type:
-            jobs.append(parse_mii_job(entry))
-        elif 'fc' == entry_type:
-            jobs.append(parse_fc_job(entry))
-        elif 'part1' == entry_type:
-            jobs.append(parse_part1_job(entry))
-        else:
-            raise ValueError(f'Invalid job type "{entry_type}"')
+        try:
+            entry_type = entry['type']
+            if 'mii' == entry_type:
+                jobs.append(parse_mii_job(entry))
+            elif 'fc' == entry_type:
+                jobs.append(parse_fc_job(entry))
+            elif 'part1' == entry_type:
+                jobs.append(parse_part1_job(entry, prereq_key=previous_job.key, should_have_lfcs=False))
+            else:
+                raise ValueError(f'Invalid job type "{entry_type}"')
+        except Exception as e:
+            raise JobSubmissionError(e, entry_index)
+        previous_job = jobs[entry_index]
+        entry_index += 1
     return jobs
 
 def parse_mii_job(job_data):
@@ -532,7 +546,7 @@ def parse_mii_job(job_data):
         if not lfcs_hash:
             invalid.append('lfcs_hash')
         if invalid:
-            raise ValueError('invalid:' + ','.join(invalid))
+            raise InvalidSubmissionFieldError(invalid)
         else:
             return MiiJob(lfcs_hash, model, year)
     except KeyError as e:
@@ -559,7 +573,7 @@ def get_lfcs_hash_from_mii_file(job_data):
     mii_mimetype = job_data.get('mii_mimetype')
     # determine uploaded file type and get encrypted mii data
     mii_data_enc = None
-    if 'application/octet-stream' == mii_mimetype or mii_filename.lower().endswith('.bin'):
+    if 112 == len(mii_data) or 'application/octet-stream' == mii_mimetype or mii_filename.lower().endswith('.bin'):
         mii_data_enc = mii_data
     else:
         try:
@@ -592,13 +606,13 @@ def parse_fc_job(job_data):
         # friend code
         friend_code = job_data['friend_code'].replace('-', '')
         if not is_friend_code(friend_code):
-            raise ValueError('invalid:friend_code')
+            raise InvalidSubmissionFieldError(['friend_code'])
         else:
             return FCJob(friend_code)
     except KeyError as e:
         raise KeyError(f'Missing parameter "{e}"')
 
-def parse_part1_job(job_data):
+def parse_part1_job(job_data, prereq_key=None, should_have_lfcs=True):
     invalid = []
     try:
         # id0
@@ -606,17 +620,17 @@ def parse_part1_job(job_data):
         if not is_id0(id0):
             invalid.append('id0')
         # lfcs
-        lfcs = get_lfcs_from_part1_job(job_data)
-        if not lfcs:
-            invalid.append('part1')
+        lfcs = get_lfcs_from_part1_job(job_data, should_have_lfcs)
+        if should_have_lfcs and not lfcs:
+            invalid.append('lfcs')
         if invalid:
-            raise ValueError('invalid:' + ','.join(invalid))
+            raise InvalidSubmissionFieldError(invalid)
         else:
-            return Part1Job(id0, part1=lfcs)
+            return Part1Job(id0, lfcs=lfcs, prereq_key=prereq_key)
     except KeyError as e:
         raise KeyError(f'Missing parameter "{e}"')
 
-def get_lfcs_from_part1_job(job_data):
+def get_lfcs_from_part1_job(job_data, should_have_lfcs=True):
     try:
         # explictly declared
         lfcs = job_data.get('lfcs')
@@ -628,6 +642,9 @@ def get_lfcs_from_part1_job(job_data):
             return lfcs
     except ValueError as e:
         raise e
+    except KeyError as e:
+        if should_have_lfcs:
+            raise e
     except Exception as e:
         raise ValueError('Could not get LFCS from submission') from e
 
@@ -643,6 +660,21 @@ def get_request_ip():
         return request.environ['REMOTE_ADDR']
     else:
         return request.environ['HTTP_X_FORWARDED_FOR']
+
+
+class JobSubmissionError(Exception):
+
+    def __init__(self, cause, source):
+        self.cause = cause
+        self.source = source
+        self.message = f'Caught {type(cause).__name__}: {cause}; while parsing job entry {source}'
+        super().__init__(self.message)
+
+
+class InvalidSubmissionFieldError(Exception):
+    def __init__(self, invalid):
+        self.invalid = invalid
+        super().__init__('invalid:' + ','.join(invalid))
 
 
 # main
