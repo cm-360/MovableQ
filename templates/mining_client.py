@@ -415,6 +415,7 @@ def fail_job(key, note):
 		json={'note': note}
 	)
 
+# we actually upload only the keyY, but whatever
 def upload_movable(id0):
 	if dry_run:
 		return
@@ -489,8 +490,9 @@ def run_client():
 				else:
 					print(f'No mining jobs, waiting {request_cooldown} seconds...', end='\r')
 					time.sleep(request_cooldown)
-			finally:
+			except Exception as e:
 				print() # wait message carriage return fix
+				raise e
 		except KeyboardInterrupt:
 			should_exit = input('Would you like to exit? (y/n): ')
 			if should_exit.lower().startswith('y'):
