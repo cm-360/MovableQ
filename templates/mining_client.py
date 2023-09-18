@@ -157,7 +157,6 @@ def generate_part2(seed, *id0s):
 
 	return seed[0:12] + int2bytes(msed3) + hash_final
 
-
 def get_lfcs_start_and_flags(model, year):
 	if 'old' == model:
 		model_bytes = b'\x00\x00'
@@ -168,6 +167,51 @@ def get_lfcs_start_and_flags(model, year):
 	else:
 		raise ValueError('Invalid model')
 	return start_lfcs, model_bytes
+
+# Calculates the max offset bfCL should check for a given LFCS
+# Adapted from @eip618's BFM autolauncher script
+def get_max_offset(lfcs_bytes):
+	lfcs = int.from_bytes(lfcs_bytes, byteorder='little')
+	is_new = lfcs >> 32
+	lfcs &= 0xFFFFFFF0
+	lfcs |= 0x8
+
+	# determine offsets/distances and load LFCSes for appropriate console type
+	if 2 == is_new:
+		max_offsets = [     16,      16,      20]
+		distances   = [0x00000, 0x00100, 0x00200]
+		with open("saves/new-v2.dat", "rb") as lfcs_file:
+			lfcs_buffer = lfcs_file.read()
+	elif 0 == is_new:
+		max_offsets = [     18,      18,      20]
+		distances   = [0x00000, 0x00100, 0x00200]
+		with open("saves/old-v2.dat", "rb") as lfcs_file:
+			lfcs_buffer = lfcs_file.read()
+	else:
+		raise ValueError('LFCS high u32 is not 0 or 2')
+
+	# unpack LFCSes from binary data
+	lfcs_list=[]
+	lfcs_count = len(lfcs_buffer) // 8
+	for i in range(0, lfcs_count):
+		lfcs_list.append(struct.unpack('<I', lfcs_buffer[i*8:i*8+4])[0])
+
+	# compare given LFCS to saved list and find smallest distance estimate
+	distance = lfcs - lfcs_list[lfcs_count - 1]
+	for i in range(1, lfcs_count - 1):
+		if lfcs < lfcs_list[i]:
+			distance = min(lfcs - lfcs_list[i-1], lfcs_list[i+1] - lfcs)
+			break
+
+	# print('Distance: %08X' % distance)
+	# get largest max offset for calulcated distance estimate
+	i = 0
+	for d in distances:
+		if distance < d:
+			return max_offsets[i-1] + 10
+		i += 1
+	return max_offsets[len(distances) - 1] + 10
+
 
 def validate_benchmark():
 	if os.path.isfile(benchmark_filename):
@@ -218,36 +262,37 @@ def do_benchmark():
 		cleanup_mining_files()
 		dry_run = False
 
-def do_mii_mine(model, year, lfcs_hash, timeout=0):
+def do_mii_mine(model, year, system_id, timeout=0):
 	cleanup_mining_files()
 	try:
 		start_lfcs, model_bytes = get_lfcs_start_and_flags(model, year)
-		args = "lfcs {:08X} {} {} {:08X}".format(endian4(start_lfcs), hexlify(model_bytes).decode('ascii'), lfcs_hash, endian4(0))
-		print(f'bfcl args:' + args)
-		run_bfcl(lfcs_hash, args.split())
+		args = "lfcs {:08X} {} {} {:08X}".format(endian4(start_lfcs), hexlify(model_bytes).decode('ascii'), system_id, endian4(0))
+		print(f'bfcl args: ' + args)
+		run_bfcl(system_id, args.split())
 		# check output
 		if os.path.isfile('movable_part1.sed'):
 			print(f'Mining complete! Uploading movable_part1...')
-			upload_part1(lfcs_hash)
+			upload_part1(system_id)
 		else:
 			print(f'bfCL was not able to complete the mining job!')
 	finally:
 		cleanup_mining_files()
 
-def do_part1_mine(id0, part1_data, timeout=0):
+def do_part1_mine(id0, lfcs, timeout=0):
 	cleanup_mining_files()
+	lfcs_bytes = unhexlify(lfcs)
 	try:
 		# bfCL
-		max_offset = get_max_offset(get_lfcs(part1_data))
+		max_offset = get_max_offset(lfcs_bytes)
 		print(f'Using maximum offset: {max_offset}')
 
 		# from seedminer_launcher3.py by zoogie
 		# https://github.com/zoogie/seedminer/blob/master/seedminer/seedminer_launcher3.py#L394-L402
-		buf = generate_part2(part1_data, id0)
+		buf = generate_part2(lfcs_bytes, id0)
 		keyy = hexlify(buf[:16]).decode('ascii')
 		mid0 = hexlify(buf[16:32]).decode('ascii')
 		args = "msky {} {} {:08X} {:08X}".format(keyy, mid0, endian4(0), endian4(max_offset))
-		print(f'bfcl args:' + args)
+		print(f'bfcl args: ' + args)
 		run_bfcl(id0, args.split())
 		# check output
 		if os.path.isfile('movable.sed'):
@@ -258,7 +303,7 @@ def do_part1_mine(id0, part1_data, timeout=0):
 	finally:
 		cleanup_mining_files()
 
-def run_bfcl(key, args, rws = force_reduced_work_size):
+def run_bfcl(key, args, rws=force_reduced_work_size):
 	try:
 		# start mining
 		bfcl_args = [
@@ -278,7 +323,8 @@ def run_bfcl(key, args, rws = force_reduced_work_size):
 						print('Job canceled')
 						kill_process(process)
 						return
-			if not rws and (process.returncode == 251 or process.returncode == 4294967291):  # Help wanted for a better way of catching an exit code of '-5'
+			# Help wanted for a better way of catching an exit code of '-5'
+			if not rws and (process.returncode == 251 or process.returncode == 0xFFFFFFFB):
 				time.sleep(3)  # Just wait a few seconds so we don't burn out our graphics card
 				return run_bfcl(key, args, True)
 			else:
@@ -302,52 +348,6 @@ def check_bfcl_return_code(return_code):
 		raise BfclReturnCodeError(return_code, 'invalid arguments (not verified, could be generic error)')
 	elif 101 == return_code:
 		raise BfclReturnCodeError(return_code, 'maximum offset reached without a hit')
-
-def get_lfcs(part1_data):
-	return int.from_bytes(part1_data[:8], byteorder='little')
-
-# Calculates the max offset bfCL should check for a given LFCS
-# Adapted from @eip618's BFM autolauncher script
-def get_max_offset(lfcs):
-	is_new = lfcs >> 32
-	lfcs &= 0xFFFFFFF0
-	lfcs |= 0x8
-
-	# determine offsets/distances and load LFCSes for appropriate console type
-	if 2 == is_new:
-		max_offsets = [     16,      16,      20]
-		distances   = [0x00000, 0x00100, 0x00200]
-		with open("saves/new-v2.dat", "rb") as lfcs_file:
-			lfcs_buffer = lfcs_file.read()
-	elif 0 == is_new:
-		max_offsets = [     18,      18,      20]
-		distances   = [0x00000, 0x00100, 0x00200]
-		with open("saves/old-v2.dat", "rb") as lfcs_file:
-			lfcs_buffer = lfcs_file.read()
-	else:
-		raise ValueError('LFCS high u32 is not 0 or 2')
-
-	# unpack LFCSes from binary data
-	lfcs_list=[]
-	lfcs_count = len(lfcs_buffer) // 8
-	for i in range(0, lfcs_count):
-		lfcs_list.append(struct.unpack('<I', lfcs_buffer[i*8:i*8+4])[0])
-
-	# compare given LFCS to saved list and find smallest distance estimate
-	distance = lfcs - lfcs_list[lfcs_count - 1]
-	for i in range(1, lfcs_count - 1):
-		if lfcs < lfcs_list[i]:
-			distance = min(lfcs - lfcs_list[i-1], lfcs_list[i+1] - lfcs)
-			break
-
-	# print('Distance: %08X' % distance)
-	# get largest max offset for calulcated distance estimate
-	i = 0
-	for d in distances:
-		if distance < d:
-			return max_offsets[i-1] + 10
-		i += 1
-	return max_offsets[len(distances) - 1] + 10
 
 def cleanup_mining_files():
 	to_remove = ['movable.sed', 'movable_part1.sed']
@@ -377,59 +377,66 @@ def do_job(job):
 	job_type = job['type']
 	if 'mii' == job_type:
 		print('Mii job received:')
-		print(f'  Model:     {job["model"]}')
-		print(f'  Year:      {job["year"]}')
-		print(f'  LFCS Hash: {job["lfcs_hash"]}')
+		print(f'  Model: {job["model"]}')
+		print(f'  Year:  {job["year"]}')
+		print(f'  SysID: {job["system_id"]}')
 		do_mii_mine(
 			job['model'],
 			job['year'],
-			job['lfcs_hash']
+			job['system_id']
 		)
 	elif 'part1' == job_type:
 		print('Part1 job received:')
-		print(f'  ID0:   {job["id0"]}')
+		print(f'  ID0:  {job["id0"]}')
+		print(f'  LFCS: {job["lfcs"]}')
 		do_part1_mine(
 			job['id0'],
-			base64.b64decode(job['part1'])
+			job['lfcs']
 		)
 	else:
 		print(f'Unknown job type "{job_type}" received, ignoring...')
 
-def update_job(id0):
+def update_job(key):
 	if dry_run:
 		return
-	response = requests.get(f'{base_url}/api/update_job/{id0}')
+	response = requests.get(f'{base_url}/api/update_job/{key}')
 	return response.json()['data'].get('status')
 
-def release_job(id0):
+def release_job(key):
 	if dry_run:
 		return
-	requests.get(f'{base_url}/api/release_job/{id0}')
+	requests.get(f'{base_url}/api/release_job/{key}')
 
-def fail_job(id0, note):
+def fail_job(key, note):
 	if dry_run:
 		return
 	requests.post(
-		f'{base_url}/api/fail_job/{id0}',
+		f'{base_url}/api/fail_job/{key}',
 		json={'note': note}
 	)
 
 def upload_movable(id0):
 	if dry_run:
 		return
-	with open('movable.sed', 'rb') as movable:
+	with open('movable.sed', 'rb') as movable_file:
 		response = requests.post(
 			f'{base_url}/api/complete_job/{id0}',
-			json={'result': str(base64.b64encode(movable.read()[0x110:0x120]), 'utf-8')}
+			json = {
+				'result': str(base64.b64encode(movable_file.read()[0x110:0x120]), 'utf-8'),
+				'format': 'b64'
+			}
 		).json()
 
-def upload_part1(lfcs_hash):
+def upload_lfcs(system_id):
 	if dry_run:
 		return
-	with open('movable_part1.sed', 'rb') as part1:
+	with open('movable_part1.sed', 'rb') as part1_file:
 		response = requests.post(
-			f'{base_url}/api/complete_job/{lfcs_hash}',
-			json={'result': str(base64.b64encode(part1.read()[:5]), 'utf-8')}
+			f'{base_url}/api/complete_job/{system_id}',
+			json = {
+				'result': str(base64.b64encode(part1_file.read()[:8]), 'utf-8'),
+				'format': 'b64'
+			}
 		).json()
 
 def kill_process(process):
