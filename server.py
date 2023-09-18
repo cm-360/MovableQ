@@ -14,20 +14,13 @@ from binascii import hexlify
 from dotenv import load_dotenv
 
 import base64
-import hashlib
 import json
 import os
 import re
-import secrets
-import struct
 
 from jobs import JobManager, MiiJob, FCJob, Part1Job, read_movable, count_mseds_mined
+from validators import is_job_key, is_id0, is_system_id, is_friend_code
 
-
-# constants
-id0_regex = re.compile(r'(?![0-9a-fA-F]{4}(01|00)[0-9a-fA-F]{18}00[0-9a-fA-F]{6})[0-9a-fA-F]{32}')
-system_id_regex = re.compile(r'[a-fA-F0-9]{16}')
-version_split_regex = re.compile(r'[.+-]')
 
 # AES keys
 slot0x31KeyN = 0x59FC817E6446EA6190347B20E9BDCE52
@@ -62,6 +55,7 @@ manager = JobManager()
 # mining client info
 mining_client_filename = 'mining_client.py'
 mining_client_version = '1.0.0-fix1'
+version_split_regex = re.compile(r'[.+-]')
 
 # total movables mined
 mseds_mined = 0
@@ -445,33 +439,6 @@ def trim_canceled_jobs():
 
 
 # helpers
-
-def is_job_key(value):
-    if is_id0(value):
-        return True
-    if is_system_id(value):
-        return True
-    if is_friend_code(value):
-        return True
-    return False
-
-def is_id0(value):
-    return bool(id0_regex.fullmatch(value))
-
-def is_system_id(value):
-    return bool(system_id_regex.fullmatch(value))
-
-# Modified from https://github.com/nh-server/Kurisu/blob/main/cogs/friendcode.py#L28
-def is_friend_code(value):
-    try:
-        fc = int(value)
-    except ValueError:
-        return False
-    if fc > 0x7FFFFFFFFF:
-        return False
-    principal_id = fc & 0xFFFFFFFF
-    checksum = (fc & 0xFF00000000) >> 32
-    return hashlib.sha1(struct.pack('<L', principal_id)).digest()[0] >> 1 == checksum
 
 def validate_job_result(key, result):
     if len(key) == 16: # mii -> lfcs
