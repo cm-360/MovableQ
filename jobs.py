@@ -379,8 +379,8 @@ class ChainJob(Job):
 # Job to obtain movable_part1.sed from the LFCS hash in Mii data
 class MiiJob(Job):
 
-    def __init__(self, lfcs_hash, model, year):
-        super().__init__(lfcs_hash, 'mii')
+    def __init__(self, system_id, model, year):
+        super().__init__(system_id, 'mii')
         self.add_transition('prepare', 'submitted', 'ready')
         # mii-specific job properties
         self.console_model = model
@@ -392,7 +392,7 @@ class MiiJob(Job):
         yield from super().__iter__()
         yield 'model', self.console_model
         yield 'year', self.console_year
-        yield 'lfcs_hash', self.key
+        yield 'system_id', self.key
 
 
 # Job to obtain movable_part1.sed from a friend exchange
@@ -464,24 +464,24 @@ class Miner():
         yield 'last_update', self.last_update.isoformat()
 
 
-def lfcs_hash_to_part1_path(lfcs_hash, create=False):
-    part1_dir = os.path.join(part1s_path, f'{lfcs_hash[0:2]}/{lfcs_hash[2:4]}')
+def system_id_to_part1_path(system_id, create=False):
+    part1_dir = os.path.join(part1s_path, f'{system_id[0:2]}/{system_id[2:4]}')
     if create:
         os.makedirs(part1_dir, exist_ok=True)
-    return os.path.join(part1_dir, lfcs_hash)
+    return os.path.join(part1_dir, system_id)
 
-def part1_exists(lfcs_hash):
-    part1_path = lfcs_hash_to_part1_path(lfcs_hash)
+def part1_exists(system_id):
+    part1_path = system_id_to_part1_path(system_id)
     return os.path.isfile(part1_path)
 
-def save_part1(lfcs_hash, part1):
-    with open(lfcs_hash_to_part1_path(lfcs_hash, create=True), 'wb') as part1_file:
+def save_part1(system_id, part1):
+    with open(system_id_to_part1_path(system_id, create=True), 'wb') as part1_file:
         part1_file.write(part1)
 
-def read_part1(lfcs_hash):
-    if not part1_exists(lfcs_hash):
+def read_part1(system_id):
+    if not part1_exists(system_id):
         return
-    with open(lfcs_hash_to_part1_path(lfcs_hash), 'rb') as part1_file:
+    with open(system_id_to_part1_path(system_id), 'rb') as part1_file:
         lfcs = part1_file.read()
         if len(lfcs) < 5: # broken file?
             return

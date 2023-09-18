@@ -26,7 +26,7 @@ from jobs import JobManager, MiiJob, FCJob, Part1Job, read_movable, count_mseds_
 
 # constants
 id0_regex = re.compile(r'(?![0-9a-fA-F]{4}(01|00)[0-9a-fA-F]{18}00[0-9a-fA-F]{6})[0-9a-fA-F]{32}')
-lfcs_hash_regex = re.compile(r'[a-fA-F0-9]{16}')
+system_id_regex = re.compile(r'[a-fA-F0-9]{16}')
 version_split_regex = re.compile(r'[.+-]')
 
 # AES keys
@@ -450,13 +450,19 @@ def trim_canceled_jobs():
 # helpers
 
 def is_job_key(value):
-    return is_id0 or is_lfcs_hash or is_friend_code
+    if is_id0(value):
+        return True
+    if is_system_id(value):
+        return True
+    if is_friend_code(value):
+        return True
+    return False
 
 def is_id0(value):
     return bool(id0_regex.fullmatch(value))
 
-def is_lfcs_hash(value):
-    return bool(lfcs_hash_regex.fullmatch(value))
+def is_system_id(value):
+    return bool(system_id_regex.fullmatch(value))
 
 # Modified from https://github.com/nh-server/Kurisu/blob/main/cogs/friendcode.py#L28
 def is_friend_code(value):
@@ -541,33 +547,33 @@ def parse_mii_job(job_data):
                     invalid.append('year')
             except (ValueError, TypeError) as e:
                 invalid.append('year')
-        # lfcs hash
-        lfcs_hash = get_lfcs_hash_from_mii_job(job_data)
-        if not lfcs_hash:
-            invalid.append('lfcs_hash')
+        # system id
+        system_id = get_system_id_from_mii_job(job_data)
+        if not system_id:
+            invalid.append('system_id')
         if invalid:
             raise InvalidSubmissionFieldError(invalid)
         else:
-            return MiiJob(lfcs_hash, model, year)
+            return MiiJob(system_id, model, year)
     except KeyError as e:
         raise KeyError(f'Missing parameter "{e}"')
 
-def get_lfcs_hash_from_mii_job(job_data):
+def get_system_id_from_mii_job(job_data):
     try:
         # explictly declared
-        lfcs_hash = job_data.get('lfcs_hash')
-        if lfcs_hash:
-            return lfcs_hash
+        system_id = job_data.get('system_id')
+        if system_id:
+            return system_id
         # uploaded a mii qr or encrypted bin
-        lfcs_hash = get_lfcs_hash_from_mii_file(job_data)
-        if lfcs_hash:
-            return lfcs_hash
+        system_id = get_system_id_from_mii_file(job_data)
+        if system_id:
+            return system_id
     except ValueError as e:
         raise e
     except Exception as e:
         raise ValueError('Could not get LFCS hash from submission') from e
 
-def get_lfcs_hash_from_mii_file(job_data):
+def get_system_id_from_mii_file(job_data):
     mii_data = base64.b64decode(job_data['mii_data'])
     mii_filename = job_data.get('mii_filename', '')
     mii_mimetype = job_data.get('mii_mimetype')
@@ -585,21 +591,21 @@ def get_lfcs_hash_from_mii_file(job_data):
             pass
     # get lfcs from encrypted mii data
     if mii_data_enc:
-        return get_lfcs_hash_from_enc_mii(mii_data_enc)
+        return get_system_id_from_enc_mii(mii_data_enc)
 
 # Modified from seedminer_launcher3.py by zoogie
 # https://github.com/zoogie/seedminer/blob/master/seedminer/seedminer_launcher3.py#L126-L130
-def get_lfcs_hash_from_enc_mii(mii_data_enc):
+def get_system_id_from_enc_mii(mii_data_enc):
     if 112 != len(mii_data_enc):
         raise ValueError('Incorrect Mii data length')
     # decrypt mii data
     nonce = mii_data_enc[:8] + (b'\x00' * 4)
     cipher = AES.new(slot0x31KeyN.to_bytes(16, 'big'), AES.MODE_CCM, nonce)
     mii_data_dec = cipher.decrypt(mii_data_enc[8:0x60])
-    # get lfcs hash
-    lfcs_hash = hexlify(mii_data_dec[4:12]).decode('ascii')
-    app.logger.debug(f'Got LFCS hash: {lfcs_hash}')
-    return lfcs_hash
+    # get system id
+    system_id = hexlify(mii_data_dec[4:12]).decode('ascii')
+    app.logger.debug(f'Got system ID: {system_id}')
+    return system_id
 
 def parse_fc_job(job_data):
     try:
