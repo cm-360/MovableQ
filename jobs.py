@@ -43,7 +43,7 @@ class JobManager():
             to_delete = []
             # loop twice so we submit no jobs if any are duplicates
             for job in chain:
-                if self.job_exists(job.key):
+                if not self.job_exists(job.key):
                     continue
                 if overwrite_canceled and 'canceled' == self.jobs[job.key].state:
                     to_delete.append(job.key)
