@@ -2,10 +2,11 @@ from transitions import Machine
 
 from collections import deque
 from datetime import datetime, timedelta, timezone
+import base64
 import json
 import os
 from threading import RLock
-import base64
+from binascii import hexlify
 
 
 fc_lfcses_path = os.getenv('FC_LFCSES_PATH', './lfcses/fc')
@@ -182,7 +183,7 @@ class JobManager():
     def fulfill_dependents(self, key, result):
         with self.lock:
             for job in self.jobs.values():
-                if job.prereq_key == key:
+                if isinstance(job, ChainJob) and job.prereq_key == key:
                     job.pass_prereq(result)
                     self.queue_job(job.key)
             # str(base64.b64encode(part1), 'utf-8')
@@ -449,7 +450,7 @@ class Part1Job(ChainJob):
             self.to_ready()
     
     def on_pass_prereq(self, lfcs):
-        self.lfcs = lfcs
+        self.lfcs = hexlify(lfcs).decode('ascii')
 
     def has_lfcs(self):
         if self.lfcs:
