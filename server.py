@@ -67,22 +67,6 @@ mining_client_version = '1.0.0-fix1'
 mseds_mined = 0
 
 
-def check_auth(username, password):
-    return username == os.getenv('ADMIN_USER', 'admin') and password == os.getenv('ADMIN_PASS', 'INSECURE')
-
-# https://stackoverflow.com/questions/22919182/flask-http-basicauth-how-does-it-work
-def login_required(f):
-    @wraps(f)
-    def wrapped_view(**kwargs):
-        auth = request.authorization
-        if not (auth and check_auth(auth.username, auth.password)):
-            return ('Unauthorized', 401, {
-                'WWW-Authenticate': 'Basic realm="Login Required"'
-            })
-        return f(**kwargs)
-    return wrapped_view
-
-
 # frontend routes
 
 @app.route('/')
@@ -121,6 +105,18 @@ def get_mining_client():
     response = make_response(render_template(mining_client_filename, client_version=mining_client_version))
     response.headers.set('Content-Type', 'application/octet-stream')
     response.headers.set('Content-Disposition', 'attachment', filename=mining_client_filename)
+    return response
+
+@app.route('/download_movable/<id0>')
+def download_movable(id0):
+    if not is_id0(id0):
+        return error('Invalid ID0')
+    movable = read_movable(id0)
+    if not movable:
+        return error('Movable not found', 404)
+    response = make_response(movable)
+    response.headers.set('Content-Type', 'application/octet-stream')
+    response.headers.set('Content-Disposition', 'attachment', filename=f'movable.sed')
     return response
 
 
@@ -376,13 +372,29 @@ def error(message, code=400):
     })
     return make_response(response_json, code)
 
+
+# flask helpers
+
 def log_prefix(key=None):
     prefix = '(' + get_request_ip() + ')'
     if key:
         prefix += f' {key}'
     return prefix
 
-# error handler
+def check_auth(username, password):
+    return username == os.getenv('ADMIN_USER', 'admin') and password == os.getenv('ADMIN_PASS', 'INSECURE')
+
+# https://stackoverflow.com/questions/22919182/flask-http-basicauth-how-does-it-work
+def login_required(f):
+    @wraps(f)
+    def wrapped_view(**kwargs):
+        auth = request.authorization
+        if not (auth and check_auth(auth.username, auth.password)):
+            return ('Unauthorized', 401, {
+                'WWW-Authenticate': 'Basic realm="Login Required"'
+            })
+        return f(**kwargs)
+    return wrapped_view
 
 @app.errorhandler(Exception)
 def handle_exception(e):
@@ -392,21 +404,6 @@ def handle_exception(e):
     app.logger.error(f'{log_prefix()} caught exception')
     app.logger.exception(e)
     return error(f'{type(e).__name__}: {e}', code=500)
-
-
-# download movable
-
-@app.route('/download_movable/<id0>')
-def download_movable(id0):
-    if not is_id0(id0):
-        return error('Invalid ID0')
-    movable = read_movable(id0)
-    if not movable:
-        return error('Movable not found', 404)
-    response = make_response(movable)
-    response.headers.set('Content-Type', 'application/octet-stream')
-    response.headers.set('Content-Disposition', 'attachment', filename=f'movable.sed')
-    return response
 
 
 # manager action wrappers
