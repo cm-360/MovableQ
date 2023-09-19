@@ -6,46 +6,58 @@
 	<div class="alert alert-info" role="alert">
 		If you have any issues, try refreshing the page. You can also ask for help on the <a class="link-info" href="{{ discord_url }}">{{ discord_name }} Discord</a>.
 	</div>
-	<div class="card">
-		<h4 class="card-header">Step 1: Choose a Method</h4>
-		<div id="methodCard" class="collapse show">
-			<form id="methodForm" class="card-body">
-				<div class="row mb-3">
-					<div class="col-12 col-md-4">
-						<div class="d-grid gap-3" role="group" aria-label="Mining method radio toggle button group">
-							<input type="radio" class="btn-check" name="methodRadio" id="methodRadioFc" autocomplete="off" checked>
-							<label class="btn border border-secondary-subtle text-start" for="methodRadioFc" id="methodRadioFcLabel">
-								<h5 class="m-0 p-1">Friend Code Mining</h5>
-							</label>
-							<input type="radio" class="btn-check" name="methodRadio" id="methodRadioMii" autocomplete="off">
-							<label class="btn border border-secondary-subtle text-start" for="methodRadioMii" id="methodRadioMiiLabel">
-								<h5 class="m-0 p-1">Mii Mining</h5>
-							</label>
-						</div>
-					</div>
-					<div class="col-12 col-md-8">
-						<div class="card">
-							<h5 class="card-header">You will need...</h5>
-							<div class="card-body collapse show">
-								<p class="card-text">This uses the data obtained from a two-way friend exchange as a starting point for bruteforcing.</p>
-								<ul class="card-text">
-									<li>Your friend code</li>
-									<li>Your console's ID0</li>
-								</ul>
+	<div class="d-grid gap-3">
+		<div class="card">
+			<h4 class="card-header">Welcome to {{ site_title }}!</h4>
+			<div class="card-body">
+				<p class="card-text">
+					Welcome to <strong>{{ site_title }}</strong>, a service made possible by volunteers with powerful GPUs! This site helps to obtain your console's unique encryption key (<code>movable.sed</code>) by bruteforcing it with a powerful GPU. To get started, choose a method below.
+				</p>
+			</div>
+		</div>
+		<div>
+			<div class="card">
+				<h4 class="card-header">Step 1: Choose a Method</h4>
+				<div id="methodCard" class="collapse show">
+					<form id="methodForm" class="card-body">
+						<div class="mb-3 row g-3" id="methodCardGroup">
+							<div class="col-md-6">
+								<button type="button" class="card btn p-0 text-start focus-ring border-primary" id="methodCardFc">
+									<div class="card-body">
+										<input type="radio" class="btn-check" name="methodRadio" id="methodButtonFc" checked autocomplete="off">
+										<h5 class="card-title"><label for="methodButtonFc">Friend Code Mining</label></h5>
+										<p class="card-text">
+											This uses the data obtained from a two-way friend exchange as a starting point for bruteforcing.
+										</p>
+									</div>
+								</button>
 							</div>
-							<div class="card-body collapse">
-								<p class="card-text">This uses a Mii QR code instead of a two-way friend exchange, but is significantly more time-consuming.</p>
-								<ul class="card-text">
-									<li>A Mii QR code from your console</li>
-									<li>Your console's ID0</li>
-								</ul>
+							<div class="col-md-6">
+								<button type="button" class="card btn p-0 text-start focus-ring border-secondary-subtle" id="methodCardMii">
+									<div class="card-body">
+										<input type="radio" class="btn-check" name="methodRadio" id="methodButtonMii" autocomplete="off">
+										<h5 class="card-title"><label for="methodButtonMii">Mii Mining</label></h5>
+										<p class="card-text">
+											This uses a Mii QR code instead of a two-way friend exchange, but is significantly more time-consuming.
+										</p>
+									</div>
+								</button>
 							</div>
 						</div>
-						
-					</div>
+						<button type="submit" class="btn btn-success">Get started <i class="fa-solid fa-arrow-right"></i></button>
+					</form>
 				</div>
-				<button type="submit" class="btn btn-success">Get started <i class="fa-solid fa-arrow-right"></i></button>
-			</form>
+			</div>
+			<div class="card">
+				<h4 class="card-header">Step 2: Console Information</h4>
+				<div id="methodCard" class="collapse show">
+				</div>
+			</div>
+			<div class="card">
+				<h4 class="card-header">Step 3: Mining</h4>
+				<div id="methodCard" class="collapse show">
+				</div>
+			</div>
 		</div>
 	</div>
 	<div class="modal fade" tabindex="-1" id="canceledModal">
