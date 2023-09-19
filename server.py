@@ -109,7 +109,7 @@ def page_admin():
     return render_template('pages/admin.html')
 
 @app.route('/js/<path:filename>')
-def serve_js(filename):
+def serve_js(filename: str):
     response = make_response(render_template('js/' + filename))
     response.headers.set('Content-Type', 'text/javascript')
     return response
@@ -122,7 +122,7 @@ def get_mining_client():
     return response
 
 @app.route('/download_movable/<id0>')
-def download_movable(id0):
+def download_movable(id0: str):
     if not is_id0(id0):
         return error('Invalid ID0')
     movable = read_movable(id0)
@@ -192,7 +192,7 @@ def api_request_job():
         return success()
 
 @app.route('/api/release_job/<key>')
-def api_release_job(key):
+def api_release_job(key: str):
     if not is_job_key(key):
         return error('Invalid Job Key')
     manager.release_job(key)
@@ -200,7 +200,7 @@ def api_release_job(key):
     return success()
 
 @app.route('/api/check_job_status/<key>')
-def api_check_job_status(key):
+def api_check_job_status(key: str):
     if not is_job_key(key):
         return error('Invalid Job Key')
     status = manager.check_job_status(key)
@@ -213,7 +213,7 @@ def api_check_job_status(key):
         return success({'status': status})
 
 @app.route('/api/update_job/<key>')
-def api_update_job(key):
+def api_update_job(key: str):
     if not is_job_key(key):
         return error('Invalid Job Key')
     app.logger.info(f'{log_prefix(key)} still mining')
@@ -223,7 +223,7 @@ def api_update_job(key):
         return success({'status': 'canceled'})
 
 @app.route('/api/cancel_job/<key>')
-def api_cancel_job(key):
+def api_cancel_job(key: str):
     trim_canceled_jobs()
     if not is_job_key(key):
         return error('Invalid Job Key')
@@ -232,7 +232,7 @@ def api_cancel_job(key):
     return success()
 
 @app.route('/api/reset_job/<key>')
-def api_reset_job(key):
+def api_reset_job(key: str):
     if not is_job_key(key):
         return error('Invalid Job Key')
     manager.reset_job(key)
@@ -240,7 +240,7 @@ def api_reset_job(key):
     return success()
 
 @app.route('/api/complete_job/<key>', methods=['POST'])
-def api_complete_job(key):
+def api_complete_job(key: str):
     global mseds_mined
     if not is_job_key(key):
         return error('Invalid Job Key')
@@ -271,7 +271,7 @@ def api_complete_job(key):
     return success()
 
 @app.route('/api/fail_job/<key>', methods=['POST'])
-def api_fail_job(key):
+def api_fail_job(key: str):
     if not is_job_key(key):
         return error('Invalid Job Key')
     manager.fail_job(key, request.json.get('note'))
@@ -321,14 +321,14 @@ def error(message, code=400):
     })
     return make_response(response_json, code)
 
-def log_prefix(key=None):
+def log_prefix(key=None) -> str:
     prefix = '(' + get_request_ip() + ')'
     if key:
         prefix += f' {key}'
     return prefix
 
 @app.errorhandler(Exception)
-def handle_exception(e):
+def handle_exception(e: Exception):
     # pass through HTTP errors
     if isinstance(e, HTTPException):
         return e
@@ -357,22 +357,22 @@ def trim_canceled_jobs():
 # helper functions
 
 # Modified from https://stackoverflow.com/a/28568003
-def parse_version_string(version_str, point_max_len=10):
+def parse_version_string(version: str, point_max_len=10) -> tuple:
    filled = []
-   for point in version_split_regex.split(version_str):
+   for point in version_split_regex.split(version):
       filled.append(point.zfill(point_max_len))
    return tuple(filled)
 
-def compare_versions(version_a, version_b):
+def compare_versions(version_a: tuple, version_b: tuple) -> int:
     if len(version_a) != len(version_b):
         raise ValueError('Lengths do not match')
     return compare(version_a, version_b)
 
 # removed in Python 3 lol
-def compare(a, b):
+def compare(a, b) -> int:
     return (a > b) - (a < b) 
 
-def parse_job_chain(chain_data):
+def parse_job_chain(chain_data) -> list[Job]:
     jobs = []
     previous_job = None
     entry_index = 0
@@ -393,7 +393,7 @@ def parse_job_chain(chain_data):
         entry_index += 1
     return jobs
 
-def parse_mii_job(job_data):
+def parse_mii_job(job_data) -> Job:
     invalid = []
     try:
         # model
@@ -420,7 +420,7 @@ def parse_mii_job(job_data):
     except KeyError as e:
         raise KeyError(f'Missing parameter "{e}"')
 
-def get_system_id_from_mii_job(job_data):
+def get_system_id_from_mii_job(job_data) -> str:
     try:
         # explictly declared
         system_id = job_data.get('system_id')
@@ -435,7 +435,7 @@ def get_system_id_from_mii_job(job_data):
     except Exception as e:
         raise ValueError('Could not get LFCS hash from submission') from e
 
-def get_system_id_from_mii_file(job_data):
+def get_system_id_from_mii_file(job_data) -> str:
     mii_data = base64.b64decode(job_data['mii_data'])
     mii_filename = job_data.get('mii_filename', '')
     mii_mimetype = job_data.get('mii_mimetype')
@@ -457,7 +457,7 @@ def get_system_id_from_mii_file(job_data):
 
 # Modified from seedminer_launcher3.py by zoogie
 # https://github.com/zoogie/seedminer/blob/master/seedminer/seedminer_launcher3.py#L126-L130
-def get_system_id_from_enc_mii(mii_data_enc):
+def get_system_id_from_enc_mii(mii_data_enc: bytes) -> str:
     if 112 != len(mii_data_enc):
         raise ValueError('Incorrect Mii data length')
     # decrypt mii data
@@ -469,7 +469,7 @@ def get_system_id_from_enc_mii(mii_data_enc):
     app.logger.debug(f'Got system ID: {system_id}')
     return system_id
 
-def parse_fc_job(job_data):
+def parse_fc_job(job_data) -> Job:
     try:
         # friend code
         friend_code = job_data['friend_code'].replace('-', '')
@@ -480,7 +480,7 @@ def parse_fc_job(job_data):
     except KeyError as e:
         raise KeyError(f'Missing parameter "{e}"')
 
-def parse_part1_job(job_data, prereq_key=None, should_have_lfcs=True):
+def parse_part1_job(job_data, prereq_key=None, should_have_lfcs=True) -> Job:
     invalid = []
     try:
         # id0
@@ -498,7 +498,7 @@ def parse_part1_job(job_data, prereq_key=None, should_have_lfcs=True):
     except KeyError as e:
         raise KeyError(f'Missing parameter "{e}"')
 
-def get_lfcs_from_part1_job(job_data, should_have_lfcs=True):
+def get_lfcs_from_part1_job(job_data, should_have_lfcs=True) -> str:
     try:
         # explictly declared
         lfcs = job_data.get('lfcs')
@@ -516,14 +516,14 @@ def get_lfcs_from_part1_job(job_data, should_have_lfcs=True):
     except Exception as e:
         raise ValueError('Could not get LFCS from submission') from e
 
-def get_lfcs_from_part1_file(job_data):
+def get_lfcs_from_part1_file(job_data) -> str:
     part1_data = base64.b64decode(job_data['part1_data'])
     lfcs = hexlify(part1_data[:5]).decode('ascii')
     app.logger.debug(f'Got LFCS: {lfcs}')
     return lfcs
 
 
-def get_request_ip():
+def get_request_ip() -> str:
     if request.environ.get('HTTP_X_FORWARDED_FOR') is None:
         return request.environ['REMOTE_ADDR']
     else:
@@ -540,6 +540,7 @@ class JobSubmissionError(Exception):
 
 
 class InvalidSubmissionFieldError(Exception):
+
     def __init__(self, invalid):
         self.invalid = invalid
         super().__init__('invalid:' + ','.join(invalid))

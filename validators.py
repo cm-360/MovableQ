@@ -23,7 +23,7 @@ def is_system_id(value: str) -> bool:
     return bool(system_id_regex.fullmatch(value))
 
 # Modified from https://github.com/nh-server/Kurisu/blob/main/cogs/friendcode.py#L28
-def is_friend_code(value: str):
+def is_friend_code(value: str) -> bool:
     try:
         fc = int(value)
     except ValueError:
@@ -35,7 +35,7 @@ def is_friend_code(value: str):
     return hashlib.sha1(struct.pack('<L', principal_id)).digest()[0] >> 1 == checksum
 
 
-def validate_job_result(job_type: str, result: bytes, key=None):
+def validate_job_result(job_type: str, result: bytes, key=None) -> bool:
     if job_type in ['mii', 'fc']:
         return validate_lfcs(result)
     elif 'part1' == job_type:
@@ -44,7 +44,7 @@ def validate_job_result(job_type: str, result: bytes, key=None):
         return False
 
 # system id -> lfcs
-def validate_lfcs(lfcs: bytes):
+def validate_lfcs(lfcs: bytes) -> bool:
     # shorter than 5 bytes
     if len(lfcs) < 5:
         return False
