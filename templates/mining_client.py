@@ -72,29 +72,12 @@ lfcs_default_new = 0x05000000 // 2
 # lfcs/msed3 relationship database filenames 
 lfcs_db_filename_old = 'saves/old-v2.dat'
 lfcs_db_filename_new = 'saves/new-v2.dat'
-# lfcses from old/new databases
+# lfcses/msed3s from old/new databases
 db_lfcses_old = []
 db_lfcses_new = []
-# msed3s from old/new databases
 db_msed3s_old = []
 db_msed3s_new = []
 
-def load_lfcs_dbs():
-	db_lfcses_old, db_msed3s_old = load_lfcs_db(lfcs_db_filename_old)
-	db_lfcses_new, db_msed3s_new = load_lfcs_db(lfcs_db_filename_new)
-
-def load_lfcs_db(lfcs_db_filename: str):
-	with open(lfcs_db_filename, 'rb') as lfcs_db_file:
-		lfcs_db_data = lfcs_db_file.read()
-		lfcs_db_len = len(lfcs_db_data) // 8
-		# unpack lfcses/msed3s from database
-		lfcses = []
-		msed3s = []
-		for i in range(lfcs_db_len):
-			pair_index = i * 8
-			lfcses.append(struct.unpack('<I', lfcs_db_data[pair_index:pair_index+4])[0])
-			msed3s.append(struct.unpack('<I', lfcs_db_data[pair_index+4:pair_index+8])[0])
-		return lfcses, msed3s
 
 # Helper functions from seedminer_launcher3.py by zoogie
 # https://github.com/zoogie/seedminer/blob/master/seedminer/seedminer_launcher3.py#L51-L84
@@ -118,10 +101,10 @@ def byteswap(data)
 # invert the endian-ness of every n bytes of data
 def byteswap_each_n(data, n):
 	if len(data) % n != 0:
-        raise ValueError(f'Input data length must be a multiple of {n}')
+		raise ValueError(f'Input data length must be a multiple of {n}')
 	swapped_data = bytearray()
 	for i in range(0, len(data), n):
-        swapped_data.extend(byteswap4(data[i:i+n]))
+		swapped_data.extend(byteswap(data[i:i+n]))
 	return swapped_data
 
 # invert the endian-ness of a 32-bit integer
@@ -489,6 +472,28 @@ class BfclExecutionError(Exception):
 	def __init__(self, message):
 		self.message = message
 		super().__init__(message)
+
+
+def load_lfcs_dbs():
+	global db_lfcses_old
+	global db_lfcses_new
+	global db_msed3s_old
+	global db_msed3s_new
+	db_lfcses_old, db_msed3s_old = load_lfcs_db(lfcs_db_filename_old)
+	db_lfcses_new, db_msed3s_new = load_lfcs_db(lfcs_db_filename_new)
+
+def load_lfcs_db(lfcs_db_filename: str):
+	with open(lfcs_db_filename, 'rb') as lfcs_db_file:
+		lfcs_db_data = lfcs_db_file.read()
+		lfcs_db_len = len(lfcs_db_data) // 8
+		# unpack lfcses/msed3s from database
+		lfcses = []
+		msed3s = []
+		for i in range(lfcs_db_len):
+			pair_index = i * 8
+			lfcses.append(struct.unpack('<I', lfcs_db_data[pair_index:pair_index+4])[0])
+			msed3s.append(struct.unpack('<I', lfcs_db_data[pair_index+4:pair_index+8])[0])
+		return lfcses, msed3s
 
 
 def run_client():
