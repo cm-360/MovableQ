@@ -544,7 +544,7 @@ def run_client():
 				print() # wait message carriage return fix
 				raise e
 		except KeyboardInterrupt:
-			should_exit = input('Would you like to exit? (y/n): ')
+			should_exit = input('\nWould you like to exit? (y/n): ')
 			if should_exit.lower().startswith('y'):
 				break
 		except BfclExecutionError as e:
