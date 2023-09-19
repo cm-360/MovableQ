@@ -55,6 +55,7 @@ manager = JobManager()
 # mining client info
 mining_client_filename = 'mining_client.py'
 mining_client_version = '1.0.0-fix1'
+friendbot_client_version = 'friendbot1.0.0'
 version_split_regex = re.compile(r'[.+-]')
 
 # completion totals
@@ -170,8 +171,13 @@ def api_request_job():
         miner_version = request.args.get('version')
         if not miner_version:
             return error('Client version not provided')
-        if compare_versions(miner_version, mining_client_version) < 0:
-            return error(f'Outdated client version, {miner_version} < {mining_client_version}')
+        if "fc" in accepted_types:
+            if not miner_version.startswith('friendbot'):
+                return error(f'Friendcode job requested but client is not a friendbot')
+            elif compare_versions(miner_version, friendbot_client_version) < 0:
+                return error(f'Outdated friendbot version, {miner_version} < {friendbot_client_version}')
+        elif compare_versions(miner_version, mining_client_version) < 0:
+            return error(f'Outdated miner version, {miner_version} < {mining_client_version}')
     except Exception as e:
         app.logger.exception(e)
         return error('Unknown client version')
