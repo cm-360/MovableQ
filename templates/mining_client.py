@@ -95,7 +95,7 @@ def int2bytes(n):
 	return s
 
 # swap the endian-ness of input data (reverses bytes)
-def byteswap(data)
+def byteswap(data):
 	return data[::-1]
 
 # invert the endian-ness of every n bytes of data
