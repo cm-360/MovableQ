@@ -264,6 +264,10 @@ def api_complete_job(key: str):
     # update counter
     if 'part1' == job_type:
         mseds_mined += 1
+    elif 'mii' == job_type:
+        lfcses_mined += 1
+    elif 'fc' == job_type:
+        lfcses_dumped += 1
     return success()
 
 @app.route('/api/fail_job/<key>', methods=['POST'])
