@@ -6,6 +6,9 @@ import struct
 id0_regex = re.compile(r'(?![0-9a-fA-F]{4}(01|00)[0-9a-fA-F]{18}00[0-9a-fA-F]{6})[0-9a-fA-F]{32}')
 system_id_regex = re.compile(r'[a-fA-F0-9]{16}')
 
+# splits version strings for comparison
+version_split_regex = re.compile(r'[.+-]')
+
 
 def is_job_key(value: str) -> bool:
     if is_id0(value):
@@ -50,7 +53,7 @@ def validate_lfcs(lfcs: bytes) -> bool:
     if len(lfcs) < 5:
         return False
     # first 4 bytes are 0
-    if b"\0\0\0\0" in lfcs[:4]:
+    if b'\0\0\0\0' in lfcs[:4]:
         return False
     #if result[4:5] != b"\x00" && result[4:5] != b"\x02":
     #    return False
@@ -73,3 +76,43 @@ def validate_keyy(keyy: bytes, id0: str) -> bool:
     keyy_sha256 = hashlib.sha256(keyy).digest()[:0x10]
     keyy_id0 = (keyy_sha256[3::-1] + keyy_sha256[7:3:-1] + keyy_sha256[11:7:-1] + keyy_sha256[15:11:-1]).hex()
     return keyy_id0 == id0
+
+
+def enforce_client_version(client_types, client_version_str):
+    try:
+        # reject if no version provided
+        if not client_version_str:
+            raise ValueError('Client version not provided')
+        client_type, client_version = parse_typed_version_string(client_version_str)
+        # reject unrecognized clients
+        if client_type not in client_types.keys():
+            raise ValueError('Unrecognized client type')
+        # reject illegal job type requests
+        requested_types = set(accepted_types.split(','))
+        allowed_types = client_types[client_type]['allowed']
+        if bool(requested_types - allowed_types):
+            raise ValueError(f'Requested illegal job type for {client_type} clients')
+        # reject outdated clients
+        latest_version = parse_version_string(client_types[client_type]['version'])
+        if compare_versions(client_version, latest_version) < 0:
+            raise ValueError(f'Outdated client version, {client_version} < {latest_version}')
+    except Exception as e:
+        raise ValueError('Error validating client version')
+
+# Modified from https://stackoverflow.com/a/28568003
+def parse_typed_version_string(version: str, point_max_len=10) -> tuple[str, list]:
+    split = version_split_regex.split(version)
+    return split[0], [p.zfill(point_max_len) for p in split[1:]]
+
+# Modified from https://stackoverflow.com/a/28568003
+def parse_version_string(version: str, point_max_len=10) -> list:
+    return [p.zfill(point_max_len) for p in version_split_regex.split(version)]
+
+def compare_versions(version_a: list, version_b: list) -> int:
+    if len(version_a) != len(version_b):
+        raise ValueError('Version lengths do not match')
+    return compare(version_a, version_b)
+
+# removed in Python 3 lol
+def compare(a, b) -> int:
+    return (a > b) - (a < b) 

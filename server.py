@@ -19,7 +19,7 @@ import os
 import re
 
 from jobs import JobManager, Job, MiiJob, FCJob, Part1Job, read_movable, count_mseds_mined, count_lfcses_mined, count_lfcses_dumped
-from validators import is_job_key, is_id0, is_system_id, is_friend_code, validate_job_result
+from validators import is_job_key, is_id0, is_system_id, is_friend_code, validate_job_result, enforce_client_version
 
 
 # AES keys
@@ -52,11 +52,18 @@ app.config['TEMPLATES_AUTO_RELOAD'] = True
 # job manager
 manager = JobManager()
 
-# mining client info
+# clients info
 mining_client_filename = 'mining_client.py'
-mining_client_version = '1.0.0-fix1'
-friendbot_client_version = 'friendbot1.0.0'
-version_split_regex = re.compile(r'[.+-]')
+client_types = {
+    'miiner': {
+        'version': '1.0.0-fix1'
+        'allowed': {'mii', 'part1'}
+    },
+    'friendbot': {
+        'version': '1.0.0'
+        'allowed': {'fc'}
+    }
+}
 
 # completion totals
 mseds_mined = 0
@@ -166,21 +173,8 @@ def api_request_job():
     miner_name = request.args.get('name', miner_ip)
     accepted_types = request.args.get('types')
     app.logger.info(f'{log_prefix()} {miner_name} requests work')
-    # reject old versions
-    try:
-        miner_version = request.args.get('version')
-        if not miner_version:
-            return error('Client version not provided')
-        if "fc" in accepted_types:
-            if not miner_version.startswith('friendbot'):
-                return error(f'Friendcode job requested but client is not a friendbot')
-            elif compare_versions(miner_version, friendbot_client_version) < 0:
-                return error(f'Outdated friendbot version, {miner_version} < {friendbot_client_version}')
-        elif compare_versions(miner_version, mining_client_version) < 0:
-            return error(f'Outdated miner version, {miner_version} < {mining_client_version}')
-    except Exception as e:
-        app.logger.exception(e)
-        return error('Unknown client version')
+    # restrict clients
+    enforce_client_version(client_types, request.args.get('version'))
     # check for and assign jobs
     job = manager.request_job(miner_name, miner_ip, accepted_types)
     if job:
@@ -253,7 +247,7 @@ def api_complete_job(key: str):
         else:
             raise ValueError(f'Unknown result format {result_format}')
     except KeyError as e:
-        raise KeyError(f'Missing parameter "{e}"')
+        raise KeyError(f'Missing parameter {e}')
     # validate result
     job_type = manager.get_job(key).type
     if not validate_job_result(job_type, result, key):
@@ -354,22 +348,6 @@ def trim_canceled_jobs():
 
 # helper functions
 
-# Modified from https://stackoverflow.com/a/28568003
-def parse_version_string(version: str, point_max_len=10) -> tuple:
-   filled = []
-   for point in version_split_regex.split(version):
-      filled.append(point.zfill(point_max_len))
-   return tuple(filled)
-
-def compare_versions(version_a: tuple, version_b: tuple) -> int:
-    if len(version_a) != len(version_b):
-        raise ValueError('Lengths do not match')
-    return compare(version_a, version_b)
-
-# removed in Python 3 lol
-def compare(a, b) -> int:
-    return (a > b) - (a < b) 
-
 def parse_job_chain(chain_data) -> list[Job]:
     jobs = []
     previous_job = None
@@ -384,7 +362,7 @@ def parse_job_chain(chain_data) -> list[Job]:
             elif 'part1' == entry_type:
                 jobs.append(parse_part1_job(entry, prereq_key=previous_job.key, should_have_lfcs=False))
             else:
-                raise ValueError(f'Invalid job type "{entry_type}"')
+                raise ValueError(f'Invalid job type {entry_type}')
         except Exception as e:
             raise JobSubmissionError(e, entry_index)
         previous_job = jobs[entry_index]
@@ -416,7 +394,7 @@ def parse_mii_job(job_data) -> MiiJob:
         else:
             return MiiJob(system_id, model, year)
     except KeyError as e:
-        raise KeyError(f'Missing parameter "{e}"')
+        raise KeyError(f'Missing parameter {e}')
 
 def get_system_id_from_mii_job(job_data) -> str:
     try:
@@ -476,7 +454,7 @@ def parse_fc_job(job_data) -> FCJob:
         else:
             return FCJob(friend_code)
     except KeyError as e:
-        raise KeyError(f'Missing parameter "{e}"')
+        raise KeyError(f'Missing parameter {e}')
 
 def parse_part1_job(job_data, prereq_key=None, should_have_lfcs=True) -> Part1Job:
     invalid = []
@@ -494,7 +472,7 @@ def parse_part1_job(job_data, prereq_key=None, should_have_lfcs=True) -> Part1Jo
         else:
             return Part1Job(id0, lfcs=lfcs, prereq_key=prereq_key)
     except KeyError as e:
-        raise KeyError(f'Missing parameter "{e}"')
+        raise KeyError(f'Missing parameter {e}')
 
 def get_lfcs_from_part1_job(job_data, should_have_lfcs=True) -> str:
     try:
