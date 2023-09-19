@@ -270,7 +270,7 @@ def api_complete_job(key):
         raise KeyError(f'Missing parameter "{e}"')
     # validate result
     job_type = manager.get_job(key).type
-    if not validate_job_result(job_type, result):
+    if not validate_job_result(job_type, result, key):
         app.logger.warning(f'{log_prefix(key)} got faulty result')
         manager.release_job(key)
         return error('Faulty result')
