@@ -78,7 +78,7 @@ def validate_keyy(keyy: bytes, id0: str) -> bool:
     return keyy_id0 == id0
 
 
-def enforce_client_version(client_types, client_version_str):
+def enforce_client_version(client_types: dict, client_version_str: str, requested_types: set):
     try:
         # reject if no version provided
         if not client_version_str:
@@ -88,16 +88,15 @@ def enforce_client_version(client_types, client_version_str):
         if client_type not in client_types.keys():
             raise ValueError('Unrecognized client type')
         # reject illegal job type requests
-        requested_types = set(accepted_types.split(','))
         allowed_types = client_types[client_type]['allowed']
-        if bool(requested_types - allowed_types):
+        if requested_types and bool(requested_types - allowed_types):
             raise ValueError(f'Requested illegal job type for {client_type} clients')
         # reject outdated clients
         latest_version = parse_version_string(client_types[client_type]['version'])
         if compare_versions(client_version, latest_version) < 0:
             raise ValueError(f'Outdated client version, {client_version} < {latest_version}')
     except Exception as e:
-        raise ValueError('Error validating client version')
+        raise ValueError('Error validating client version') from e
 
 # Modified from https://stackoverflow.com/a/28568003
 def parse_typed_version_string(version: str, point_max_len=10) -> tuple[str, list]:

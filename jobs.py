@@ -14,7 +14,7 @@ sid_lfcses_path = os.getenv('SID_LFCSES_PATH', './lfcses/sid')
 mseds_path = os.getenv('MSEDS_PATH', './mseds')
 
 job_lifetime = timedelta(minutes=5)
-miner_lifetime = timedelta(minutes=10)
+worker_lifetime = timedelta(minutes=10)
 
 
 class JobManager():
@@ -22,7 +22,7 @@ class JobManager():
     def __init__(self):
         self.jobs = {}
         self.wait_queue = deque()
-        self.miners = {}
+        self.workers = {}
         self.lock = RLock()
 
     def get_job(self, key):
@@ -112,25 +112,22 @@ class JobManager():
             self._unqueue_job(job.key)
 
     # pop from job queue, optionally filtering by type
-    def _request_job(self, accepted_types=None):
+    def _request_job(self, requested_types):
         if len(self.wait_queue) == 0:
             return
-        if accepted_types:
-            for key in self.wait_queue:
-                job = self.jobs[key]
-                if job.type in accepted_types:
-                    self.wait_queue.remove(key)
-                    return job
-        else:
-            return self.jobs[self.wait_queue.popleft()]
+        for key in self.wait_queue:
+            job = self.jobs[key]
+            if job.type in requested_types:
+                self.wait_queue.remove(key)
+                return job
 
     # pop from job queue if not empty and assign, optionally filtering by type
-    def request_job(self, miner_name=None, miner_ip=None, accepted_types=None):
+    def request_job(self, requested_types, worker_name=None, worker_ip=None):
         with self.lock:
-            miner = self.update_miner(miner_name, miner_ip)
-            job = self._request_job(accepted_types)
+            worker = self.update_worker(worker_name, worker_ip)
+            job = self._request_job(requested_types)
             if job:
-                job.assign(miner)
+                job.assign(worker)
                 return job
 
     # set job status to canceled, KeyError if it does not exist
@@ -140,26 +137,26 @@ class JobManager():
             job.release()
             self._queue_job(key, urgent=True)
 
-    # returns False if a job was canceled, updates its time/miner and returns True otherwise
-    def update_job(self, key, miner_ip=None):
+    # returns False if a job was canceled, updates its time/worker and returns True otherwise
+    def update_job(self, key, worker_ip=None):
         with self.lock:
             job = self.jobs[key]
             if 'canceled' == job.state:
                 return False
             job.update()
             if job.assignee:
-                self.update_miner(job.assignee.name, miner_ip)
+                self.update_worker(job.assignee.name, worker_ip)
             return True
 
-    # if a name is provided, updates that miners ip and time, creating one if necessary; returns the Miner object
-    def update_miner(self, name, ip=None):
+    # if a name is provided, updates that worker's ip and time, creating one if necessary; returns the Worker object
+    def update_worker(self, name, ip=None):
         with self.lock:
             if name:
-                if name in self.miners:
-                    self.miners[name].update(ip)
+                if name in self.workers:
+                    self.workers[name].update(ip)
                 else:
-                    self.miners[name] = Miner(name, ip)
-                return self.miners[name]
+                    self.workers[name] = Worker(name, ip)
+                return self.workers[name]
 
     def _save_job_result(self, key, result):
         job = self.jobs[key]
@@ -260,17 +257,17 @@ class JobManager():
     def count_jobs(self, status_filter=None):
         return len(self.list_jobs(status_filter))
 
-    # returns a list of all miners, or optionally only the active ones
-    def list_miners(self, active_only=False):
+    # returns a list of all workers, or optionally only the active ones
+    def list_workers(self, active_only=False):
         with self.lock:
             if active_only:
-                return [m for m in self.miners.values() if not m.has_timed_out()]
+                return [m for m in self.workers.values() if not m.has_timed_out()]
             else:
-                return self.miners.values()
+                return self.workers.values()
 
-    # returns the number of miners, optionally only counting the active ones
-    def count_miners(self, active_only=False):
-        return len(self.list_miners(active_only))
+    # returns the number of workers, optionally only counting the active ones
+    def count_workers(self, active_only=False):
+        return len(self.list_workers(active_only))
 
 
 # Generic mining job class
@@ -349,8 +346,8 @@ class Job(Machine):
     def update(self):
         self.last_update = datetime.now(tz=timezone.utc)
 
-    def on_assign(self, miner):
-        self.assignee = miner
+    def on_assign(self, worker):
+        self.assignee = worker
         self.update()
 
     def on_fail(self, note=None):
@@ -464,7 +461,7 @@ class Part1Job(ChainJob):
         yield 'lfcs', self.lfcs
 
 
-class Miner():
+class Worker():
 
     def __init__(self, name, ip=None):
         self.name = name
@@ -476,9 +473,9 @@ class Miner():
         if ip:
             self.ip = ip
 
-    # True if the miner has timed out, False if they have not
+    # True if the worker has timed out, False if they have not
     def has_timed_out(self):
-        return datetime.now(tz=timezone.utc) > (self.last_update + miner_lifetime)
+        return datetime.now(tz=timezone.utc) > (self.last_update + worker_lifetime)
 
     def __iter__(self):
         yield 'name', self.name

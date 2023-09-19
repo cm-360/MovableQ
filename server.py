@@ -56,11 +56,11 @@ manager = JobManager()
 mining_client_filename = 'mining_client.py'
 client_types = {
     'miiner': {
-        'version': '1.0.0-fix1'
+        'version': '1.0.0-fix1',
         'allowed': {'mii', 'part1'}
     },
     'friendbot': {
-        'version': '1.0.0'
+        'version': '1.0.0',
         'allowed': {'fc'}
     }
 }
@@ -116,7 +116,8 @@ def serve_js(filename: str):
 
 @app.route('/get_mining_client')
 def get_mining_client():
-    response = make_response(render_template(mining_client_filename, client_version=mining_client_version))
+    client_version = f'miiner-{client_types["miiner"]["version"]}'
+    response = make_response(render_template(mining_client_filename, client_version=client_version))
     response.headers.set('Content-Type', 'application/octet-stream')
     response.headers.set('Content-Disposition', 'attachment', filename=mining_client_filename)
     return response
@@ -168,17 +169,19 @@ def api_submit_part1_job():
 @app.route('/api/request_job')
 def api_request_job():
     release_dead_jobs()
-    # miner info
-    miner_ip = get_request_ip()
-    miner_name = request.args.get('name', miner_ip)
-    accepted_types = request.args.get('types')
-    app.logger.info(f'{log_prefix()} {miner_name} requests work')
+    # worker info
+    worker_ip = get_request_ip()
+    worker_name = request.args.get('name', worker_ip)
+    app.logger.info(f'{log_prefix()} {worker_name} requests work')
     # restrict clients
-    enforce_client_version(client_types, request.args.get('version'))
+    client_version = request.args.get('version')
+    accepted_types = request.args.get('types')
+    accepted_types = set(accepted_types.split(',')) if accepted_types else None
+    enforce_client_version(client_types, client_version, accepted_types)
     # check for and assign jobs
-    job = manager.request_job(miner_name, miner_ip, accepted_types)
+    job = manager.request_job(accepted_types, worker_name, worker_ip)
     if job:
-        app.logger.info(f'{log_prefix(job.key)} assigned to {miner_name}')
+        app.logger.info(f'{log_prefix(job.key)} assigned to {worker_name}')
         return success(dict(job))
     else:
         return success()
@@ -209,7 +212,7 @@ def api_update_job(key: str):
     if not is_job_key(key):
         return error('Invalid Job Key')
     app.logger.info(f'{log_prefix(key)} still mining')
-    if manager.update_job(key, miner_ip=get_request_ip()):
+    if manager.update_job(key, worker_ip=get_request_ip()):
         return success()
     else:
         return success({'status': 'canceled'})
@@ -275,7 +278,7 @@ def api_check_network_stats():
     return success({
         'waiting': manager.count_jobs('waiting'),
         'working': manager.count_jobs('working'),
-        'miners': manager.count_miners(active_only=True),
+        'workers': manager.count_workers(active_only=True),
         'totalMined': mseds_mined
     })
 
@@ -288,12 +291,12 @@ def api_admin_list_jobs():
             'queue': list(manager.wait_queue)
         })
 
-@app.route('/api/admin/list_miners')
+@app.route('/api/admin/list_workers')
 @login_required
-def api_admin_list_miners():
+def api_admin_list_workers():
     with manager.lock:
         return success({
-            'miners': [dict(m) for m in manager.list_miners()]
+            'workers': [dict(m) for m in manager.list_workers()]
         })
 
 
