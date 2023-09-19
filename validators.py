@@ -78,7 +78,7 @@ def validate_keyy(keyy: bytes, id0: str) -> bool:
     return keyy_id0 == id0
 
 
-def enforce_client_version(client_types: dict, client_version_str: str, requested_types: set):
+def enforce_client_version(client_types: dict, client_version_str: str, requested_types: set) -> set[str]:
     try:
         # reject if no version provided
         if not client_version_str:
@@ -95,6 +95,7 @@ def enforce_client_version(client_types: dict, client_version_str: str, requeste
         latest_version = parse_version_string(client_types[client_type]['version'])
         if compare_versions(client_version, latest_version) < 0:
             raise ValueError(f'Outdated client version, {client_version} < {latest_version}')
+        return allowed_types
     except Exception as e:
         raise ValueError('Error validating client version') from e
 

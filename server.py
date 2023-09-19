@@ -175,11 +175,12 @@ def api_request_job():
     app.logger.info(f'{log_prefix()} {worker_name} requests work')
     # restrict clients
     client_version = request.args.get('version')
-    accepted_types = request.args.get('types')
-    accepted_types = set(accepted_types.split(',')) if accepted_types else None
-    enforce_client_version(client_types, client_version, accepted_types)
+    requested_types = request.args.get('types')
+    if requested_types:
+        requested_types = set(requested_types.split(','))
+    allowed_types = enforce_client_version(client_types, client_version, requested_types)
     # check for and assign jobs
-    job = manager.request_job(accepted_types, worker_name, worker_ip)
+    job = manager.request_job(allowed_types, worker_name, worker_ip)
     if job:
         app.logger.info(f'{log_prefix(job.key)} assigned to {worker_name}')
         return success(dict(job))
