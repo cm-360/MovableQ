@@ -1,95 +1,51 @@
 {% extends "layouts/base.html" %}
 
-{% block title %}{{ site_title }} - Submit Mining Job{% endblock %}
+{% block title %}{{ site_title }} - Mining Job{% endblock %}
 
 {% block content %}
 	<div class="alert alert-info" role="alert">
 		If you have any issues, try refreshing the page. You can also ask for help on the <a class="link-info" href="{{ discord_url }}">{{ discord_name }} Discord</a>.
 	</div>
 	<div class="card">
-		<h4 class="card-header">Step 1: Console Information</h4>
-		<div id="card1" class="collapse">
-			<form id="miiForm" class="card-body">
-				<div class="mb-3 card-text">
-					This page is for <b>Mii mining</b>. If you are looking for <b>Friend Code mining</b>, check <a class="link" href="{{ url_for('page_fc') }}">here</a>. To get started, enter your console's information into the boxes below.
-				</div>
-				<div class="mb-3">
-					<label for="id0" class="form-label">ID0</label>
-					<input required type="text" class="form-control" id="id0" name="id0" placeholder="a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5">
-					<div class="invalid-feedback">
-						Your ID0 should be a 32-character hex string. Also make sure it's not ID1 (the 2nd level folder name.)
+		<h4 class="card-header">Step 1: Choose a Method</h4>
+		<div id="methodCard" class="collapse show">
+			<form id="methodForm" class="card-body">
+				<div class="row mb-3">
+					<div class="col-12 col-md-4">
+						<div class="d-grid gap-3" role="group" aria-label="Mining method radio toggle button group">
+							<input type="radio" class="btn-check" name="methodRadio" id="methodRadioFc" autocomplete="off" checked>
+							<label class="btn border border-secondary-subtle text-start" for="methodRadioFc" id="methodRadioFcLabel">
+								<h5 class="m-0 p-1">Friend Code Mining</h5>
+							</label>
+							<input type="radio" class="btn-check" name="methodRadio" id="methodRadioMii" autocomplete="off">
+							<label class="btn border border-secondary-subtle text-start" for="methodRadioMii" id="methodRadioMiiLabel">
+								<h5 class="m-0 p-1">Mii Mining</h5>
+							</label>
+						</div>
+					</div>
+					<div class="col-12 col-md-8">
+						<div class="card">
+							<h5 class="card-header">You will need...</h5>
+							<div class="card-body collapse show">
+								<p class="card-text">This uses the data obtained from a two-way friend exchange as a starting point for bruteforcing.</p>
+								<ul class="card-text">
+									<li>Your friend code</li>
+									<li>Your console's ID0</li>
+								</ul>
+							</div>
+							<div class="card-body collapse">
+								<p class="card-text">This uses a Mii QR code instead of a two-way friend exchange, but is significantly more time-consuming.</p>
+								<ul class="card-text">
+									<li>A Mii QR code from your console</li>
+									<li>Your console's ID0</li>
+								</ul>
+							</div>
+						</div>
+						
 					</div>
 				</div>
-				<div class="mb-3">
-					<label for="model" class="form-label">Model</label>
-					<select required id="model" class="form-control" name="model">
-						<option selected disabled value="">Choose...</option>
-						<option value="old">Old</option>
-						<option value="new">New</option>
-					</select>
-					<div class="invalid-feedback">
-						Please choose your device's model.
-					</div>
-				</div>
-				<div class="mb-3">
-					<label for="year" class="form-label">Manufacturing year</label>
-					<input type="number" class="form-control" id="year" name="year" min="2011" max="2020" value="" placeholder="20XX">
-					<div class="invalid-feedback">
-						Please enter a year between 2011-2020, or leave blank.
-					</div>
-				</div>
-				<div class="mb-3">
-					<label for="mii_file" class="form-label">Mii QR code</label>
-					<input type="file" class="form-control collapse" id="mii_file" name="mii_file" accept=".jpg,.bin">
-					<input type="text" class="form-control collapse" id="mii_url" name="mii_url" placeholder="https://example.com/path/to/HNI_XXXX.JPG">
-					<div class="invalid-feedback">
-						Your Mii data is invalid.
-					</div>
-					<button type="button" class="btn btn-link btn-sm p-0" id="miiUploadToggle"></button>
-				</div>
-				<button type="submit" class="btn btn-success">Submit</button>
+				<button type="submit" class="btn btn-success">Get started <i class="fa-solid fa-arrow-right"></i></button>
 			</form>
-		</div>
-	</div>
-	<div class="card">
-		<h4 class="card-header">Step 2: Mining</h4>
-		<div id="card2" class="collapse">
-			<div class="card-body">
-				<p class="card-text mb-3">
-					Please wait for the mining process to complete. This process can take up to 90 minutes, so feel free to leave this website running in the background, or even close it. While you wait, please ensure your ID0 is correct, and cancel the job if it is not. Otherwise, you will be waiting forever!
-				</p>
-				<div class="mb-3">
-					<span class="spinner-border spinner-border-sm" role="status"></span>
-					<span id="miningStatus" class="m-2"></span>
-				</div>
-				<div class="collapse show alert alert-dark" role="alert">
-					<div class="card-text">
-						<div>Mii: <span id="miningMii"></span></div>
-						<div>Assigned to: <span id="miningMiiAssignee"></span></div>
-					</div>
-					<div class="card-text">
-						<div>ID0: <span id="miningId0"></span></div>
-						<div>Assigned to: <span id="miningId0Assignee"></span></div>
-					</div>
-					<div class="card-text collapse mt-2" id="miningStatsCollapse">
-						<div>Hash rate: <span id="miningRate">0</span> M/s</div>
-						<div>Current offset: <span id="miningOffset"></span></div>
-					</div>
-				</div>
-				<button id="cancelJobButton" class="btn btn-danger">Cancel</button>
-			</div>
-		</div>
-	</div>
-	<div class="card">
-		<h4 class="card-header">Step 3: Done!</h4>
-		<div id="card3" class="collapse">
-			<div class="card-body">
-				<p class="card-text">
-					Good news, the mining is complete! Download your <code>movable.sed</code> using the button below. If you ended up here immediately after submitting a job, go ahead and continue with the provided download.
-				</p>
-				<a id="movableDownload" href="" class="btn btn-success">movable.sed <i class="fa fa-download"></i></a>
-				<button id="doAnotherButton" class="btn btn-light">Do another device</button>
-			</div>
 		</div>
 	</div>
 	<div class="modal fade" tabindex="-1" id="canceledModal">
