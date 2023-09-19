@@ -18,7 +18,7 @@ import json
 import os
 import re
 
-from jobs import JobManager, MiiJob, FCJob, Part1Job, read_movable, count_mseds_mined, count_lfcses_mined, count_lfcses_dumped
+from jobs import JobManager, Job, MiiJob, FCJob, Part1Job, read_movable, count_mseds_mined, count_lfcses_mined, count_lfcses_dumped
 from validators import is_job_key, is_id0, is_system_id, is_friend_code, validate_job_result
 
 
@@ -87,17 +87,9 @@ def login_required(f):
 def page_home():
     return render_template('pages/home.html')
 
-@app.route('/mii')
-def page_mii():
-    return render_template('pages/mii.html')
-
-@app.route('/fc')
-def page_fc():
-    return render_template('pages/fc.html')
-
-@app.route('/part1')
-def page_part1():
-    return render_template('pages/part1.html')
+@app.route('/submit')
+def page_submit():
+    return render_template('pages/submit.html')
 
 @app.route('/volunteer')
 def page_volunteer():
@@ -393,7 +385,7 @@ def parse_job_chain(chain_data) -> list[Job]:
         entry_index += 1
     return jobs
 
-def parse_mii_job(job_data) -> Job:
+def parse_mii_job(job_data) -> MiiJob:
     invalid = []
     try:
         # model
@@ -469,7 +461,7 @@ def get_system_id_from_enc_mii(mii_data_enc: bytes) -> str:
     app.logger.debug(f'Got system ID: {system_id}')
     return system_id
 
-def parse_fc_job(job_data) -> Job:
+def parse_fc_job(job_data) -> FCJob:
     try:
         # friend code
         friend_code = job_data['friend_code'].replace('-', '')
@@ -480,7 +472,7 @@ def parse_fc_job(job_data) -> Job:
     except KeyError as e:
         raise KeyError(f'Missing parameter "{e}"')
 
-def parse_part1_job(job_data, prereq_key=None, should_have_lfcs=True) -> Job:
+def parse_part1_job(job_data, prereq_key=None, should_have_lfcs=True) -> Part1Job:
     invalid = []
     try:
         # id0
