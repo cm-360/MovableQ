@@ -157,7 +157,7 @@ class JobManager():
         with self.lock:
             if name:
                 if name in self.workers:
-                    self.workers[name].update(ip)
+                    self.workers[name].update(worker_type, ip)
                 else:
                     self.workers[name] = Worker(name, worker_type, ip)
                 return self.workers[name]
@@ -492,8 +492,11 @@ class Worker():
         self.type = worker_type
         self.update()
 
-    def update(self, ip=None):
+    def update(self, worker_type=None, ip=None):
+        if worker_type is None:
+            worker_type = self.type
         self.last_update = datetime.now(tz=timezone.utc)
+        self.type = worker_type
         if ip:
             self.ip = ip
 
