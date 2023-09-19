@@ -150,6 +150,7 @@ def api_submit_job_chain():
         manager.queue_job(first_job.key)
     # return job keys to submitter
     chain_keys = [j.key for j in chain]
+    app.logger.info(f'{log_prefix(",".join(chain_keys))} submitted')
     return success(chain_keys)
 
 @app.route('/api/submit_mii_job', methods=['POST'])
