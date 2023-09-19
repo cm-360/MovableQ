@@ -123,8 +123,12 @@ class JobManager():
 
     # pop from job queue if not empty and assign, optionally filtering by type
     def request_job(self, requested_types, worker_name=None, worker_ip=None):
+        if requested_types == set(["fc"]):
+            worker_type = "friendbot"
+        else:
+            worker_type = "miiner"
         with self.lock:
-            worker = self.update_worker(worker_name, worker_ip)
+            worker = self.update_worker(worker_name, worker_type, worker_ip)
             job = self._request_job(requested_types)
             if job:
                 job.assign(worker)
@@ -145,17 +149,17 @@ class JobManager():
                 return False
             job.update()
             if job.assignee:
-                self.update_worker(job.assignee.name, worker_ip)
+                self.update_worker(job.assignee.name, job.assignee.type, worker_ip)
             return True
 
     # if a name is provided, updates that worker's ip and time, creating one if necessary; returns the Worker object
-    def update_worker(self, name, ip=None):
+    def update_worker(self, name, worker_type, ip=None):
         with self.lock:
             if name:
                 if name in self.workers:
-                    self.workers[name].update(ip)
+                    self.workers[name].update(worker_type, ip)
                 else:
-                    self.workers[name] = Worker(name, ip)
+                    self.workers[name] = Worker(name, worker_type, ip)
                 return self.workers[name]
 
     def _save_job_result(self, key, result):
@@ -265,10 +269,29 @@ class JobManager():
             else:
                 return self.workers.values()
 
+    def list_miners(self, active_only=False):
+        miners = []
+        for worker in self.list_workers(active_only):
+            if worker.type == "miiner":
+                miners.append(worker)
+        return miners
+
+    def list_friendbots(self, active_only=False):
+        friendbots = []
+        for worker in self.list_workers(active_only):
+            if worker.type == "friendbot":
+                friendbots.append(worker)
+        return friendbots
+
     # returns the number of workers, optionally only counting the active ones
     def count_workers(self, active_only=False):
         return len(self.list_workers(active_only))
 
+    def count_miners(self, active_only=False):
+        return len(self.list_miners(active_only))
+
+    def count_friendbots(self, active_only=False):
+        return len(self.list_friendbots(active_only))
 
 # Generic mining job class
 class Job(Machine):
@@ -463,13 +486,17 @@ class Part1Job(ChainJob):
 
 class Worker():
 
-    def __init__(self, name, ip=None):
+    def __init__(self, name, worker_type, ip=None):
         self.name = name
         self.ip = ip
+        self.type = worker_type
         self.update()
 
-    def update(self, ip=None):
+    def update(self, worker_type=None, ip=None):
+        if worker_type is None:
+            worker_type = self.type
         self.last_update = datetime.now(tz=timezone.utc)
+        self.type = worker_type
         if ip:
             self.ip = ip
 

@@ -287,8 +287,9 @@ def api_check_network_stats():
     return success({
         'waiting': manager.count_jobs('waiting'),
         'working': manager.count_jobs('working'),
-        # TODO count miners separately
         'workers': manager.count_workers(active_only=True),
+        'friendbots': manager.count_friendbots(active_only=True),
+        'miners': manager.count_miners(active_only=True),
         'mseds_mined': mseds_mined
     })
 
@@ -309,6 +310,21 @@ def api_admin_list_workers():
             'workers': [dict(m) for m in manager.list_workers()]
         })
 
+@app.route('/api/admin/list_miners')
+@login_required
+def api_admin_list_miners():
+    with manager.lock:
+        return success({
+            'miners': [dict(m) for m in manager.list_miners()]
+        })
+
+@app.route('/api/admin/list_friendbots')
+@login_required
+def api_admin_list_friendbots():
+    with manager.lock:
+        return success({
+            'friendbots': [dict(m) for m in manager.list_friendbots()]
+        })
 
 # flask helpers
 
