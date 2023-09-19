@@ -283,7 +283,7 @@ def do_mii_mine(model, year, system_id, timeout=0):
 		# bfCL
 		bfcl_args = [
 			'lfcs',
-			f'{endian4(start_lfcs):08X}'
+			f'{endian4(start_lfcs):08X}',
 			hexlify(model_bytes).decode('ascii'),
 			system_id,
 			f'{endian4(0):08X}'
@@ -367,7 +367,7 @@ def run_bfcl(job_key, args, rws=force_reduced_work_size):
 		fail_job(job_key, message)
 		raise BfclExecutionError(message) from e
 	return 0
-args
+
 def check_bfcl_return_code(return_code):
 	if -1 == return_code:
 		raise BfclReturnCodeError(return_code, 'invalid arguments (not verified, could be generic error)')
