@@ -223,6 +223,7 @@ def get_max_offset(lfcs_bytes):
 
 def validate_benchmark():
 	if os.path.isfile(benchmark_filename):
+		print('Skipping benchmark')
 		return True
 	else:
 		print('No existing bechmark found!')
@@ -240,6 +241,8 @@ def erase_benchmark():
 	except:
 		pass
 
+# Modified from do_gpu @ seedminer_launcher3.py by zoogie
+# https://github.com/zoogie/seedminer/blob/master/seedminer/seedminer_launcher3.py#L394-L402
 def do_benchmark():
 	global dry_run
 	dry_run = True
@@ -250,12 +253,15 @@ def do_benchmark():
 		# impossible part1
 		buf = generate_part2(b'\xFF\xEE\xFF', 'fef0fef0fef0fef0fef0fef0fef0fef0')
 		time_target = time.time() + benchmark_target
-		# from seedminer_launcher3.py by zoogie
-		# https://github.com/zoogie/seedminer/blob/master/seedminer/seedminer_launcher3.py#L394-L402
-		keyy = hexlify(buf[:16]).decode('ascii')
-		id0 = hexlify(buf[16:32]).decode('ascii')
-		args = 'msky {} {} {:08X} {:08X}'.format(keyy, id0, endian4(0), endian4(5)).split()
-		return_code = run_bfcl('benchmark', args)
+		# bfCL
+		bfcl_args = [
+			'msky',
+			hexlify(buf[:16]).decode('ascii'), # keyy
+			hexlify(buf[16:32]).decode('ascii'), # id0
+			f'{endian4(0):08X}',
+			f'{endian4(5):08X}'
+		]
+		return_code = run_bfcl('benchmark', bfcl_args)
 		time_finish = time.time()
 		if return_code != 101:
 			print(f'Finished with an unexpected return code from bfCL: {return_code}')
@@ -274,9 +280,15 @@ def do_mii_mine(model, year, system_id, timeout=0):
 	cleanup_mining_files()
 	try:
 		start_lfcs, model_bytes = get_lfcs_start_and_flags(model, year)
-		args = 'lfcs {:08X} {} {} {:08X}'.format(endian4(start_lfcs), hexlify(model_bytes).decode('ascii'), system_id, endian4(0))
-		print(f'bfcl args: ' + args)
-		run_bfcl(system_id, args.split())
+		# bfCL
+		bfcl_args = [
+			'lfcs',
+			f'{endian4(start_lfcs):08X}'
+			hexlify(model_bytes).decode('ascii'),
+			system_id,
+			f'{endian4(0):08X}'
+		]
+		run_bfcl(system_id, bfcl_args)
 		# check output
 		if os.path.isfile('movable_part1.sed'):
 			print(f'Mining complete! Uploading movable_part1...')
@@ -286,22 +298,25 @@ def do_mii_mine(model, year, system_id, timeout=0):
 	finally:
 		cleanup_mining_files()
 
+
+# Modified from do_gpu @ seedminer_launcher3.py by zoogie
+# https://github.com/zoogie/seedminer/blob/master/seedminer/seedminer_launcher3.py#L394-L402
 def do_part1_mine(id0, lfcs, timeout=0):
 	cleanup_mining_files()
-	lfcs_bytes = unhexlify(lfcs)
 	try:
-		# bfCL
+		lfcs_bytes = unhexlify(lfcs)
 		max_offset = get_max_offset(lfcs_bytes)
 		print(f'Using maximum offset: {max_offset}')
-
-		# from seedminer_launcher3.py by zoogie
-		# https://github.com/zoogie/seedminer/blob/master/seedminer/seedminer_launcher3.py#L394-L402
 		part2 = generate_part2(lfcs_bytes, id0)
-		keyy = hexlify(part2[:16]).decode('ascii')
-		mid0 = hexlify(part2[16:32]).decode('ascii')
-		args = 'msky {} {} {:08X} {:08X}'.format(keyy, mid0, endian4(0), endian4(max_offset))
-		print(f'bfcl args: ' + args)
-		run_bfcl(id0, args.split())
+		# bfCL
+		bfcl_args = [
+			'msky',
+			hexlify(part2[:16]).decode('ascii'), #keyy
+			hexlify(part2[16:32]).decode('ascii'), # mid0
+			f'{endian4(0):08X}',
+			f'{endian4(max_offset):08X}'
+		]
+		run_bfcl(id0, bfcl_args)
 		# check output
 		if os.path.isfile('movable.sed'):
 			print(f'Mining complete! Uploading movable...')
@@ -311,14 +326,15 @@ def do_part1_mine(id0, lfcs, timeout=0):
 	finally:
 		cleanup_mining_files()
 
-def run_bfcl(key, args, rws=force_reduced_work_size):
+def run_bfcl(job_key, args, rws=force_reduced_work_size):
 	try:
-		# start mining
 		bfcl_args = [
 			('bfcl' if os.name == 'nt' else './bfcl'),
 			*args,
 			*(['rws'] if rws else ['sws', 'sm'])
 		]
+		print(f'bfCL args: {" ".join(bfcl_args)}')
+		# start mining
 		process = subprocess.Popen(bfcl_args)
 		try:
 			timer = 0
@@ -326,31 +342,32 @@ def run_bfcl(key, args, rws=force_reduced_work_size):
 				timer += 1
 				time.sleep(1)
 				if timer % update_interval == 0:
-					status = update_job(key)
+					status = update_job(job_key)
 					if status == 'canceled':
 						print('Job canceled')
 						kill_process(process)
-						return
+						return 0
 			# Help wanted for a better way of catching an exit code of '-5'
 			if not rws and (process.returncode == 251 or process.returncode == 0xFFFFFFFB):
 				time.sleep(3)  # Just wait a few seconds so we don't burn out our graphics card
-				return run_bfcl(key, args, True)
+				return run_bfcl(job_key, args, True)
 			else:
 				check_bfcl_return_code(process.returncode)
 		except KeyboardInterrupt:
 			kill_process(process)
 			print('Terminated bfCL')
-			release_job(key)
+			release_job(job_key)
 	except BfclReturnCodeError as e:
-		fail_job(key, f'{type(e).__name__}: {e}')
+		fail_job(job_key, f'{type(e).__name__}: {e}')
 		return e.return_code
 	except Exception as e:
 		print_exc()
 		print('bfCL was not able to run correctly!')
 		message = f'{type(e).__name__}: {e}'
-		fail_job(key, message)
+		fail_job(job_key, message)
 		raise BfclExecutionError(message) from e
-
+	return 0
+args
 def check_bfcl_return_code(return_code):
 	if -1 == return_code:
 		raise BfclReturnCodeError(return_code, 'invalid arguments (not verified, could be generic error)')
@@ -504,6 +521,7 @@ def run_client():
 		print('Please enter a name first.')
 		return
 	# initialize
+	print('Loading LFCS/msed3 databases')
 	load_lfcs_dbs()
 	# sanitize variables
 	miner_name = url_quote(miner_name)
