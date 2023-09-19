@@ -11,14 +11,15 @@ from urllib.parse import quote as url_quote
 from traceback import print_exc
 
 
-# Do not change! This should be set by the server when downloaded.
+# This should be set by the server when downloaded. Only change if you know
+# what you are doing!
 client_version = '{{ client_version }}'
 
-
-# This is the URL of the mining coordination server you would like to use. Be
-# sure to replace everything (including the curly braces) if you downloaded
-# this script from GitHub.
+# This is the URL of the mining coordination server you would like to use. It
+# should be set automatically when downloading from the mining website. Only
+# change this if you know what you are doing!
 base_url = '{{ url_for("page_home", _external=True) }}'
+
 
 # Enter a name for yourself. This name will be associated with your device on
 # the mining server and shown on the leaderboard. Any jobs you claim will be
@@ -64,14 +65,43 @@ lfcs_starts_new = {
 	2016: 0x03000000,
 	2017: 0x04000000
 }
+# default starting points
+lfcs_default_old = 0x0B000000 // 2
+lfcs_default_new = 0x05000000 // 2
 
+# lfcs/msed3 relationship database filenames 
+lfcs_db_filename_old = 'saves/old-v2.dat'
+lfcs_db_filename_new = 'saves/new-v2.dat'
+# lfcses from old/new databases
+db_lfcses_old = []
+db_lfcses_new = []
+# msed3s from old/new databases
+db_msed3s_old = []
+db_msed3s_new = []
+
+def load_lfcs_dbs():
+	db_lfcses_old, db_msed3s_old = load_lfcs_db(lfcs_db_filename_old)
+	db_lfcses_new, db_msed3s_new = load_lfcs_db(lfcs_db_filename_new)
+
+def load_lfcs_db(lfcs_db_filename: str):
+	with open(lfcs_db_filename, 'rb') as lfcs_db_file:
+		lfcs_db_data = lfcs_db_file.read()
+		lfcs_db_len = len(lfcs_db_data) // 8
+		# unpack lfcses/msed3s from database
+		lfcses = []
+		msed3s = []
+		for i in range(lfcs_db_len):
+			pair_index = i * 8
+			lfcses.append(struct.unpack('<I', lfcs_db_data[pair_index:pair_index+4])[0])
+			msed3s.append(struct.unpack('<I', lfcs_db_data[pair_index+4:pair_index+8])[0])
+		return lfcses, msed3s
 
 # Helper functions from seedminer_launcher3.py by zoogie
 # https://github.com/zoogie/seedminer/blob/master/seedminer/seedminer_launcher3.py#L51-L84
 def bytes2int(s):
 	n = 0
 	for i in range(4):
-		n += ord(s[i:i + 1]) << (i * 8)
+		n += ord(s[i:i+1]) << (i * 8)
 	return n
 
 def int2bytes(n):
@@ -81,89 +111,91 @@ def int2bytes(n):
 		n = n >> 8
 	return s
 
-def byteswap4(n):
-	# using a slice to reverse is better, and easier for bytes
-	return n[::-1]
+# swap the endian-ness of input data (reverses bytes)
+def byteswap(data)
+	return data[::-1]
 
+# invert the endian-ness of every n bytes of data
+def byteswap_each_n(data, n):
+	if len(data) % n != 0:
+        raise ValueError(f'Input data length must be a multiple of {n}')
+	swapped_data = bytearray()
+	for i in range(0, len(data), n):
+        swapped_data.extend(byteswap4(data[i:i+n]))
+	return swapped_data
+
+# invert the endian-ness of a 32-bit integer
 def endian4(n):
 	return (n & 0xFF000000) >> 24 | (n & 0x00FF0000) >> 8 | (n & 0x0000FF00) << 8 | (n & 0x000000FF) << 24
 
-# from generate_part2 @ seedminer_launcher3.py by zoogie
+# Modified from generate_part2 @ seedminer_launcher3.py by zoogie
 # https://github.com/zoogie/seedminer/blob/master/seedminer/seedminer_launcher3.py#L197-L273
-def generate_part2(seed, *id0s):
-	# full should be 16? but we only use 12
+def generate_part2(seed: bytes, *id0s) -> bytes:
+	# max 64 id0s
+	if len(id0s) > 64:
+		raise ValueError('Maximum of 64 ID0s allowed')
+	# pad seed to 12 bytes, full seed should be 16 but is not needed
 	if len(seed) < 12:
-		seed += b"\x00" * (12 - len(seed))
-
-	if seed[4:5] == b"\x02":
-		print("New3DS msed")
-		isnew = True
-	elif seed[4:5] == b"\x00":
-		print("Old3DS msed - this can happen on a New3DS")
-		isnew = False
-
-	# from getmsed3estimate @ seedminer_launcher3.py by zoogie
-	# https://github.com/zoogie/seedminer/blob/master/seedminer/seedminer_launcher3.py#L87-L114
-	fc = []
-	ft = []
-	err_correct = 0
-	msed3 = -1
-	newbit = 0x0
-	if isnew:
-		newbit = 0x80000000
-		with open("saves/new-v2.dat", "rb") as f:
-			buf = f.read()
+		seed += b'\x00' * (12 - len(seed))
+	# determine console type
+	if seed[4:5] == b'\x02':
+		print('New3DS msed')
+		is_new = True
+	elif seed[4:5] == b'\x00':
+		print('Old3DS msed - this can happen on a New3DS')
+		is_new = False
 	else:
-		with open("saves/old-v2.dat", "rb") as f:
-			buf = f.read()
-
-	lfcs_len = len(buf) // 8
-
-	for i in range(lfcs_len):
-		fc.append(struct.unpack("<i", buf[i*8:i*8+4])[0])
-
-	for i in range(lfcs_len):
-		ft.append(struct.unpack("<i", buf[i*8+4:i*8+8])[0])
-
-	fc_size = len(fc)
-	ft_size = len(ft)
-
-	if fc_size == ft_size:
-		n = bytes2int(seed[0:4])
-		msed3 = ((n // 5) - ft[ft_size - 1]) | newbit
-		for i in range(fc_size):
-			if n < fc[i]:
-				xs = (n - fc[i - 1])
-				xl = (fc[i] - fc[i - 1])
-				y = ft[i - 1]
-				yl = (ft[i] - ft[i - 1])
-				ys = ((xs * yl) // xl) + y
-				err_correct = ys
-				msed3 = ((n // 5) - ys) | newbit
-				break
-
-	print("LFCS	  : " + hex(bytes2int(seed[0:4])))
-	print("msed3 est : " + hex(msed3))
-	print("Error est : " + str(err_correct))
-
-	hash_final = b""
-	id0s = id0s[0:64] # max 64 id0
-	for id0 in id0s:
-		hash_init = unhexlify(id0)
-		hash_single = byteswap4(hash_init[0:4]) + byteswap4(hash_init[4:8]) + byteswap4(hash_init[8:12]) + byteswap4(hash_init[12:16])
-		print("ID0 hash " + str(i) + ": " + hexlify(hash_single).decode('ascii'))
+		raise ValueError('Invalid flag')
+	# estimate msed3 value
+	msed3_estimate = get_msed3_estimate(seed, is_new)
+	print(f'LFCS	  : {hex(bytes2int(seed[0:4]))}')
+	print(f'msed3 est : {hex(msed3_estimate)}')
+	# add id0 hashes
+	hash_final = b''
+	for i in range(len(id0s)):
+		hash_init = unhexlify(id0s[i])
+		hash_single = byteswap_each_n(hash_init, 4)
+		print(f'ID0 hash {i}: {hexlify(hash_single).decode("ascii")}')
 		hash_final += hash_single
-	print("Hash total: " + str(len(id0s)))
+	print(f'Hash total: {len(id0s)}')
+	return seed[0:12] + int2bytes(msed3_estimate) + hash_final
 
-	return seed[0:12] + int2bytes(msed3) + hash_final
+# Modified from getmsed3estimate @ seedminer_launcher3.py by zoogie
+# https://github.com/zoogie/seedminer/blob/master/seedminer/seedminer_launcher3.py#L87-L114
+def get_msed3_estimate(seed: bytes, is_new: bool):
+	if is_new:
+		newbit = 0x80000000
+		lfcses = db_lfcses_new
+		msed3s = db_msed3s_new
+	else:
+		newbit = 0x00000000
+		lfcses = db_lfcses_old
+		msed3s = db_msed3s_old
+
+	lfcses_size = len(lfcses)
+	msed3s_size = len(msed3s)
+
+	n = bytes2int(seed[0:4])
+	
+	# find estimate from graph
+	for i in range(lfcses_size):
+		if n < lfcses[i]:
+			xs = (n - lfcses[i-1])
+			xl = (lfcses[i] - lfcses[i-1])
+			y = msed3s[i - 1]
+			yl = (msed3s[i] - msed3s[i-1])
+			ys = ((xs * yl) // xl) + y
+			# err_correct = ys
+			return ((n // 5) - ys) | newbit
+	return ((n // 5) - msed3s[msed3s_size-1]) | newbit
 
 def get_lfcs_start_and_flags(model, year):
 	if 'old' == model:
 		model_bytes = b'\x00\x00'
-		start_lfcs = lfcs_starts_old.get(year, 0x0B000000 // 2)
+		start_lfcs = lfcs_starts_old.get(year, lfcs_default_old)
 	elif 'new' == model:
 		model_bytes = b'\x02\x00'
-		start_lfcs = lfcs_starts_new.get(year, 0x05000000 // 2)
+		start_lfcs = lfcs_starts_new.get(year, lfcs_default_new)
 	else:
 		raise ValueError('Invalid model')
 	return start_lfcs, model_bytes
@@ -180,27 +212,20 @@ def get_max_offset(lfcs_bytes):
 	if 2 == is_new:
 		max_offsets = [     16,      16,      20]
 		distances   = [0x00000, 0x00100, 0x00200]
-		with open("saves/new-v2.dat", "rb") as lfcs_file:
-			lfcs_buffer = lfcs_file.read()
+		lfcses = db_lfcses_new
 	elif 0 == is_new:
 		max_offsets = [     18,      18,      20]
 		distances   = [0x00000, 0x00100, 0x00200]
-		with open("saves/old-v2.dat", "rb") as lfcs_file:
-			lfcs_buffer = lfcs_file.read()
+		lfcses = db_lfcses_old
 	else:
 		raise ValueError('LFCS high u32 is not 0 or 2')
 
-	# unpack LFCSes from binary data
-	lfcs_list=[]
-	lfcs_count = len(lfcs_buffer) // 8
-	for i in range(0, lfcs_count):
-		lfcs_list.append(struct.unpack('<I', lfcs_buffer[i*8:i*8+4])[0])
-
 	# compare given LFCS to saved list and find smallest distance estimate
-	distance = lfcs - lfcs_list[lfcs_count - 1]
-	for i in range(1, lfcs_count - 1):
-		if lfcs < lfcs_list[i]:
-			distance = min(lfcs - lfcs_list[i-1], lfcs_list[i+1] - lfcs)
+	lfcses_size = len(lfcses)
+	distance = lfcs - lfcses[lfcses_size-1]
+	for i in range(1, lfcses_size - 1):
+		if lfcs < lfcses[i]:
+			distance = min(lfcs - lfcses[i-1], lfcses[i+1] - lfcs)
 			break
 
 	# print('Distance: %08X' % distance)
@@ -246,7 +271,7 @@ def do_benchmark():
 		# https://github.com/zoogie/seedminer/blob/master/seedminer/seedminer_launcher3.py#L394-L402
 		keyy = hexlify(buf[:16]).decode('ascii')
 		id0 = hexlify(buf[16:32]).decode('ascii')
-		args = "msky {} {} {:08X} {:08X}".format(keyy, id0, endian4(0), endian4(5)).split()
+		args = 'msky {} {} {:08X} {:08X}'.format(keyy, id0, endian4(0), endian4(5)).split()
 		return_code = run_bfcl('benchmark', args)
 		time_finish = time.time()
 		if return_code != 101:
@@ -266,7 +291,7 @@ def do_mii_mine(model, year, system_id, timeout=0):
 	cleanup_mining_files()
 	try:
 		start_lfcs, model_bytes = get_lfcs_start_and_flags(model, year)
-		args = "lfcs {:08X} {} {} {:08X}".format(endian4(start_lfcs), hexlify(model_bytes).decode('ascii'), system_id, endian4(0))
+		args = 'lfcs {:08X} {} {} {:08X}'.format(endian4(start_lfcs), hexlify(model_bytes).decode('ascii'), system_id, endian4(0))
 		print(f'bfcl args: ' + args)
 		run_bfcl(system_id, args.split())
 		# check output
@@ -288,10 +313,10 @@ def do_part1_mine(id0, lfcs, timeout=0):
 
 		# from seedminer_launcher3.py by zoogie
 		# https://github.com/zoogie/seedminer/blob/master/seedminer/seedminer_launcher3.py#L394-L402
-		buf = generate_part2(lfcs_bytes, id0)
-		keyy = hexlify(buf[:16]).decode('ascii')
-		mid0 = hexlify(buf[16:32]).decode('ascii')
-		args = "msky {} {} {:08X} {:08X}".format(keyy, mid0, endian4(0), endian4(max_offset))
+		part2 = generate_part2(lfcs_bytes, id0)
+		keyy = hexlify(part2[:16]).decode('ascii')
+		mid0 = hexlify(part2[16:32]).decode('ascii')
+		args = 'msky {} {} {:08X} {:08X}'.format(keyy, mid0, endian4(0), endian4(max_offset))
 		print(f'bfcl args: ' + args)
 		run_bfcl(id0, args.split())
 		# check output
@@ -473,6 +498,8 @@ def run_client():
 	if miner_name == 'CHANGE_ME':
 		print('Please enter a name first.')
 		return
+	# initialize
+	load_lfcs_dbs()
 	# sanitize variables
 	miner_name = url_quote(miner_name)
 	acceptable_job_types = ','.join(acceptable_job_types)
