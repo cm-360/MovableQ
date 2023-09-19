@@ -279,8 +279,9 @@ def api_check_network_stats():
     return success({
         'waiting': manager.count_jobs('waiting'),
         'working': manager.count_jobs('working'),
+        # TODO count miners separately
         'workers': manager.count_workers(active_only=True),
-        'totalMined': mseds_mined
+        'mseds_mined': mseds_mined
     })
 
 @app.route('/api/admin/list_jobs')

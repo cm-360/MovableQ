@@ -2,7 +2,7 @@
 
   const waitingCount = document.getElementById("waitingCount");
   const workingCount = document.getElementById("workingCount");
-  const minerCount = document.getElementById("minerCount");
+  const workerCount = document.getElementById("workerCount");
   const movableTotal = document.getElementById("movableTotal");
 
   async function getNetworkStats() {
@@ -12,8 +12,8 @@
       const stats = responseJson.data;
       waitingCount.innerText = stats.waiting;
       workingCount.innerText = stats.working;
-      minerCount.innerText = stats.miners;
-      movableTotal.innerText = stats.totalMined;
+      workerCount.innerText = stats.workers;
+      movableTotal.innerText = stats.mseds_mined;
     }
   }
 
