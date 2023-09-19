@@ -355,8 +355,9 @@ def run_bfcl(job_key, args, rws=force_reduced_work_size):
 				check_bfcl_return_code(process.returncode)
 		except KeyboardInterrupt:
 			kill_process(process)
-			print('Terminated bfCL')
+			print('Terminated bfCL, interrupt again to exit')
 			release_job(job_key)
+			time.sleep(5)
 	except BfclReturnCodeError as e:
 		fail_job(job_key, f'{type(e).__name__}: {e}')
 		return e.return_code
