@@ -22,7 +22,8 @@ def is_id0(value: str) -> bool:
 def is_system_id(value: str) -> bool:
     return bool(system_id_regex.fullmatch(value))
 
-# Modified from https://github.com/nh-server/Kurisu/blob/main/cogs/friendcode.py#L28
+# Modified from verify_3ds_fc @ friendcode.py by nh-server
+# https://github.com/nh-server/Kurisu/blob/main/cogs/friendcode.py#L28-L37
 def is_friend_code(value: str) -> bool:
     try:
         fc = int(value)
@@ -66,7 +67,8 @@ def validate_movable(msed: bytes, id0: str) -> bool:
     else:
         return False
 
-# Modified from https://github.com/zoogie/seedminer_toolbox/blob/master/id0convert.py#L4-L8
+# Modified from id0convert.py by zoogie
+# https://github.com/zoogie/seedminer_toolbox/blob/master/id0convert.py#L4-L8
 def validate_keyy(keyy: bytes, id0: str) -> bool:
     keyy_sha256 = hashlib.sha256(keyy).digest()[:0x10]
     keyy_id0 = (keyy_sha256[3::-1] + keyy_sha256[7:3:-1] + keyy_sha256[11:7:-1] + keyy_sha256[15:11:-1]).hex()
