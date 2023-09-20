@@ -99,10 +99,6 @@ def page_home():
 def page_mine():
     return render_template('pages/submit.html')
 
-@app.route('/mii')
-def page_mii():
-    return render_template('pages/mii.html')
-
 @app.route('/volunteer')
 def page_volunteer():
     return render_template('pages/volunteer.html')
@@ -148,7 +144,7 @@ def api_submit_job_chain():
         return error('Missing request JSON')
     # parse and submit chain
     chain = parse_job_chain(submission)
-    manager.submit_job_chain(chain)
+    manager.submit_job_chain(chain, overwrite_canceled=True)
     # queue jobs with no prerequisites
     first_job = chain[0]
     if 'ready' == first_job.state:
@@ -389,7 +385,10 @@ def parse_job_chain(chain_data) -> list[Job]:
             elif 'fc' == entry_type:
                 jobs.append(parse_fc_job(entry))
             elif 'part1' == entry_type:
-                jobs.append(parse_part1_job(entry, prereq_key=previous_job.key, should_have_lfcs=False))
+                if previous_job:
+                    jobs.append(parse_part1_job(entry, prereq_key=previous_job.key, should_have_lfcs=False))
+                else:
+                    jobs.append(parse_part1_job(entry, should_have_lfcs=True))
             else:
                 raise ValueError(f'Invalid job type {entry_type}')
         except Exception as e:
