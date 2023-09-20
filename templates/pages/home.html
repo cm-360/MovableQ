@@ -16,7 +16,7 @@
 		<div>
 			<div class="card">
 				<h4 class="card-header">Step 1: Choose a Method</h4>
-				<div class="collapse show" id="methodCardCollapse">
+				<div class="collapse" id="methodCardCollapse">
 					<form id="methodForm" class="card-body">
 						<div class="mb-3 row g-3" id="methodCardGroup">
 							<div class="col-md-6">
@@ -49,7 +49,7 @@
 			</div>
 			<div class="card">
 				<h4 class="card-header">Step 2: Console Information</h4>
-				<div class="collapse show" id="fcInfoCardCollapse">
+				<div class="collapse" id="fcInfoCardCollapse">
 					<form id="fcJobForm" class="card-body">
 						<div class="d-grid gap-3 mb-3">
 							<div class="card-text">
@@ -74,7 +74,7 @@
 						<button type="button" class="btn btn-secondary">Back</button>
 					</form>
 				</div>
-				<div class="collapse show" id="miiInfoCardCollapse">
+				<div class="collapse" id="miiInfoCardCollapse">
 					<form id="miiJobForm" class="card-body">
 						<div class="d-grid gap-3 mb-3">
 							<div class="card-text">
@@ -123,7 +123,7 @@
 			</div>
 			<div class="card">
 				<h4 class="card-header">Step 3: Obtain LFCS</h4>
-				<div class="collapse show" id="fcLfcsCardCollapse">
+				<div class="collapse" id="fcLfcsCardCollapse">
 					<div class="card-body">
 						<div class="alert alert-info" role="alert">
 							Using the 3DS friends list, regsiter <b id="botFriendCode">????-????-????</b> as a new online friend.
@@ -158,17 +158,69 @@
 						</div>
 					</div>
 				</div>
-				<div class="collapse show" id="miiLfcsCardCollapse">
+				<div class="collapse" id="miiLfcsCardCollapse">
+					<div class="card-body">
+						<div class="d-grid gap-3 mb-3">
+							<div class="card-text">
+								Please wait for the mining process to complete. This process can take up to 90 minutes, so feel free to leave this website running in the background, or even close it. While you wait, please ensure your ID0 is correct, and cancel the job if it is not. Otherwise, you will be waiting forever!
+							</div>
+							<div>
+								<span class="spinner-border spinner-border-sm" role="status"></span>
+								<span id="miiLfcsStatus" class="m-2">Please wait...</span>
+							</div>
+							<div class="alert alert-dark mb-0 collapse show" role="alert">
+								<div>
+									<div>System ID: <span id="miiLfcsSysId"></span></div>
+									<div>Assigned to: <span id="miiLfcsAssignee"></span></div>
+								</div>
+								<div class="mt-2 collapse show" id="miiLfcsStats">
+									<div>Hash rate: <span id="miiLfcsStatHash">0</span> M/s</div>
+									<div>Current offset: <span id="miiLfcsStatOffset"></span></div>
+								</div>
+							</div>
+						</div>
+						<button class="btn btn-danger" id="miiLfcsCancelButton">Cancel</button>
+					</div>
 				</div>
 			</div>
 			<div class="card">
 				<h4 class="card-header">Step 4: Obtain msed</h4>
-				<div class="collapse show" id="msedCardCollapse">
+				<div class="collapse" id="msedCardCollapse">
+					<div class="card-body">
+						<div class="d-grid gap-3 mb-3">
+							<div class="card-text">
+								Please wait for the mining process to complete. This process can take up to 90 minutes, so feel free to leave this website running in the background, or even close it. While you wait, please ensure your ID0 is correct, and cancel the job if it is not. Otherwise, you will be waiting forever!
+							</div>
+							<div>
+								<span class="spinner-border spinner-border-sm" role="status"></span>
+								<span id="msedStatus" class="m-2">Please wait...</span>
+							</div>
+							<div class="alert alert-dark mb-0 collapse show" role="alert">
+								<div>
+									<div>ID0: <span id="msedId0"></span></div>
+									<div>LFCS: <span id="msedLfcs"></span></div>
+									<div>Assigned to: <span id="msedAssignee"></span></div>
+								</div>
+								<div class="mt-2 collapse show" id="msedStats">
+									<div>Hash rate: <span id="msedStatHash">0</span> M/s</div>
+									<div>Current offset: <span id="msedStatOffset"></span></div>
+								</div>
+							</div>
+						</div>
+						<button class="btn btn-danger" id="msedCancelButton">Cancel</button>
+					</div>
 				</div>
 			</div>
 			<div class="card">
 				<h4 class="card-header">Step 5: Done!</h4>
-				<div class="collapse show">
+				<div class="collapse" id="doneCardCollapse">
+					<div class="card-body">
+						<p class="card-text">
+							Good news, the mining is complete! Download your <code>movable.sed</code> using the button below. If you ended up here immediately after submitting a job, go ahead and continue with the provided download.
+						</p>
+						<a id="movableDownload" href="#" class="btn btn-success">movable.sed <i class="fa fa-download"></i></a>
+						<button id="doAnotherButton" class="btn btn-secondary">Do another device</button>
+					</div>
 				</div>
 			</div>
 		</div>

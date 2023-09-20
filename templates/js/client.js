@@ -2,10 +2,10 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
 
 (() => {
 
-    let key;
+    let jobKey;
 
 
-    // ########## Method Selection ##########
+    // ########## Step 1: Method Selection ##########
 
     // method selection form
     const methodForm = document.getElementById("methodForm");
@@ -38,13 +38,22 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
         event.preventDefault();
         const formData = new FormData(methodForm);
         console.log(formData);
+        // TODO select method
     }
 
     methodForm.addEventListener("submit", event => submitMethodSelection(event));
 
 
-    // ########## Mii Mining ##########
+    // ########## Step 2: Friend Code Mining Info ##########
 
+    // Friend code job submission form
+    const fcJobForm = document.getElementById("fcJobForm");
+
+
+    // ########## Step 2: Mii Mining Info ##########
+
+    // Mii job submission form
+    const miiJobForm = document.getElementById("miiJobForm");
     // upload method toggle
     const miiUploadToggle = document.getElementById("miiUploadToggle");
     const miiUploadFile = document.getElementById("mii_file");
@@ -66,8 +75,10 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
     toggleMiiUpload();
 
 
-    // ########## LFCS: Friend Exchange ##########
+    // ########## Step 3: LFCS from Friend Exchange ##########
 
+    // Manual LFCS/part1 submission form
+    const fcLfcsForm = document.getElementById("fcLfcsForm");
     // upload method toggle
     const lfcsUploadToggle = document.getElementById("lfcsUploadToggle");
     const lfcsUploadFile = document.getElementById("lfcs_file");
@@ -89,8 +100,79 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
     toggleLfcsUpload();
 
 
-    // ########## LFCS: Mii  ##########
+    // ########## Step 3: LFCS from Mii QR Code  ##########
 
+
+    // ########## Step 4: msed Mining ##########
+
+
+    // ########## Step 5: Done  ##########
+
+
+    // ########## Form Management  ##########
+
+    function resetFormFeedback(form) {
+        for (let element of form.elements) {
+            element.classList.remove("is-invalid");
+        }
+    }
+
+    function applyFormFeedback(form, feedback) {
+        resetFormFeedback(form);
+        for (let invalid of feedback.replace("invalid:", "").split(",")) {
+            // TODO apply to file/url toggles
+            if (invalid in form.elements) {
+                form.elements[invalid].classList.add("is-invalid");
+            } else if (`${invalid}_file` in form.elements) {
+                form.elements[`${invalid}_file`].classList.add("is-invalid");
+                form.elements[`${invalid}_url`].classList.add("is-invalid");
+            }
+        }
+    }
+
+
+    // ########## Step Management  ##########
+
+    // Step 1: Choose Method
+    const methodCardCollapse = new bootstrap.Collapse(document.getElementById("methodCardCollapse"), { toggle: false });
+    // Step 2: Console Info
+    const fcInfoCardCollapse = new bootstrap.Collapse(document.getElementById("fcInfoCardCollapse"), { toggle: false });
+    const miiInfoCardCollapse = new bootstrap.Collapse(document.getElementById("miiInfoCardCollapse"), { toggle: false });
+    // Step 3: LFCS
+    const fcLfcsCardCollapse = new bootstrap.Collapse(document.getElementById("fcLfcsCardCollapse"), { toggle: false });
+    const miiLfcsCardCollapse = new bootstrap.Collapse(document.getElementById("miiLfcsCardCollapse"), { toggle: false });
+    // Step 4: msed
+    const msedCardCollapse = new bootstrap.Collapse(document.getElementById("msedCardCollapse"), { toggle: false });
+    // Step 5: Done
+    const doneCardCollapse = new bootstrap.Collapse(document.getElementById("doneCardCollapse"), { toggle: false });
+
+    function setJobKey(newKey) {
+        if (newKey) {
+            const urlParams = new URLSearchParams(window.location.search);
+            urlParams.set("key", newKey);
+            window.history.pushState(newKey, "", window.location.pathname + "?" + urlParams.toString());
+        } else {
+            // avoid adding duplicate blank history entries
+            if (jobKey) {
+                window.history.pushState(newKey, "", window.location.pathname);
+            }
+        }
+        jobKey = newKey;
+        setCookie("key", jobKey, 7);
+    }
+
+    function loadJobKey() {
+        const urlParams = new URLSearchParams(window.location.search);
+        let tmpKey;
+        if (urlParams.has("key")) {
+            tmpKey = urlParams.get("key");
+        } else {
+            tmpKey = getCookie("key");
+        }
+        setJobKey(tmpKey);
+    }
+    
+    loadJobKey();
 
 
 })();
