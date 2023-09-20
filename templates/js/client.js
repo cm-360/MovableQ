@@ -66,6 +66,10 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
         updateStepView(1, null);
     });
 
+    function submitFcJob() {
+        const fcJobFormData = new FormData(fcJobForm);
+    }
+
 
     // ########## Step 2: Mii Mining Info ##########
 
@@ -101,6 +105,10 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
     miiJobBackButton.addEventListener("click", event => {
         updateStepView(1, null);
     });
+
+    function submitMiiJob() {
+        const miiJobFormData = new FormData(miiJobForm);
+    }
 
 
     // ########## Step 3: LFCS from Friend Exchange ##########
@@ -304,6 +312,13 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
         } else {
             updateStepView(1, null);
         }
+    }
+
+
+    // ########## Helper Functions  ##########
+
+    function fetchFileFromUrl(url) {
+
     }
 
 
