@@ -289,6 +289,7 @@ def api_list_claimed_jobs():
     claimed = []
     for job in manager.list_jobs(status_filter="working"):
         if job.get_assignee_name() == worker_name:
+            job.update()  # update job to avoid server timing it out
             claimed.append(dict(job))
     return success({"jobs": claimed})
 
