@@ -42,6 +42,7 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
         event.preventDefault();
         const formData = new FormData(methodForm);
         console.log(formData);
+        updateStepView(2, formData.methodRadio);
         // TODO select method
     }
 
@@ -241,7 +242,7 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
     }
 
     function startJobWatch() {
-        cancelJobWatch();
+        stopJobWatch();
         intervalId = setInterval(checkJob, 10000);
     }
     
@@ -252,16 +253,53 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
         }
     }
 
-    function updateStepView() {
-        cancelJobWatch();
+    function updateStepView(stepNumber, subStep) {
+        stopJobWatch();
+        switch (stepNumber) {
+            case 1: // Method selection
+                showMethodSelectionView();
+                return;
+            case 2: // Job submission
+                switch (subStep) {
+                    case "fc":
+                        showFcSubmitView();
+                        return;
+                    case "mii":
+                        showMiiSubmitView();
+                        return;
+                }
+                break;
+            case 3: // LFCS
+                switch (subStep) {
+                    case "fc":
+                        showFcLfcsView();
+                        return;
+                    case "mii":
+                        showMiiLfcsView();
+                        return;
+                }
+                break;
+            case 4: // msed
+                showMsedView();
+                return;
+            case 5: // Done
+                showDoneView();
+                return;
+        }
+        alert(`Invalid step! Got: ${stepNumber}, ${subStep}`);
     }
 
     function fetchJobStatus() {
+        if (jobKey) {
 
+        } else {
+            updateStepView(1, null);
+        }
     }
 
 
     // Ready to go!
     loadJobKey();
+    fetchJobStatus();
 
 })();
