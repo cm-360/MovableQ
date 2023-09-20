@@ -574,7 +574,7 @@ def id0_to_movable_path(id0, create=False):
 
 def movable_exists(id0):
     movable_path = id0_to_movable_path(id0)
-    return os.path.isfile(mseds_path)
+    return os.path.isfile(movable_path)
 
 def save_movable(id0, movable):
     with open(id0_to_movable_path(id0, create=True), 'wb') as movable_file:
