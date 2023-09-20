@@ -261,27 +261,26 @@ class JobManager():
     def count_jobs(self, status_filter=None):
         return len(self.list_jobs(status_filter))
 
-    # returns a list of all workers, or optionally only the active ones
-    def list_workers(self, active_only=False):
+    # returns a list of workers, optionally filtered by activity or worker type
+    def list_workers(self, active_only=False, filter_type=None):
+        workers = []
         with self.lock:
-            if active_only:
-                return [m for m in self.workers.values() if not m.has_timed_out()]
-            else:
+            if not (active_only or filter_type):
                 return self.workers.values()
+            for worker in self.workers.values():
+                if filter_type and worker.type != filter_type:
+                    continue
+                if active_only and not worker.has_timed_out():
+                    workers.append(worker)
+                elif not active_only:
+                    workers.append(worker)
+            return workers
 
     def list_miners(self, active_only=False):
-        miners = []
-        for worker in self.list_workers(active_only):
-            if worker.type == "miiner":
-                miners.append(worker)
-        return miners
+        return self.list_workers(active_only, "miiner")
 
     def list_friendbots(self, active_only=False):
-        friendbots = []
-        for worker in self.list_workers(active_only):
-            if worker.type == "friendbot":
-                friendbots.append(worker)
-        return friendbots
+        return self.list_workers(active_only, "friendbot")
 
     # returns the number of workers, optionally only counting the active ones
     def count_workers(self, active_only=False):
