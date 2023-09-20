@@ -24,11 +24,10 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
             if (selectedCard == card) {
                 radioButton.checked = true;
                 card.classList.remove("border-secondary-subtle");
-                card.classList.add("border-primary");
+                card.classList.add("border-success");
             } else {
-                radioButton.checked = false;
                 card.classList.add("border-secondary-subtle");
-                card.classList.remove("border-primary");
+                card.classList.remove("border-success");
             }
         }
     }
@@ -41,9 +40,7 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
     function submitMethodSelection(event) {
         event.preventDefault();
         const formData = new FormData(methodForm);
-        console.log(formData);
-        updateStepView(2, formData.methodRadio);
-        // TODO select method
+        updateStepView(2, formData.get('methodRadio'));
     }
 
     methodForm.addEventListener("submit", event => submitMethodSelection(event));
@@ -57,17 +54,25 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
 
     // Friend code job submission form
     const fcJobForm = document.getElementById("fcJobForm");
+    // Back to method selection button
+    const fcJobBackButton = document.getElementById("fcJobBackButton");
 
     function showFcSubmitView() {
         resetForm(fcJobForm);
         showStepCollapse(fcSubmitStepCollapse);
     }
 
+    fcJobBackButton.addEventListener("click", event => {
+        updateStepView(1, null);
+    });
+
 
     // ########## Step 2: Mii Mining Info ##########
 
     // Mii job submission form
     const miiJobForm = document.getElementById("miiJobForm");
+    // Back to method selection button
+    const miiJobBackButton = document.getElementById("miiJobBackButton");
     // upload method toggle
     const miiUploadToggle = document.getElementById("miiUploadToggle");
     const miiUploadFile = document.getElementById("mii_file");
@@ -92,6 +97,10 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
         resetForm(miiJobForm);
         showStepCollapse(miiSubmitStepCollapse);
     }
+
+    miiJobBackButton.addEventListener("click", event => {
+        updateStepView(1, null);
+    });
 
 
     // ########## Step 3: LFCS from Friend Exchange ##########
