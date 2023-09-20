@@ -561,7 +561,7 @@ if __name__ == '__main__':
     app.logger.info('Previous totals:')
     app.logger.info(f'  {mseds_mined} mseds mined')
     app.logger.info(f'  {lfcses_mined} lfcses mined')
-    app.logger.info(f'  {lfcses_dumped} dumped')
+    app.logger.info(f'  {lfcses_dumped} lfcses dumped')
     # start web server
     from waitress import serve
     serve(app, host=os.getenv('HOST_ADDR', '127.0.0.1'), port=os.getenv('HOST_PORT', 7799))
