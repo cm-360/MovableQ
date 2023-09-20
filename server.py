@@ -237,7 +237,7 @@ def api_reset_job(key: str):
 
 @app.route('/api/complete_job/<key>', methods=['POST'])
 def api_complete_job(key: str):
-    global mseds_mined
+    global mseds_mined, lfcses_mined, lfcses_dumped
     if not is_job_key(key):
         return error('Invalid Job Key')
     # get raw result data
