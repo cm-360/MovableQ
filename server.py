@@ -278,6 +278,20 @@ def api_fail_job(key: str):
     app.logger.info(f'{log_prefix(key)} failed')
     return success()
 
+@app.route('/api/list_claimed_jobs')
+def api_list_claimed_jobs():
+    worker_name = request.args.get("name")
+    if not worker_name:
+        return error("No worker name provided")
+    # maybe fallback to matching by ip?
+    # downside would be slower and potential for returning wrong job types
+    # if there was a friendbot and miner running on the same ip unless a type is also provided
+    claimed = []
+    for job in manager.list_jobs(status_filter="working"):
+        if job.get_assignee_name() == worker_name:
+            claimed.append(dict(job))
+    return success({"jobs": claimed})
+
 @app.route('/api/check_network_stats')
 def api_check_network_stats():
     return success({
