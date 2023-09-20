@@ -4,6 +4,7 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
 
     let key;
 
+
     // ########## Method Selection ##########
 
     // method selection form
@@ -42,6 +43,54 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
     methodForm.addEventListener("submit", event => submitMethodSelection(event));
 
 
-    // ##########  ##########
+    // ########## Mii Mining ##########
+
+    // upload method toggle
+    const miiUploadToggle = document.getElementById("miiUploadToggle");
+    const miiUploadFile = document.getElementById("mii_file");
+    const miiUploadUrl = document.getElementById("mii_url");
+
+    function toggleMiiUpload() {
+        if (miiUploadFile.classList.contains("show")) {
+            miiUploadUrl.classList.add("show");
+            miiUploadFile.classList.remove("show");
+            miiUploadToggle.innerText = "Upload a file instead";
+        } else {
+            miiUploadFile.classList.add("show");
+            miiUploadUrl.classList.remove("show");
+            miiUploadToggle.innerText = "Provide a URL instead";
+        }
+    }
+
+    miiUploadToggle.addEventListener("click", toggleMiiUpload);
+    toggleMiiUpload();
+
+
+    // ########## LFCS: Friend Exchange ##########
+
+    // upload method toggle
+    const lfcsUploadToggle = document.getElementById("lfcsUploadToggle");
+    const lfcsUploadFile = document.getElementById("lfcs_file");
+    const lfcsUploadUrl = document.getElementById("lfcs_url");
+
+    function toggleLfcsUpload() {
+        if (lfcsUploadFile.classList.contains("show")) {
+            lfcsUploadUrl.classList.add("show");
+            lfcsUploadFile.classList.remove("show");
+            lfcsUploadToggle.innerText = "Upload a file instead";
+        } else {
+            lfcsUploadFile.classList.add("show");
+            lfcsUploadUrl.classList.remove("show");
+            lfcsUploadToggle.innerText = "Provide a URL instead";
+        }
+    }
+
+    lfcsUploadToggle.addEventListener("click", toggleLfcsUpload);
+    toggleLfcsUpload();
+
+
+    // ########## LFCS: Mii  ##########
+
+
 
 })();
