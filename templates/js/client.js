@@ -2,7 +2,10 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
 
 (() => {
 
+    // Comma-separated IDs of the current job chain
     let jobKey;
+    // Interval ID of job status checker
+    let intervalId;
 
 
     // ########## Step 1: Method Selection ##########
@@ -23,6 +26,7 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
                 card.classList.remove("border-secondary-subtle");
                 card.classList.add("border-primary");
             } else {
+                radioButton.checked = false;
                 card.classList.add("border-secondary-subtle");
                 card.classList.remove("border-primary");
             }
@@ -43,11 +47,20 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
 
     methodForm.addEventListener("submit", event => submitMethodSelection(event));
 
+    function showMethodSelectionView() {
+        showStepCollapse(methodStepCollapse);
+    }
+
 
     // ########## Step 2: Friend Code Mining Info ##########
 
     // Friend code job submission form
     const fcJobForm = document.getElementById("fcJobForm");
+
+    function showFcSubmitView() {
+        resetForm(fcJobForm);
+        showStepCollapse(fcSubmitStepCollapse);
+    }
 
 
     // ########## Step 2: Mii Mining Info ##########
@@ -74,6 +87,11 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
     miiUploadToggle.addEventListener("click", toggleMiiUpload);
     toggleMiiUpload();
 
+    function showMiiSubmitView() {
+        resetForm(miiJobForm);
+        showStepCollapse(miiSubmitStepCollapse);
+    }
+
 
     // ########## Step 3: LFCS from Friend Exchange ##########
 
@@ -99,17 +117,39 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
     lfcsUploadToggle.addEventListener("click", toggleLfcsUpload);
     toggleLfcsUpload();
 
+    function showFcLfcsView() {
+        resetForm(fcLfcsForm);
+        showStepCollapse(fcLfcsStepCollapse);
+    }
+
 
     // ########## Step 3: LFCS from Mii QR Code  ##########
+
+    function showMiiLfcsView() {
+        showStepCollapse(miiLfcsStepCollapse);
+    }
 
 
     // ########## Step 4: msed Mining ##########
 
+    function showMsedView() {
+        showStepCollapse(msedStepCollapse);
+    }
+
 
     // ########## Step 5: Done  ##########
 
+    function showDoneView() {
+        showStepCollapse(doneStepCollapse);
+    }
+
 
     // ########## Form Management  ##########
+
+    function resetForm(form) {
+        form.reset();
+        resetFormFeedback(form);
+    }
 
     function resetFormFeedback(form) {
         for (let element of form.elements) {
@@ -131,20 +171,48 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
     }
 
 
-    // ########## Step Management  ##########
+    // ########## Collapse Management  ##########
 
     // Step 1: Choose Method
-    const methodCardCollapse = new bootstrap.Collapse(document.getElementById("methodCardCollapse"), { toggle: false });
+    const methodStepCollapse = new bootstrap.Collapse(document.getElementById("methodStepCollapse"), { toggle: false });
     // Step 2: Console Info
-    const fcInfoCardCollapse = new bootstrap.Collapse(document.getElementById("fcInfoCardCollapse"), { toggle: false });
-    const miiInfoCardCollapse = new bootstrap.Collapse(document.getElementById("miiInfoCardCollapse"), { toggle: false });
+    const fcSubmitStepCollapse = new bootstrap.Collapse(document.getElementById("fcSubmitStepCollapse"), { toggle: false });
+    const miiSubmitStepCollapse = new bootstrap.Collapse(document.getElementById("miiSubmitStepCollapse"), { toggle: false });
     // Step 3: LFCS
-    const fcLfcsCardCollapse = new bootstrap.Collapse(document.getElementById("fcLfcsCardCollapse"), { toggle: false });
-    const miiLfcsCardCollapse = new bootstrap.Collapse(document.getElementById("miiLfcsCardCollapse"), { toggle: false });
+    const fcLfcsStepCollapse = new bootstrap.Collapse(document.getElementById("fcLfcsStepCollapse"), { toggle: false });
+    const miiLfcsStepCollapse = new bootstrap.Collapse(document.getElementById("miiLfcsStepCollapse"), { toggle: false });
     // Step 4: msed
-    const msedCardCollapse = new bootstrap.Collapse(document.getElementById("msedCardCollapse"), { toggle: false });
+    const msedStepCollapse = new bootstrap.Collapse(document.getElementById("msedStepCollapse"), { toggle: false });
     // Step 5: Done
-    const doneCardCollapse = new bootstrap.Collapse(document.getElementById("doneCardCollapse"), { toggle: false });
+    const doneStepCollapse = new bootstrap.Collapse(document.getElementById("doneStepCollapse"), { toggle: false });
+
+    const stepCollapses = [
+        // Step 1: Choose Method
+        methodStepCollapse,
+        // Step 2: Console Info
+        fcSubmitStepCollapse,
+        miiSubmitStepCollapse,
+        // Step 3: LFCS
+        fcLfcsStepCollapse,
+        miiLfcsStepCollapse,
+        // Step 4: msed
+        msedStepCollapse,
+        // Step 5: Done
+        doneStepCollapse
+    ]
+
+    function showStepCollapse(collapseToShow) {
+        for (let collapse of stepCollapses) {
+            if (collapseToShow === collapse) {
+                collapse.show();
+            } else {
+                collapse.hide();
+            }
+        }
+    }
+
+
+    // ########## Job Management  ##########
 
     function setJobKey(newKey) {
         if (newKey) {
@@ -171,8 +239,29 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
         }
         setJobKey(tmpKey);
     }
-    
-    loadJobKey();
 
+    function startJobWatch() {
+        cancelJobWatch();
+        intervalId = setInterval(checkJob, 10000);
+    }
+    
+    function stopJobWatch() {
+        if (intervalId) {
+            clearInterval(intervalId);
+            intervalId = 0;
+        }
+    }
+
+    function updateStepView() {
+        cancelJobWatch();
+    }
+
+    function fetchJobStatus() {
+
+    }
+
+
+    // Ready to go!
+    loadJobKey();
 
 })();
