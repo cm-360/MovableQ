@@ -2,6 +2,8 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
 
 (() => {
 
+    let key;
+
     // ########## Method Selection ##########
 
     // method selection form
@@ -13,13 +15,10 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
     const methodButtonFc = document.getElementById("methodButtonFc");
     const methodButtonMii = document.getElementById("methodButtonMii");
 
-    function selectMethod() {
-
-    }
-
     function updateMethodSelection(selectedCard, radioButton) {
         for (let card of methodCards) {
             if (selectedCard == card) {
+                radioButton.checked = true;
                 card.classList.remove("border-secondary-subtle");
                 card.classList.add("border-primary");
             } else {
@@ -30,9 +29,18 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
     }
 
     for (let card of methodCards) {
-        const button = card.getElementByClassName("btn-check");
-        card.addEventListener("click", event => updateMethodSelection(card));
+        const button = card.querySelector(".btn-check");
+        card.addEventListener("click", event => updateMethodSelection(card, button));
     }
+
+    function submitMethodSelection(event) {
+        event.preventDefault();
+        const formData = new FormData(methodForm);
+        console.log(formData);
+    }
+
+    methodForm.addEventListener("submit", event => submitMethodSelection(event));
+
 
     // ##########  ##########
 
