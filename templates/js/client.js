@@ -2,6 +2,13 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
 
 (() => {
 
+    // Allows URL to forcibly select method
+    let forcedMethod = "";
+    const forcedMethodPrefix = "{{ url_for('page_force_method', method_name='') }}";
+    if (window.location.pathname.startsWith(forcedMethodPrefix)) {
+        forcedMethod = window.location.pathname.replace(forcedMethodPrefix, '');
+    }
+
     // Comma-separated IDs of the current job chain
     let chainKeys;
     // Interval ID of job status checker
@@ -562,13 +569,6 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
 
     }
 
-
-    // Allows URL to forcibly select method
-    let forcedMethod = "";
-    const forcedMethodPrefix = "{{ url_for('page_force_method', method_name='') }}";
-    if (window.location.pathname.startsWith(forcedMethodPrefix)) {
-        forcedMethod = window.location.pathname.replace(forcedMethodPrefix, '');
-    }
 
     document.addEventListener("DOMContentLoaded", () => {
         loadChainKeys();
