@@ -62,9 +62,7 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
         showStepCollapse(fcSubmitStepCollapse);
     }
 
-    fcJobBackButton.addEventListener("click", event => {
-        updateStepView(1, null);
-    });
+    fcJobBackButton.addEventListener("click", event => updateStepView(1, null));
 
     function submitFcJob() {
         const fcJobFormData = new FormData(fcJobForm);
@@ -102,9 +100,7 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
         showStepCollapse(miiSubmitStepCollapse);
     }
 
-    miiJobBackButton.addEventListener("click", event => {
-        updateStepView(1, null);
-    });
+    miiJobBackButton.addEventListener("click", event => updateStepView(1, null));
 
     async function submitMiiJob(event) {
         event.preventDefault();
