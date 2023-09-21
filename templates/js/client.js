@@ -327,7 +327,7 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
 
     function fetchJobStatus() {
         if (chainKeys) {
-
+            apiCheckChainStatus();
         } else {
             updateStepView(1, null);
         }
@@ -341,7 +341,26 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
     // ########## API Calls ##########
 
     async function apiCheckChainStatus() {
-
+        let response;
+        try {
+            response = await fetch(`{{ url_for('api_check_chain_status', chain_keys='') }}${chainKeys}`);
+            const responseJson = await response.json();
+            if (response.ok) {
+                // status check successful
+                console.log(responseJson.data);
+            } else {
+                // throw error with server message
+                throw new Error(responseJson.message);
+            }
+        } catch (error) {
+            if (error instanceof SyntaxError) {
+                // syntax error from parsing non-JSON server error response
+                window.alert(`Error checking job chain status: ${response.status} - ${response.statusText}`);
+            } else {
+                // generic error
+                window.alert(`Error checking job chain status: ${error.message}`);
+            }
+        }
     }
 
     async function apiSubmitJobChain(chainData, feedbackTargetForm) {
