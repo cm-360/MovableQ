@@ -8,7 +8,7 @@ import os
 from threading import RLock
 from binascii import hexlify
 
-from validators import is_id0, is_system_id, is_friend_code
+from validators import is_id0, is_system_id, is_friend_code, get_key_type
 
 
 fc_lfcses_path = os.getenv('FC_LFCSES_PATH', './lfcses/fc')
@@ -166,10 +166,13 @@ class JobManager():
             save_movable(key, result)
 
     # save result to disk and delete job
-    def complete_job(self, key, result):
+    def complete_job(self, key, result, force=False):
         with self.lock:
             job = self.jobs[key]
-            job.complete()
+            if force:
+                job.to_complete()
+            else:
+                job.complete()
             self._save_job_result(key, result)
             self.fulfill_dependents(key, result)
             self.delete_job(key)
@@ -188,6 +191,18 @@ class JobManager():
         with self.lock:
             job = self.jobs[key]
             job.fail(note)
+
+    # auto-complete jobs that already have a result saved
+    def autocomplete_jobs(self):
+        with self.lock:
+            completed = []
+            for job in self.jobs.values():
+                result = read_result(job.key)
+                if result:
+                    self.complete_job(key, result, force=True)
+                    completed.append(job.key)
+            return completed
+
 
     # requeue dead jobs
     def release_dead_jobs(self):
@@ -224,14 +239,9 @@ class JobManager():
                 job = self.jobs[key]
                 return job.state
             except KeyError as e:
-                if is_friend_code(key) and fc_lfcs_exists(key):
+                if result_exists(key)
                     return 'done'
-                elif is_system_id(key) and sid_lfcs_exists(key):
-                    return 'done'
-                elif is_id0(key) and movable_exists(key):
-                    return 'done'
-                else:
-                    raise e
+                raise e
 
     def get_mining_stats(self, key):
         with self.lock:
@@ -589,6 +599,25 @@ def read_movable(id0):
             return movable
         else: # broken file?
             return
+
+
+def result_exists(key):
+    key_type = get_key_type(key)
+    if 'fc' == key_type and fc_lfcs_exists(key):
+        return 'done'
+    elif 'mii' == key_type and sid_lfcs_exists(key):
+        return 'done'
+    elif 'part1' == key_type and movable_exists(key):
+        return 'done'
+
+def read_result(key):
+    key_type = get_key_type(key)
+    if 'fc' == key_type:
+        return fc_read_lfcs(key)
+    elif 'mii' == key_type:
+        return sid_read_lfcs(key)
+    elif 'part1' == key_type:
+        return read_movable(key)
 
 
 def count_lfcses_mined():
