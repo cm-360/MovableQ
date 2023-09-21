@@ -26,6 +26,9 @@ from validators import is_job_key, is_id0, is_system_id, is_friend_code, validat
 # AES keys
 slot0x31KeyN = 0x59FC817E6446EA6190347B20E9BDCE52
 
+# regexes
+request_split_regex = re.compile(r'[+,]')
+
 # logging config
 dictConfig({
     'version': 1,
@@ -152,7 +155,7 @@ def api_submit_job_chain():
         manager.queue_job(first_job.key)
     # return job keys to submitter
     chain_keys = [j.key for j in chain]
-    app.logger.info(f'{log_prefix(",".join(chain_keys))} submitted')
+    app.logger.info(f'{log_prefix(", ".join(chain_keys))} submitted')
     return success(chain_keys)
 
 @app.route('/api/submit_mii_job', methods=['POST'])
@@ -178,7 +181,7 @@ def api_request_job():
     client_version = request.args.get('version')
     requested_types = request.args.get('types')
     if requested_types:
-        requested_types = set(requested_types.split(','))
+        requested_types = set(request_split_regex.split(requested_types))
     allowed_types = enforce_client_version(client_types, client_version, requested_types)
     # check for and assign jobs
     job = manager.request_job(allowed_types, worker_name, worker_ip)
