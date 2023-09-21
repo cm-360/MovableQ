@@ -20,11 +20,14 @@ client_version = '{{ client_version }}'
 # change this if you know what you are doing!
 base_url = '{{ url_for("page_home", _external=True) }}'
 
+# Set whether to download script updates automatically from the server
+auto_update = True
+
 
 # Enter a name for yourself. This name will be associated with your device on
 # the mining server and shown on the leaderboard. Any jobs you claim will be
 # associated with this name as well, so make sure its appropriate!
-miner_name = 'CHANGE_ME'
+miner_name = '{{ miner_name }}'
 
 # Choose which job types you are willing to mine. Note that mii mining jobs
 # are typically much more demanding than part1 jobs, and can significantly
@@ -395,6 +398,8 @@ def request_job():
 	result = response['result']
 	if 'success' != result:
 		error_message = response['message']
+		if auto_update and 'Outdated' in error_message:
+			update_client()
 		print(f'Error from server: {error_message}')
 		return
 	return response['data']
@@ -514,9 +519,22 @@ def load_lfcs_db(lfcs_db_filename: str):
 		return lfcses, msed3s
 
 
+def update_client():
+	# get new file from server
+	response = requests.get(f'{base_url}/get_mining_client?name={miner_name}')
+	with open(sys.argv[0], 'wb') as script_file:
+		for chunk in response.iter_content(chunk_size=128):
+			script_file.write(chunk)
+	# replace current process with updated version
+	args = sys.argv[:]
+	args.insert(0, sys.executable)
+	if sys.platform == 'win32':
+		args = ['"%s"' % arg for arg in args]
+	os.execv(sys.executable, args)
+
 def run_client():
-	global miner_name
-	global acceptable_job_types
+	global miner_name, acceptable_job_types
+	print(f'Client version {client_version}')
 	# remind miner to change name variable
 	if miner_name == 'CHANGE_ME':
 		print('Please enter a name first.')

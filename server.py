@@ -56,7 +56,7 @@ manager = JobManager()
 mining_client_filename = 'mining_client.py'
 client_types = {
     'miiner': {
-        'version': '1.0.0-fix1',
+        'version': '2.0.0-alpha',
         'allowed': {'mii', 'part1'}
     },
     'friendbot': {
@@ -119,7 +119,8 @@ def serve_js(filename: str):
 @app.route('/get_mining_client')
 def get_mining_client():
     client_version = f'miiner-{client_types["miiner"]["version"]}'
-    response = make_response(render_template(mining_client_filename, client_version=client_version))
+    miner_name = request.args.get('name', 'CHANGE_ME')
+    response = make_response(render_template(mining_client_filename, client_version=client_version, miner_name=miner_name))
     response.headers.set('Content-Type', 'application/octet-stream')
     response.headers.set('Content-Disposition', 'attachment', filename=mining_client_filename)
     return response
