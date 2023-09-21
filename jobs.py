@@ -166,14 +166,10 @@ class JobManager():
             save_movable(key, result)
 
     # save result to disk and delete job
-    def complete_job(self, key, result, force=False):
+    def complete_job(self, key, result):
         with self.lock:
             job = self.jobs[key]
-            if force:
-                self._unqueue_job(job.key)
-                job.to_complete()
-            else:
-                job.complete()
+            job.complete()
             self._save_job_result(key, result)
             self.fulfill_dependents(key, result)
             self.delete_job(key)
@@ -200,10 +196,12 @@ class JobManager():
             for job in self.jobs.values():
                 result = read_result(job.key)
                 if result:
-                    self.complete_job(key, result, force=True)
+                    self._unqueue_job(job.key)
+                    self.fulfill_dependents(job.key, result)
                     completed.append(job.key)
+            for key in completed:
+                self.delete_job(key)
             return completed
-
 
     # requeue dead jobs
     def release_dead_jobs(self):
