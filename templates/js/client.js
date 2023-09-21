@@ -254,7 +254,7 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
         if (newKey) {
             const urlParams = new URLSearchParams(window.location.search);
             urlParams.set("key", newKey);
-            window.history.pushState(newKey, "", window.location.pathname + "?" + urlParams.toString());
+            window.history.pushState(newKey, "", `${window.location.pathname}?${decodeURIComponent(urlParams.toString())}`);
         } else {
             // avoid adding duplicate blank history entries
             if (jobKey) {
@@ -354,7 +354,7 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
             const responseJson = await response.json();
             if (response.ok) {
                 // submission successful
-                const newJobKey = responseJson.data.join("+");
+                const newJobKey = responseJson.data.join(",");
                 setJobKey(newJobKey);
             } else {
                 // throw error with server message
