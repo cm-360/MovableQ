@@ -360,6 +360,11 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
                 // generic error
                 window.alert(`Error checking job chain status: ${error.message}`);
             }
+            // do not reset the page for network errors!
+            if (error.message.startsWith("NetworkError")) {
+                return;
+            }
+            startOver();
         }
     }
 
