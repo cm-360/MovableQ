@@ -344,7 +344,7 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
     async function apiCheckChainStatus() {
         let response;
         try {
-            response = await fetch(`{{ url_for('api_check_job_statuses', chain_keys='') }}${chainKeys}`);
+            response = await fetch(`{{ url_for('api_check_job_statuses', job_keys='') }}${chainKeys}`);
             const responseJson = await response.json();
             if (response.ok) {
                 // status check successful
