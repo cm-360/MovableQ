@@ -135,6 +135,8 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
     const lfcsUploadUrl = document.getElementById("lfcs_url");
     // job info
     const fcLfcsStatus = document.getElementById("fcLfcsStatus");
+    // cancel button
+    const fcLfcsCancelButton = document.getElementById("fcLfcsCancelButton");
 
     function toggleLfcsUpload() {
         if (lfcsUploadFile.classList.contains("show")) {
@@ -157,6 +159,8 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
         showStepCollapse(fcLfcsStepCollapse);
     }
 
+    fcLfcsCancelButton.addEventListener("click", event => cancelJob(jobKey.split(",")[0]));
+
 
     // ########## Step 3: LFCS from Mii QR Code  ##########
 
@@ -168,6 +172,8 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
     const miiLfcsStatsCollapse = new bootstrap.Collapse(document.getElementById("miiLfcsStatsCollapse"), { toggle: false });
     const miiLfcsStatHash = document.getElementById("miiLfcsStatHash");
     const miiLfcsStatOffset = document.getElementById("miiLfcsStatOffset");
+    // cancel button
+    const miiLfcsCancelButton = document.getElementById("miiLfcsCancelButton");
 
     function showMiiLfcsView(jobStatus) {
         startJobWatch();
@@ -175,6 +181,8 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
         miiLfcsAssignee.innerText = jobStatus.mining_stats.assignee;
         showStepCollapse(miiLfcsStepCollapse);
     }
+
+    miiLfcsCancelButton.addEventListener("click", event => cancelJob(jobKey.split(",")[0]));
 
 
     // ########## Step 4: msed Mining ##########
@@ -187,6 +195,8 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
     const msedStatsCollapse = new bootstrap.Collapse(document.getElementById("msedStatsCollapse"), { toggle: false });
     const msedStatHash = document.getElementById("msedStatHash");
     const msedStatOffset = document.getElementById("msedStatOffset");
+    // cancel button
+    const msedCancelButton = document.getElementById("msedCancelButton");
 
     function showMsedView(jobStatus) {
         startJobWatch();
@@ -194,6 +204,8 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
         msedLfcs.innerText = jobStatus.mining_stats.lfcs;
         showStepCollapse(msedStepCollapse);
     }
+
+    msedCancelButton.addEventListener("click", event => cancelJob(jobKey.split(",")[1]));
 
 
     // ########## Step 5: Done  ##########
@@ -384,6 +396,14 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
         setChainKeys("");
     }
 
+    function cancelJob(jobKey) {
+        if (!window.confirm("Are you sure you want to cancel this job?")) {
+            return;
+        }
+        apiCancelJob(jobKey);
+        startOver();
+    }
+
 
     // ########## API Calls ##########
 
@@ -451,6 +471,25 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
             } else {
                 // generic error
                 window.alert(`Error submitting jobs: ${error.message}`);
+            }
+        }
+    }
+
+    async function apiCancelJob(jobKey) {
+        let response;
+        try {
+            response = await fetch(`{{ url_for('api_cancel_job', key='') }}${jobKey}`);
+            const responseJson = await response.json();
+            if (!response.ok) {
+                throw new Error(responseJson.message);
+            }
+        } catch (error) {
+            if (error instanceof SyntaxError) {
+                // syntax error from parsing non-JSON server error response
+                window.alert(`Error canceling job: ${response.status} - ${response.statusText}`);
+            } else {
+                // generic error
+                window.alert(`Error canceling job: ${error.message}`);
             }
         }
     }
