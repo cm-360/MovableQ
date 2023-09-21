@@ -201,22 +201,26 @@ def api_check_chain_status(chain_keys: str):
     for job_key in chain_keys.split(','):
         if not is_job_key(job_key):
             return error('Invalid Job Key')
-        statuses.append({
+        job_status = {
             'key': job_key,
-            'status': manager.check_job_status(job_key),
-            'mining_stats': manager.get_mining_stats(job_key)
-        })
+            'status': manager.check_job_status(job_key)
+        }
+        if manager.job_exists(job_key):
+            job_status['mining_stats'] = manager.get_mining_stats(job_key)
+        statuses.append(job_status)
     return success(statuses)
 
 @app.route('/api/check_job_status/<key>')
 def api_check_job_status(key: str):
     if not is_job_key(key):
         return error('Invalid Job Key')
-    return success({
+    job_status = {
         'key': key,
-        'status': manager.check_job_status(key),
-        'mining_stats': manager.get_mining_stats(key)
-    })
+        'status': manager.check_job_status(key)
+    }
+    if manager.job_exists(key):
+        job_status['mining_stats'] = manager.get_mining_stats(key)
+    return success(job_status)
 
 @app.route('/api/update_job/<key>')
 def api_update_job(key: str):
