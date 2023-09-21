@@ -57,14 +57,6 @@ class JobManager():
             for job in chain:
                 self.jobs[job.key] = job
 
-    # adds a part1 file to a job
-    def add_part1(self, id0, part1):
-        with self.lock:
-            job = self.jobs[id0]
-            if job.prerequisite and self.job_exists(job.prerequisite):
-                self.cancel_job(job.prerequisite)
-            job.add_part1(part1)
-
     # set job status to canceled, KeyError if it does not exist
     def cancel_job(self, key):
         with self.lock:
