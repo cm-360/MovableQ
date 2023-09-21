@@ -195,10 +195,10 @@ def api_release_job(key: str):
     app.logger.info(f'{log_prefix(key)} released')
     return success()
 
-@app.route('/api/check_chain_status/<chain_keys>')
-def api_check_chain_status(chain_keys: str):
+@app.route('/api/check_job_statuses/<job_keys>')
+def api_check_job_statuses(job_keys: str):
     statuses = []
-    for job_key in chain_keys.split(','):
+    for job_key in job_keys.split(','):
         if not is_job_key(job_key):
             return error('Invalid Job Key')
         job_status = {
@@ -209,18 +209,6 @@ def api_check_chain_status(chain_keys: str):
             job_status['mining_stats'] = manager.get_mining_stats(job_key)
         statuses.append(job_status)
     return success(statuses)
-
-@app.route('/api/check_job_status/<key>')
-def api_check_job_status(key: str):
-    if not is_job_key(key):
-        return error('Invalid Job Key')
-    job_status = {
-        'key': key,
-        'status': manager.check_job_status(key)
-    }
-    if manager.job_exists(key):
-        job_status['mining_stats'] = manager.get_mining_stats(key)
-    return success(job_status)
 
 @app.route('/api/update_job/<key>')
 def api_update_job(key: str):

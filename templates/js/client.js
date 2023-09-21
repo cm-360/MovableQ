@@ -263,7 +263,7 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
         }
         chainKeys = newKeys;
         setCookie("keys", chainKeys, 7);
-        fetchJobStatus();
+        checkChainStatus();
     }
 
     function loadChainKeys() {
@@ -279,7 +279,7 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
 
     function startJobWatch() {
         stopJobWatch();
-        intervalId = setInterval(fetchJobStatus, 10000);
+        intervalId = setInterval(checkChainStatus, 10000);
     }
     
     function stopJobWatch() {
@@ -325,9 +325,10 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
         alert(`Invalid step! Got: ${stepNumber}, ${subStep}`);
     }
 
-    function fetchJobStatus() {
+    async function checkChainStatus() {
         if (chainKeys) {
-            apiCheckChainStatus();
+            const status = await apiCheckChainStatus();
+            console.log(status);
         } else {
             updateStepView(1, null);
         }
@@ -343,11 +344,11 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
     async function apiCheckChainStatus() {
         let response;
         try {
-            response = await fetch(`{{ url_for('api_check_chain_status', chain_keys='') }}${chainKeys}`);
+            response = await fetch(`{{ url_for('api_check_job_statuses', chain_keys='') }}${chainKeys}`);
             const responseJson = await response.json();
             if (response.ok) {
                 // status check successful
-                console.log(responseJson.data);
+                return responseJson.data;
             } else {
                 // throw error with server message
                 throw new Error(responseJson.message);
