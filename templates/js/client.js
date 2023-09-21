@@ -21,7 +21,7 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
 
     function updateMethodSelection(selectedCard, radioButton) {
         for (let card of methodCards) {
-            if (selectedCard == card) {
+            if (selectedCard === card) {
                 radioButton.checked = true;
                 card.classList.remove("border-secondary-subtle");
                 card.classList.add("border-success");
