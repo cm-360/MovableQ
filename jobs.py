@@ -240,7 +240,7 @@ class JobManager():
                 job = self.jobs[key]
                 return job.state
             except KeyError as e:
-                if result_exists(key)
+                if result_exists(key):
                     return 'done'
                 raise e
 
