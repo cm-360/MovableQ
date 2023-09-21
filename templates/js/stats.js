@@ -17,7 +17,7 @@
         }
     }
 
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener("DOMContentLoaded", () => {
         getNetworkStats();
         setInterval(getNetworkStats, 15000);
     });

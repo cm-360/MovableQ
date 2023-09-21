@@ -40,7 +40,7 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
     function submitMethodSelection(event) {
         event.preventDefault();
         const formData = new FormData(methodForm);
-        updateStepView(2, formData.get('methodRadio'));
+        updateStepView(2, formData.get("methodRadio"));
     }
 
     methodForm.addEventListener("submit", event => submitMethodSelection(event));
@@ -62,7 +62,7 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
         showStepCollapse(fcSubmitStepCollapse);
     }
 
-    fcJobBackButton.addEventListener("click", event => updateStepView(1, null));
+    fcJobBackButton.addEventListener("click", event => updateStepView(1));
 
     function submitFcJob() {
         const fcJobFormData = new FormData(fcJobForm);
@@ -100,7 +100,7 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
         showStepCollapse(miiSubmitStepCollapse);
     }
 
-    miiJobBackButton.addEventListener("click", event => updateStepView(1, null));
+    miiJobBackButton.addEventListener("click", event => updateStepView(1));
 
     async function submitMiiJob(event) {
         event.preventDefault();
@@ -171,9 +171,15 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
 
     // ########## Step 5: Done  ##########
 
-    function showDoneView() {
+    const movableDownload = document.getElementById("movableDownload");
+    const doAnotherButton = document.getElementById("doAnotherButton");
+
+    function showDoneView(id0) {
+        movableDownload.href = `{{ url_for('download_movable', id0='') }}${id0}`
         showStepCollapse(doneStepCollapse);
     }
+
+    doAnotherButton.addEventListener("click", event => startOver());
 
 
     // ########## Form Management  ##########
@@ -285,7 +291,7 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
         }
     }
 
-    function updateStepView(stepNumber, subStep) {
+    function updateStepView(stepNumber, subStep=null, extraInfo=null) {
         stopJobWatch();
         switch (stepNumber) {
             case 1: // Method selection
@@ -315,7 +321,7 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
                 showMsedView();
                 return;
             case 5: // Done
-                showDoneView();
+                showDoneView(extraInfo);
                 return;
         }
         alert(`Invalid step! Got: ${stepNumber}, ${subStep}`);
@@ -323,10 +329,20 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
 
     async function checkChainStatus() {
         if (chainKeys) {
-            const status = await apiCheckChainStatus();
-            console.log(status);
+            const chainStatus = await apiCheckChainStatus();
+            const lfcsJob = chainStatus[0];
+            const msedJob = chainStatus[1]
+            console.log(chainStatus);
+            // check status
+            if ("done" !== lfcsJob.status) {
+
+            } else if ("done" !== msedJob.status) {
+
+            } else {
+                updateStepView(5, null, msedJob.key);
+            }
         } else {
-            updateStepView(1, null);
+            updateStepView(1);
         }
     }
 
@@ -454,7 +470,8 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
     }
 
 
-    // Ready to go!
-    loadChainKeys();
+    document.addEventListener("DOMContentLoaded", () => {
+        loadChainKeys();
+    });
 
 })();
