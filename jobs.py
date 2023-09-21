@@ -244,11 +244,14 @@ class JobManager():
     def get_mining_stats(self, key):
         with self.lock:
             job = self.jobs[key]
-            return {
+            mining_stats = {
                 'assignee': job.get_assignee_name(),
                 'rate': job.mining_rate,
                 'offset': job.mining_offset
             }
+            if 'part1' == job.type:
+                mining_stats['lfcs'] = job.lfcs
+            return mining_stats
 
     def get_chain_status(self, key):
         pass
@@ -421,7 +424,7 @@ class ChainJob(Job):
         yield 'prereq_key', self.prereq_key
 
 
-# Job to obtain movable_part1.sed from the LFCS hash in Mii data
+# Job to obtain LFCS from the system ID in Mii data
 class MiiJob(Job):
 
     def __init__(self, system_id, model, year):
@@ -440,7 +443,7 @@ class MiiJob(Job):
         yield 'system_id', self.key
 
 
-# Job to obtain movable_part1.sed from a friend exchange
+# Job to obtain LFCS from a friend exchange
 class FCJob(Job):
 
     def __init__(self, friend_code):
