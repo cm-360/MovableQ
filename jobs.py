@@ -531,7 +531,7 @@ def sid_save_lfcs(system_id, lfcs):
         lfcs_file.write(lfcs)
 
 def sid_read_lfcs(system_id):
-    if not lfcs_exists(system_id):
+    if not sid_lfcs_exists(system_id):
         return
     with open(system_id_to_lfcs_path(system_id), 'rb') as lfcs_file:
         lfcs = lfcs_file.read()
@@ -558,7 +558,7 @@ def fc_save_lfcs(friend_code, lfcs):
         lfcs_file.write(lfcs)
 
 def fc_read_lfcs(friend_code):
-    if not lfcs_exists(friend_code):
+    if not fc_lfcs_exists(friend_code):
         return
     with open(friend_code_to_lfcs_path(friend_code), 'rb') as lfcs_file:
         lfcs = lfcs_file.read()
