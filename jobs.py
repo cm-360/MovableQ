@@ -523,7 +523,6 @@ def system_id_to_lfcs_path(system_id, create=False):
 
 def sid_lfcs_exists(system_id):
     lfcs_path = system_id_to_lfcs_path(system_id)
-    print(lfcs_path, os.path.isfile(lfcs_path))
     return os.path.isfile(lfcs_path)
 
 def sid_save_lfcs(system_id, lfcs):
