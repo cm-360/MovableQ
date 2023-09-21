@@ -38,6 +38,14 @@ def is_friend_code(value: str) -> bool:
     checksum = (fc & 0xFF00000000) >> 32
     return hashlib.sha1(struct.pack('<L', principal_id)).digest()[0] >> 1 == checksum
 
+def get_key_type(value: str) -> str:
+    if is_friend_code(key):
+        return 'fc'
+    elif is_system_id(key):
+        return 'mii'
+    elif is_id0(key):
+        return 'part1'
+
 
 def validate_job_result(job_type: str, result: bytes, key=None) -> bool:
     if job_type in ['mii', 'fc']:
