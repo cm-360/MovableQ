@@ -354,7 +354,7 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
             const responseJson = await response.json();
             if (response.ok) {
                 // submission successful
-                const newJobKey = responseJson.data.join(",");
+                const newJobKey = responseJson.data.join("+");
                 setJobKey(newJobKey);
             } else {
                 // throw error with server message
