@@ -177,7 +177,7 @@ def api_request_job():
     client_version = request.args.get('version')
     requested_types = request.args.get('types')
     if requested_types:
-        requested_types = set(request_split_regex.split(requested_types))
+        requested_types = set(requested_types.split(','))
     allowed_types = enforce_client_version(client_types, client_version, requested_types)
     # check for and assign jobs
     job = manager.request_job(allowed_types, worker_name, worker_ip)
