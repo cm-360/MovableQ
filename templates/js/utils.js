@@ -24,6 +24,17 @@ function getCookie(cname) {
 }
 
 
+// Copied from https://stackoverflow.com/a/18650249
+
+function blobToBase64(blob) {
+  return new Promise((resolve, _) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.readAsDataURL(blob);
+  });
+}
+
+
 const sizes = ['xs', 'sm', 'md', 'lg', 'xl'];
 
 function getViewportSize() {
@@ -46,4 +57,4 @@ function compareViewportSizes(s1, s2) {
   return sizes.indexOf(s1) - sizes.indexOf(s2);
 }
 
-export { setCookie, getCookie, getViewportSize, compareViewportSizes };
+export { setCookie, getCookie, blobToBase64, getViewportSize, compareViewportSizes };
