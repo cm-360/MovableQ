@@ -3,7 +3,7 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
 (() => {
 
     // Comma-separated IDs of the current job chain
-    let jobKey;
+    let chainKeys;
     // Interval ID of job status checker
     let intervalId;
 
@@ -248,33 +248,33 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
     }
 
 
-    // ########## Job Management  ##########
+    // ########## Job Chain Management  ##########
 
-    function setJobKey(newKey) {
-        if (newKey) {
+    function setChainKeys(newKeys) {
+        if (newKeys) {
             const urlParams = new URLSearchParams(window.location.search);
-            urlParams.set("key", newKey);
-            window.history.pushState(newKey, "", `${window.location.pathname}?${decodeURIComponent(urlParams.toString())}`);
+            urlParams.set("keys", newKeys);
+            window.history.pushState(newKeys, "", `${window.location.pathname}?${decodeURIComponent(urlParams.toString())}`);
         } else {
             // avoid adding duplicate blank history entries
-            if (jobKey) {
-                window.history.pushState(newKey, "", window.location.pathname);
+            if (chainKeys) {
+                window.history.pushState(newKeys, "", window.location.pathname);
             }
         }
-        jobKey = newKey;
-        setCookie("key", jobKey, 7);
+        chainKeys = newKeys;
+        setCookie("keys", chainKeys, 7);
         fetchJobStatus();
     }
 
-    function loadJobKey() {
+    function loadChainKeys() {
         const urlParams = new URLSearchParams(window.location.search);
-        let tmpKey;
-        if (urlParams.has("key")) {
-            tmpKey = urlParams.get("key");
+        let tempKeys;
+        if (urlParams.has("keys")) {
+            tempKeys = urlParams.get("keys");
         } else {
-            tmpKey = getCookie("key");
+            tempKeys = getCookie("keys");
         }
-        setJobKey(tmpKey);
+        setChainKeys(tempKeys);
     }
 
     function startJobWatch() {
@@ -326,7 +326,7 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
     }
 
     function fetchJobStatus() {
-        if (jobKey) {
+        if (chainKeys) {
 
         } else {
             updateStepView(1, null);
@@ -334,11 +334,15 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
     }
 
     function startOver() {
-        setJobKey("");
+        setChainKeys("");
     }
 
 
     // ########## API Calls ##########
+
+    async function apiCheckChainStatus() {
+
+    }
 
     async function apiSubmitJobChain(chainData, feedbackTargetForm) {
         let response;
@@ -354,8 +358,8 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
             const responseJson = await response.json();
             if (response.ok) {
                 // submission successful
-                const newJobKey = responseJson.data.join(",");
-                setJobKey(newJobKey);
+                const newChainKeys = responseJson.data.join(",");
+                setChainKeys(newChainKeys);
             } else {
                 // throw error with server message
                 throw new Error(responseJson.message);
@@ -430,6 +434,6 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
 
 
     // Ready to go!
-    loadJobKey();
+    loadChainKeys();
 
 })();
