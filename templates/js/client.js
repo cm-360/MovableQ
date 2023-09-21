@@ -159,7 +159,7 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
         showStepCollapse(fcLfcsStepCollapse);
     }
 
-    fcLfcsCancelButton.addEventListener("click", event => cancelJob(jobKey.split(",")[0]));
+    fcLfcsCancelButton.addEventListener("click", event => cancelJob(chainKeys.split(",")[0]));
 
 
     // ########## Step 3: LFCS from Mii QR Code  ##########
@@ -182,7 +182,7 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
         showStepCollapse(miiLfcsStepCollapse);
     }
 
-    miiLfcsCancelButton.addEventListener("click", event => cancelJob(jobKey.split(",")[0]));
+    miiLfcsCancelButton.addEventListener("click", event => cancelJob(chainKeys.split(",")[0]));
 
 
     // ########## Step 4: msed Mining ##########
@@ -205,7 +205,7 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
         showStepCollapse(msedStepCollapse);
     }
 
-    msedCancelButton.addEventListener("click", event => cancelJob(jobKey.split(",")[1]));
+    msedCancelButton.addEventListener("click", event => cancelJob(chainKeys.split(",")[1]));
 
 
     // ########## Step 5: Done  ##########
