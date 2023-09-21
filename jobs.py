@@ -170,6 +170,7 @@ class JobManager():
         with self.lock:
             job = self.jobs[key]
             if force:
+                self._unqueue_job(job.key)
                 job.to_complete()
             else:
                 job.complete()
