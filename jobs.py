@@ -8,6 +8,8 @@ import os
 from threading import RLock
 from binascii import hexlify
 
+from validators import is_id0, is_system_id, is_friend_code
+
 
 fc_lfcses_path = os.getenv('FC_LFCSES_PATH', './lfcses/fc')
 sid_lfcses_path = os.getenv('SID_LFCSES_PATH', './lfcses/sid')
@@ -230,9 +232,11 @@ class JobManager():
                 job = self.jobs[key]
                 return job.state
             except KeyError as e:
-                if len(key) == 16 and part1_exists(key):
+                if is_friend_code(key) and fc_lfcs_exists(key):
                     return 'done'
-                elif len(key) == 32 and movable_exists(key):
+                elif is_system_id(key) and sid_lfcs_exists(key):
+                    return 'done'
+                elif is_id0(key) and movable_exists(key):
                     return 'done'
                 else:
                     raise e
@@ -519,6 +523,7 @@ def system_id_to_lfcs_path(system_id, create=False):
 
 def sid_lfcs_exists(system_id):
     lfcs_path = system_id_to_lfcs_path(system_id)
+    print(lfcs_path, os.path.isfile(lfcs_path))
     return os.path.isfile(lfcs_path)
 
 def sid_save_lfcs(system_id, lfcs):
