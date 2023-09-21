@@ -38,7 +38,7 @@ def is_friend_code(value: str) -> bool:
     checksum = (fc & 0xFF00000000) >> 32
     return hashlib.sha1(struct.pack('<L', principal_id)).digest()[0] >> 1 == checksum
 
-def get_key_type(value: str) -> str:
+def get_key_type(key: str) -> str:
     if is_friend_code(key):
         return 'fc'
     elif is_system_id(key):
