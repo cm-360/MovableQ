@@ -133,6 +133,8 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
     const lfcsUploadToggle = document.getElementById("lfcsUploadToggle");
     const lfcsUploadFile = document.getElementById("lfcs_file");
     const lfcsUploadUrl = document.getElementById("lfcs_url");
+    // job info
+    const fcLfcsStatus = document.getElementById("fcLfcsStatus");
 
     function toggleLfcsUpload() {
         if (lfcsUploadFile.classList.contains("show")) {
@@ -149,7 +151,8 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
     lfcsUploadToggle.addEventListener("click", toggleLfcsUpload);
     toggleLfcsUpload();
 
-    function showFcLfcsView() {
+    function showFcLfcsView(miningStats) {
+        startJobWatch();
         resetForm(fcLfcsForm);
         showStepCollapse(fcLfcsStepCollapse);
     }
@@ -157,14 +160,38 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
 
     // ########## Step 3: LFCS from Mii QR Code  ##########
 
-    function showMiiLfcsView() {
+    // job info
+    const miiLfcsStatus = document.getElementById("miiLfcsStatus");
+    const miiLfcsSysId = document.getElementById("miiLfcsSysId");
+    const miiLfcsAssignee = document.getElementById("miiLfcsAssignee");
+    // mining stats
+    const miiLfcsStatsCollapse = new bootstrap.Collapse(document.getElementById("miiLfcsStatsCollapse"), { toggle: false });
+    const miiLfcsStatHash = document.getElementById("miiLfcsStatHash");
+    const miiLfcsStatOffset = document.getElementById("miiLfcsStatOffset");
+
+    function showMiiLfcsView(jobStatus) {
+        startJobWatch();
+        miiLfcsSysId.innerText = jobStatus.key;
+        miiLfcsAssignee.innerText = jobStatus.mining_stats.assignee;
         showStepCollapse(miiLfcsStepCollapse);
     }
 
 
     // ########## Step 4: msed Mining ##########
 
-    function showMsedView() {
+    // job info
+    const msedStatus = document.getElementById("msedStatus");
+    const msedId0 = document.getElementById("msedId0");
+    const msedLfcs = document.getElementById("msedLfcs");
+    // mining stats
+    const msedStatsCollapse = new bootstrap.Collapse(document.getElementById("msedStatsCollapse"), { toggle: false });
+    const msedStatHash = document.getElementById("msedStatHash");
+    const msedStatOffset = document.getElementById("msedStatOffset");
+
+    function showMsedView(jobStatus) {
+        startJobWatch();
+        msedId0.innerText = jobStatus.key;
+        msedLfcs.innerText = jobStatus.mining_stats.lfcs;
         showStepCollapse(msedStepCollapse);
     }
 
@@ -209,7 +236,7 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
     }
 
 
-    // ########## Collapse Management  ##########
+    // ########## Step Collapse Management  ##########
 
     // Step 1: Choose Method
     const methodStepCollapse = new bootstrap.Collapse(document.getElementById("methodStepCollapse"), { toggle: false });
@@ -317,15 +344,15 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
             case 3: // LFCS
                 switch (subStep) {
                     case "fc":
-                        showFcLfcsView();
+                        showFcLfcsView(extraInfo);
                         return;
                     case "mii":
-                        showMiiLfcsView();
+                        showMiiLfcsView(extraInfo);
                         return;
                 }
                 break;
             case 4: // msed
-                showMsedView();
+                showMsedView(extraInfo);
                 return;
             case 5: // Done
                 showDoneView(extraInfo);
@@ -342,9 +369,9 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
             console.log(chainStatus);
             // check status
             if ("done" !== lfcsJob.status) {
-                updateStepView(3, lfcsJob.type, lfcsJob.mining_stats);
+                updateStepView(3, lfcsJob.type, lfcsJob);
             } else if ("done" !== msedJob.status) {
-                updateStepView(4, null, msedJob.mining_stats);
+                updateStepView(4, null, msedJob);
             } else {
                 updateStepView(5, null, msedJob.key);
             }
