@@ -24,12 +24,12 @@ function getCookie(cname) {
 }
 
 
-// Copied from https://stackoverflow.com/a/18650249
+// Modified from https://stackoverflow.com/a/18650249
 
 function blobToBase64(blob) {
   return new Promise((resolve, _) => {
       const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result);
+      reader.onloadend = () => resolve(reader.result.split(',')[1]);
       reader.readAsDataURL(blob);
   });
 }
