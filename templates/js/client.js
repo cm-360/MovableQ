@@ -62,6 +62,9 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
         showStepCollapse(fcSubmitStepCollapse);
     }
 
+    if (forcedMethod) {
+        fcJobBackButton.classList.add("disabled");
+    }
     fcJobBackButton.addEventListener("click", event => updateStepView(1));
 
     function submitFcJob() {
@@ -100,6 +103,9 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
         showStepCollapse(miiSubmitStepCollapse);
     }
 
+    if (forcedMethod) {
+        miiJobBackButton.classList.add("disabled");
+    }
     miiJobBackButton.addEventListener("click", event => updateStepView(1));
 
     async function submitMiiJob(event) {
@@ -388,7 +394,11 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
                 updateStepView(5, null, msedJob.key);
             }
         } else {
-            updateStepView(1);
+            if (forcedMethod) {
+                updateStepView(2, forcedMethod);
+            } else {
+                updateStepView(1);
+            }
         }
     }
 
@@ -552,6 +562,13 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
 
     }
 
+
+    // Allows URL to forcibly select method
+    let forcedMethod = "";
+    const forcedMethodPrefix = "{{ url_for('page_force_method', method_name='') }}";
+    if (window.location.pathname.startsWith(forcedMethodPrefix)) {
+        forcedMethod = window.location.pathname.replace(forcedMethodPrefix, '');
+    }
 
     document.addEventListener("DOMContentLoaded", () => {
         loadChainKeys();

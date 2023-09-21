@@ -95,9 +95,11 @@ def login_required(f):
 def page_home():
     return render_template('pages/home.html')
 
-@app.route('/submit')
-def page_mine():
-    return render_template('pages/submit.html')
+@app.route('/method/<method_name>')
+def page_force_method(method_name):
+    if method_name not in ['fc', 'mii']:
+        return error(f'Unknown method {method_name}')
+    return render_template('pages/home.html')
 
 @app.route('/volunteer')
 def page_volunteer():
