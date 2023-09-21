@@ -206,6 +206,7 @@ def api_check_job_statuses(job_keys: str):
             'status': manager.check_job_status(job_key)
         }
         if manager.job_exists(job_key):
+            job_status['type'] = manager.get_job(job_key).type
             job_status['mining_stats'] = manager.get_mining_stats(job_key)
         statuses.append(job_status)
     return success(statuses)
