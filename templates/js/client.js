@@ -249,6 +249,13 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
         }
     }
 
+    // for debugging
+    function showAllStepCollapses() {
+        for (let collapse of stepCollapses) {
+            collapse.show();
+        }
+    }
+
 
     // ########## Job Chain Management  ##########
 
@@ -335,9 +342,9 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
             console.log(chainStatus);
             // check status
             if ("done" !== lfcsJob.status) {
-
+                updateStepView(3, lfcsJob.type, lfcsJob.mining_stats);
             } else if ("done" !== msedJob.status) {
-
+                updateStepView(4, null, msedJob.mining_stats);
             } else {
                 updateStepView(5, null, msedJob.key);
             }
@@ -472,6 +479,7 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
 
     document.addEventListener("DOMContentLoaded", () => {
         loadChainKeys();
+        // showAllStepCollapses();
     });
 
 })();
