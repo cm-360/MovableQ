@@ -152,6 +152,8 @@ def api_submit_job_chain():
     first_job = chain[0]
     if 'ready' == first_job.state:
         manager.queue_job(first_job.key)
+    # complete jobs with existing result
+    manager.autocomplete_jobs()
     # return job keys to submitter
     chain_keys = [j.key for j in chain]
     app.logger.info(f'{log_prefix(", ".join(chain_keys))} submitted')
