@@ -14,6 +14,7 @@ from binascii import hexlify, unhexlify
 from dotenv import load_dotenv
 
 import base64
+import io
 import json
 import os
 import re
@@ -464,7 +465,7 @@ def get_system_id_from_mii_file(job_data) -> str:
         mii_data_enc = mii_data
     else:
         try:
-            decoded = qr_decode(Image.open(mii_data), binary=True)
+            decoded = qr_decode(Image.open(io.BytesIO(mii_data)), binary=True)
             if not decoded:
                 return
             mii_data_enc = decoded[0].data
