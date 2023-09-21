@@ -1,4 +1,4 @@
-import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js') }}";
+import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filename='utils.js') }}";
 
 (() => {
 
@@ -106,9 +106,27 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
         updateStepView(1, null);
     });
 
-    function submitMiiJob() {
+    async function submitMiiJob(event) {
+        event.preventDefault();
         const miiJobFormData = new FormData(miiJobForm);
+        // fetch mii data if selected
+        if (miiUploadUrl.classList.contains("show")) {
+            try {
+                const miiResponse = await fetch(miiUploadUrl.value);
+                const miiBlob = await miiResponse.blob();
+                miiJobFormData.set("mii_file", miiBlob);
+            } catch (error) {
+                window.alert(`Error downloading Mii data: ${error.message}`);
+                return;
+            }
+        }
+        // submit job to server
+        const miiJobChain = await parseMiiJobChain(miiJobFormData);
+        console.log(miiJobChain);
+        apiSubmitJobChain(miiJobChain, miiJobForm);
     }
+
+    miiJobForm.addEventListener("submit", event => submitMiiJob(event));
 
 
     // ########## Step 3: LFCS from Friend Exchange ##########
@@ -245,6 +263,7 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
         }
         jobKey = newKey;
         setCookie("key", jobKey, 7);
+        fetchJobStatus();
     }
 
     function loadJobKey() {
@@ -260,7 +279,7 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
 
     function startJobWatch() {
         stopJobWatch();
-        intervalId = setInterval(checkJob, 10000);
+        intervalId = setInterval(fetchJobStatus, 10000);
     }
     
     function stopJobWatch() {
@@ -314,6 +333,94 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
         }
     }
 
+    function startOver() {
+        setJobKey("");
+    }
+
+
+    // ########## API Calls ##########
+
+    async function apiSubmitJobChain(chainData, feedbackTargetForm) {
+        let response;
+        try {
+            response = await fetch("{{ url_for('api_submit_job_chain') }}", {
+                method: "POST",
+                headers: {
+                    "Accept": "application/json",
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(chainData)
+            });
+            const responseJson = await response.json();
+            if (response.ok) {
+                // submission successful
+                const newJobKey = responseJson.data.join(",");
+                setJobKey(newJobKey);
+            } else {
+                // throw error with server message
+                throw new Error(responseJson.message);
+            }
+        } catch (error) {
+            if (error instanceof SyntaxError) {
+                // syntax error from parsing non-JSON server error response
+                window.alert(`Error submitting jobs: ${response.status} - ${response.statusText}`);
+            } else if (error.message.startsWith("invalid:")) {
+                // form input invalid
+                applyFormFeedback(feedbackTargetForm, error.message);
+            } else if (error.message.startsWith("Duplicate")) {
+                // duplicate job
+                if (window.confirm("A job with this info already exists. Would you like to view its progress?")) {
+                    window.alert("Not implemented");
+                    startOver();
+                }
+            } else {
+                // generic error
+                window.alert(`Error submitting jobs: ${error.message}`);
+            }
+        }
+    }
+
+
+    // ########## Job Parsers  ##########
+
+    async function parseMiiJobChain(formData) {
+        return [
+            await parseMiiLfcsJob(formData),
+            await parseMsedJob(formData)
+        ];
+    }
+
+    async function parseFcJobChain(formData) {
+        return [
+            await parseFcLfcsJob(formData),
+            await parseMsedJob(formData)
+        ];
+    }
+
+    async function parseMiiLfcsJob(formData) {
+        const miiDataBase64 = await blobToBase64(formData.get("mii_file"));
+        return {
+            "type": "mii",
+            "model": formData.get("model"),
+            "year": formData.get("year"),
+            "mii_data": miiDataBase64
+        }
+    }
+
+    async function parseFcLfcsJob(formData) {
+        return {
+            "type": "fc",
+            "friend_code": formData.get("friend_code")
+        }
+    }
+
+    async function parseMsedJob(formData) {
+        return {
+            "type": "part1",
+            "id0": formData.get("id0")
+        }
+    }
+
 
     // ########## Helper Functions  ##########
 
@@ -324,6 +431,5 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
 
     // Ready to go!
     loadJobKey();
-    fetchJobStatus();
 
 })();
