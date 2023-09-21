@@ -92,10 +92,13 @@ def enforce_client_version(client_types: dict, client_version_str: str, requeste
         if requested_types and bool(requested_types - allowed_types):
             raise ValueError(f'Requested illegal job type for {client_type} clients')
         # reject outdated clients
-        latest_version = parse_version_string(client_types[client_type]['version'])
+        latest_version_str = client_types[client_type]['version']
+        latest_version = parse_version_string(latest_version_str)
         if compare_versions(client_version, latest_version) < 0:
-            raise ValueError(f'Outdated client version, {client_version} < {latest_version}')
+            raise ValueError(f'Outdated client version, {client_version_str} < {client_type}-{latest_version_str}')
         return allowed_types
+    except ValueError as e:
+        raise e
     except Exception as e:
         raise ValueError('Error validating client version') from e
 
