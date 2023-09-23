@@ -74,9 +74,16 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
     }
     fcJobBackButton.addEventListener("click", event => updateStepView(1));
 
-    function submitFcJob() {
+    async function submitFcJob(event) {
+        event.preventDefault();
         const fcJobFormData = new FormData(fcJobForm);
+        // submit job to server
+        const fcJobChain = await parseFcJobChain(fcJobFormData);
+        console.log(fcJobChain);
+        apiSubmitJobChain(fcJobChain, fcJobForm);
     }
+
+    fcJobForm.addEventListener("submit", event => submitFcJob(event));
 
 
     // ########## Step 2: Mii Mining Info ##########
@@ -389,6 +396,7 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
     async function checkChainStatus() {
         if (chainKeys) {
             const chainStatus = await apiCheckChainStatus();
+            console.log(chainStatus);
             const lfcsJob = chainStatus[0];
             const msedJob = chainStatus[1]
             console.log(chainStatus);
