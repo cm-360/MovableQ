@@ -56,7 +56,7 @@ manager = JobManager()
 mining_client_filename = 'mining_client.py'
 client_types = {
     'miiner': {
-        'version': '2.0.0-alpha',
+        'version': '2.0.1-alpha',
         'allowed': {'mii-lfcs', 'msed'}
     },
     'friendbot': {
@@ -177,10 +177,10 @@ def api_request_job():
     # worker info
     worker_ip = get_request_ip()
     worker_name = request.args.get('name', worker_ip)
-    app.logger.info(f'{log_prefix()} {worker_name} requests work')
     # restrict clients
     client_version = request.args.get('version')
     requested_types = request.args.get('types')
+    app.logger.info(f'{log_prefix()} {worker_name} requests work: version {client_version}, wants {requested_types}')
     if requested_types:
         requested_types = set(requested_types.split(','))
     allowed_types = enforce_client_version(client_types, client_version, requested_types)
