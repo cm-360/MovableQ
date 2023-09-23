@@ -158,12 +158,7 @@ class JobManager():
 
     def _save_job_result(self, key, result):
         job = self.jobs[key]
-        if 'mii' == job.type:
-            sid_save_lfcs(key, result)
-        elif 'fc' == job.type:
-            fc_save_lfcs(key, result)
-        elif 'part1' == job.type:
-            save_movable(key, result)
+        save_result(key, result, key_type=job.type)
 
     # save result to disk and delete job
     def complete_job(self, key, result):
@@ -181,7 +176,6 @@ class JobManager():
                 if isinstance(job, ChainJob) and job.prereq_key == key:
                     job.pass_prereq(result)
                     self.queue_job(job.key)
-            # str(base64.b64encode(part1), 'utf-8')
 
     # mark job as failed and attach note
     def fail_job(self, key, note=None):
@@ -250,7 +244,7 @@ class JobManager():
                 'rate': job.mining_rate,
                 'offset': job.mining_offset
             }
-            if 'part1' == job.type:
+            if 'msed' == job.type:
                 mining_stats['lfcs'] = job.lfcs
             return mining_stats
 
@@ -426,10 +420,10 @@ class ChainJob(Job):
 
 
 # Job to obtain LFCS from the system ID in Mii data
-class MiiJob(Job):
+class MiiLfcsJob(Job):
 
     def __init__(self, system_id, model, year):
-        super().__init__(system_id, 'mii')
+        super().__init__(system_id, 'mii-lfcs')
         self.add_transition('prepare', 'submitted', 'ready')
         # mii-specific job properties
         self.console_model = model
@@ -445,10 +439,10 @@ class MiiJob(Job):
 
 
 # Job to obtain LFCS from a friend exchange
-class FCJob(Job):
+class FcLfcsJob(Job):
 
     def __init__(self, friend_code):
-        super().__init__(friend_code, 'fc')
+        super().__init__(friend_code, 'fc-lfcs')
         self.add_transition('prepare', 'submitted', 'ready')
         # fc-specific job properties
         self.friend_code = friend_code
@@ -460,19 +454,19 @@ class FCJob(Job):
         yield 'friend_code', self.key
 
 
-# Job to obtain movable.sed using a part1 file
-class Part1Job(ChainJob):
+# Job to obtain movable.sed using a LFCS (part1 file)
+class MsedJob(ChainJob):
 
     def __init__(self, id0, lfcs=None, prereq_key=None):
-        super().__init__(id0, 'part1', prereq_key)
+        super().__init__(id0, 'msed', prereq_key)
         if not prereq_key and not lfcs:
             raise ValueError('Must supply either a LFCS or a prerequisite job key')
-        # part1-specific job properties
+        # msed-specific job properties
         self.lfcs = lfcs
-        # part1 jobs need part1 (duh)
         self.prepare()
 
     def on_prepare(self):
+        # msed jobs need lfcs first
         if self.lfcs:
             self.to_ready()
     
@@ -600,23 +594,35 @@ def read_movable(id0):
             return
 
 
-def result_exists(key):
-    key_type = get_key_type(key)
-    if 'fc' == key_type and fc_lfcs_exists(key):
+def result_exists(key, key_type=None):
+    if not key_type:
+        key_type = get_key_type(key)
+    if 'fc-lfcs' == key_type and fc_lfcs_exists(key):
         return 'done'
-    elif 'mii' == key_type and sid_lfcs_exists(key):
+    elif 'mii-lfcs' == key_type and sid_lfcs_exists(key):
         return 'done'
-    elif 'part1' == key_type and movable_exists(key):
+    elif 'msed' == key_type and movable_exists(key):
         return 'done'
 
-def read_result(key):
-    key_type = get_key_type(key)
-    if 'fc' == key_type:
+def read_result(key, key_type=None):
+    if not key_type:
+        key_type = get_key_type(key)
+    if 'fc-lfcs' == key_type:
         return fc_read_lfcs(key)
-    elif 'mii' == key_type:
+    elif 'mii-lfcs' == key_type:
         return sid_read_lfcs(key)
-    elif 'part1' == key_type:
+    elif 'msed' == key_type:
         return read_movable(key)
+
+def save_result(key, result, key_type=None):
+    if not key_type:
+        key_type = get_key_type(key)
+    if 'fc-lfcs' == job.type:
+        fc_save_lfcs(key, result)
+    elif 'mii-lfcs' == job.type:
+        sid_save_lfcs(key, result)
+    elif 'msed' == job.type:
+        save_movable(key, result)
 
 
 def count_lfcses_mined():

@@ -18,7 +18,7 @@ import io
 import json
 import os
 
-from jobs import JobManager, Job, MiiJob, FCJob, Part1Job, read_movable, count_mseds_mined, count_lfcses_mined, count_lfcses_dumped
+from jobs import JobManager, Job, FcLfcsJob, MiiLfcsJob, MsedJob, read_movable, count_mseds_mined, count_lfcses_mined, count_lfcses_dumped
 from validators import is_job_key, is_id0, is_system_id, is_friend_code, validate_job_result, enforce_client_version
 
 
@@ -57,11 +57,11 @@ mining_client_filename = 'mining_client.py'
 client_types = {
     'miiner': {
         'version': '2.0.0-alpha',
-        'allowed': {'mii', 'part1'}
+        'allowed': {'mii-lfcs', 'msed'}
     },
     'friendbot': {
         'version': '1.0.0',
-        'allowed': {'fc'}
+        'allowed': {'fc-lfcs'}
     }
 }
 
@@ -159,16 +159,16 @@ def api_submit_job_chain():
     app.logger.info(f'{log_prefix(", ".join(chain_keys))} submitted')
     return success(chain_keys)
 
-@app.route('/api/submit_mii_job', methods=['POST'])
-def api_submit_mii_job():
+@app.route('/api/submit_mii_lfcs_job', methods=['POST'])
+def api_submit_mii_lfcs_job():
     return error('Not implemented')
 
 @app.route('/api/submit_fc_job', methods=['POST'])
-def api_submit_fc_job():
+def api_submit_fc_lfcs_job():
     return error('Not implemented')
 
-@app.route('/api/submit_part1_job', methods=['POST'])
-def api_submit_part1_job():
+@app.route('/api/submit_msed_job', methods=['POST'])
+def api_submit_msed_job():
     return error('Not implemented')
 
 @app.route('/api/request_job')
@@ -270,11 +270,11 @@ def api_complete_job(key: str):
     manager.complete_job(key, result)
     app.logger.info(f'{log_prefix(key)} completed')
     # update counter
-    if 'part1' == job_type:
+    if 'msed' == job_type:
         mseds_mined += 1
-    elif 'mii' == job_type:
+    elif 'mii-lfcs' == job_type:
         lfcses_mined += 1
-    elif 'fc' == job_type:
+    elif 'fc-lfcs' == job_type:
         lfcses_dumped += 1
     return success()
 
@@ -403,15 +403,15 @@ def parse_job_chain(chain_data) -> list[Job]:
     for entry in chain_data:
         try:
             entry_type = entry['type']
-            if 'mii' == entry_type:
-                jobs.append(parse_mii_job(entry))
-            elif 'fc' == entry_type:
+            if 'mii-lfcs' == entry_type:
+                jobs.append(parse_mii_lfcs_job(entry))
+            elif 'fc-lfcs' == entry_type:
                 jobs.append(parse_fc_job(entry))
-            elif 'part1' == entry_type:
+            elif 'msed' == entry_type:
                 if previous_job:
-                    jobs.append(parse_part1_job(entry, prereq_key=previous_job.key, should_have_lfcs=False))
+                    jobs.append(parse_msed_job(entry, prereq_key=previous_job.key, should_have_lfcs=False))
                 else:
-                    jobs.append(parse_part1_job(entry, should_have_lfcs=True))
+                    jobs.append(parse_msed_job(entry, should_have_lfcs=True))
             else:
                 raise ValueError(f'Invalid job type {entry_type}')
         except Exception as e:
@@ -420,7 +420,7 @@ def parse_job_chain(chain_data) -> list[Job]:
         entry_index += 1
     return jobs
 
-def parse_mii_job(job_data) -> MiiJob:
+def parse_mii_lfcs_job(job_data) -> MiiJob:
     invalid = []
     try:
         # model
@@ -437,7 +437,7 @@ def parse_mii_job(job_data) -> MiiJob:
             except (ValueError, TypeError) as e:
                 invalid.append('year')
         # system id
-        system_id = get_system_id_from_mii_job(job_data)
+        system_id = get_system_id_from_mii_lfcs_job(job_data)
         if not system_id:
             invalid.append('system_id')
         if invalid:
@@ -447,7 +447,7 @@ def parse_mii_job(job_data) -> MiiJob:
     except KeyError as e:
         raise KeyError(f'Missing parameter {e}')
 
-def get_system_id_from_mii_job(job_data) -> str:
+def get_system_id_from_mii_lfcs_job(job_data) -> str:
     try:
         # explictly declared
         system_id = job_data.get('system_id')
@@ -496,18 +496,18 @@ def get_system_id_from_enc_mii(mii_data_enc: bytes) -> str:
     app.logger.debug(f'Got system ID: {system_id}')
     return system_id
 
-def parse_fc_job(job_data) -> FCJob:
+def parse_fc_job(job_data) -> FcLfcsJob:
     try:
         # friend code
         friend_code = job_data['friend_code'].replace('-', '')
         if not is_friend_code(friend_code):
             raise InvalidSubmissionFieldError(['friend_code'])
         else:
-            return FCJob(friend_code)
+            return FcLfcsJob(friend_code)
     except KeyError as e:
         raise KeyError(f'Missing parameter {e}')
 
-def parse_part1_job(job_data, prereq_key=None, should_have_lfcs=True) -> Part1Job:
+def parse_msed_job(job_data, prereq_key=None, should_have_lfcs=True) -> MsedJob:
     invalid = []
     try:
         # id0
@@ -515,7 +515,7 @@ def parse_part1_job(job_data, prereq_key=None, should_have_lfcs=True) -> Part1Jo
         if not is_id0(id0):
             invalid.append('id0')
         # lfcs
-        lfcs = get_lfcs_from_part1_job(job_data, should_have_lfcs)
+        lfcs = get_lfcs_from_msed_job(job_data, should_have_lfcs)
         if should_have_lfcs and not lfcs:
             invalid.append('lfcs')
         if invalid:
@@ -525,7 +525,7 @@ def parse_part1_job(job_data, prereq_key=None, should_have_lfcs=True) -> Part1Jo
     except KeyError as e:
         raise KeyError(f'Missing parameter {e}')
 
-def get_lfcs_from_part1_job(job_data, should_have_lfcs=True) -> str:
+def get_lfcs_from_msed_job(job_data, should_have_lfcs=True) -> str:
     try:
         # explictly declared
         lfcs = job_data.get('lfcs')

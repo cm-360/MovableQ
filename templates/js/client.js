@@ -549,7 +549,7 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
     async function parseMiiLfcsJob(formData) {
         const miiDataBase64 = await blobToBase64(formData.get("mii_file"));
         return {
-            "type": "mii",
+            "type": "mii-lfcs",
             "model": formData.get("model"),
             "year": formData.get("year"),
             "mii_data": miiDataBase64
@@ -558,14 +558,14 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
 
     async function parseFcLfcsJob(formData) {
         return {
-            "type": "fc",
+            "type": "fc-lfcs",
             "friend_code": formData.get("friend_code")
         }
     }
 
     async function parseMsedJob(formData) {
         return {
-            "type": "part1",
+            "type": "msed",
             "id0": formData.get("id0")
         }
     }

@@ -30,10 +30,10 @@ auto_update = True
 miner_name = '{{ miner_name }}'
 
 # Choose which job types you are willing to mine. Note that mii mining jobs
-# are typically much more demanding than part1 jobs, and can significantly
+# are typically much more demanding than msed jobs, and can significantly
 # stress your GPU. Part1 jobs are typically shorter, though this does not
-# mean you will never claim a demanding/lengthy part1 job!
-acceptable_job_types = [ 'part1', 'mii' ]
+# mean you will never claim a demanding/lengthy msed job!
+acceptable_job_types = [ 'msed', 'mii-lfcs' ]
 
 # set this variable to "True" (without the quotes) if you want to use less of your gpu while mining
 # your hash rate will decrease by a bit
@@ -279,7 +279,7 @@ def do_benchmark():
 		cleanup_mining_files()
 		dry_run = False
 
-def do_mii_mine(model, year, system_id, timeout=0):
+def do_mii_lfcs_mine(model, year, system_id, timeout=0):
 	cleanup_mining_files()
 	try:
 		start_lfcs, model_bytes = get_lfcs_start_and_flags(model, year)
@@ -304,7 +304,7 @@ def do_mii_mine(model, year, system_id, timeout=0):
 
 # Modified from do_gpu @ seedminer_launcher3.py by zoogie
 # https://github.com/zoogie/seedminer/blob/master/seedminer/seedminer_launcher3.py#L394-L402
-def do_part1_mine(id0, lfcs, timeout=0):
+def do_msed_mine(id0, lfcs, timeout=0):
 	cleanup_mining_files()
 	try:
 		lfcs_bytes = unhexlify(lfcs)
@@ -411,16 +411,16 @@ def do_job(job):
 		print(f'  Model: {job["model"]}')
 		print(f'  Year:  {job["year"]}')
 		print(f'  SysID: {job["system_id"]}')
-		do_mii_mine(
+		do_mii_lfcs_mine(
 			job['model'],
 			job['year'],
 			job['system_id']
 		)
-	elif 'part1' == job_type:
+	elif 'msed' == job_type:
 		print('Part1 job received:')
 		print(f'  ID0:  {job["id0"]}')
 		print(f'  LFCS: {job["lfcs"]}')
-		do_part1_mine(
+		do_msed_mine(
 			job['id0'],
 			job['lfcs']
 		)

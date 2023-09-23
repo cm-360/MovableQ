@@ -40,17 +40,17 @@ def is_friend_code(value: str) -> bool:
 
 def get_key_type(key: str) -> str:
     if is_friend_code(key):
-        return 'fc'
+        return 'fc-lfcs'
     elif is_system_id(key):
-        return 'mii'
+        return 'mii-lfcs'
     elif is_id0(key):
-        return 'part1'
+        return 'msed'
 
 
 def validate_job_result(job_type: str, result: bytes, key=None) -> bool:
-    if job_type in ['mii', 'fc']:
+    if job_type in ['mii-lfcs', 'fc-lfcs']:
         return validate_lfcs(result)
-    elif 'part1' == job_type:
+    elif 'msed' == job_type:
         return validate_movable(result, key)
     else:
         return False
