@@ -420,7 +420,7 @@ def parse_job_chain(chain_data) -> list[Job]:
         entry_index += 1
     return jobs
 
-def parse_mii_lfcs_job(job_data) -> MiiJob:
+def parse_mii_lfcs_job(job_data) -> MiiLfcsJob:
     invalid = []
     try:
         # model
@@ -443,7 +443,7 @@ def parse_mii_lfcs_job(job_data) -> MiiJob:
         if invalid:
             raise InvalidSubmissionFieldError(invalid)
         else:
-            return MiiJob(system_id, model, year)
+            return MiiLfcsJob(system_id, model, year)
     except KeyError as e:
         raise KeyError(f'Missing parameter {e}')
 
@@ -521,7 +521,7 @@ def parse_msed_job(job_data, prereq_key=None, should_have_lfcs=True) -> MsedJob:
         if invalid:
             raise InvalidSubmissionFieldError(invalid)
         else:
-            return Part1Job(id0, lfcs=lfcs, prereq_key=prereq_key)
+            return MsedJob(id0, lfcs=lfcs, prereq_key=prereq_key)
     except KeyError as e:
         raise KeyError(f'Missing parameter {e}')
 
