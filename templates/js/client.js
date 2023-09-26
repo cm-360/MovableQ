@@ -6,7 +6,7 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
     let forcedMethod = "";
     const forcedMethodPrefix = "{{ url_for('page_force_method', method_name='') }}";
     if (window.location.pathname.startsWith(forcedMethodPrefix)) {
-        forcedMethod = window.location.pathname.replace(forcedMethodPrefix, '');
+        forcedMethod = window.location.pathname.replace(forcedMethodPrefix, '') + "-lfcs";
     }
 
     // Comma-separated IDs of the current job chain
@@ -175,11 +175,34 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
 
     function showFcLfcsView(miningStats) {
         startJobWatch();
-        resetForm(fcLfcsForm);
         showStepCollapse(fcLfcsStepCollapse);
     }
 
     fcLfcsCancelButton.addEventListener("click", event => cancelJobs(chainKeys.split(",")));
+
+    async function submitFcLfcs(event) {
+        event.preventDefault();
+        const fcLfcsFormData = new FormData(fcLfcsForm);
+        // fetch part1 data if selected
+        if (lfcsUploadUrl.classList.contains("show")) {
+            try {
+                const lfcsResponse = await fetch(lfcsUploadUrl.value);
+                const lfcsBlob = await lfcsResponse.blob();
+                fcLfcsFormData.set("lfcs_file", lfcsBlob);
+            } catch (error) {
+                window.alert(`Error downloading LFCS data: ${error.message}`);
+                return;
+            }
+        }
+        // upload LFCS to server
+        const fcLfcsResultUpload = await parseFcLfcsUpload(fcLfcsFormData);
+        console.log(fcLfcsResultUpload);
+        const fcJobKey = chainKeys.split(",")[0];
+        await apiCompleteJob(fcJobKey, fcLfcsResultUpload);
+        checkChainStatus();
+    }
+
+    fcLfcsForm.addEventListener("submit", event => submitFcLfcs(event));
 
 
     // ########## Step 3: LFCS from Mii QR Code  ##########
@@ -365,20 +388,20 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
                 return;
             case 2: // Job submission
                 switch (subStep) {
-                    case "fc":
+                    case "fc-lfcs":
                         showFcSubmitView();
                         return;
-                    case "mii":
+                    case "mii-lfcs":
                         showMiiSubmitView();
                         return;
                 }
                 break;
             case 3: // LFCS
                 switch (subStep) {
-                    case "fc":
+                    case "fc-lfcs":
                         showFcLfcsView(extraInfo);
                         return;
-                    case "mii":
+                    case "mii-lfcs":
                         showMiiLfcsView(extraInfo);
                         return;
                 }
@@ -529,6 +552,32 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
         }
     }
 
+    async function apiCompleteJob(jobKey, resultData) {
+        let response;
+        try {
+            response = await fetch(`{{ url_for('api_complete_job', key='') }}${jobKey}?skip_work=1`, {
+                method: "POST",
+                headers: {
+                    "Accept": "application/json",
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(resultData)
+            });
+            const responseJson = await response.json();
+            if (!response.ok) {
+                throw new Error(responseJson.message);
+            }
+        } catch (error) {
+            if (error instanceof SyntaxError) {
+                // syntax error from parsing non-JSON server error response
+                window.alert(`Error completing job: ${response.status} - ${response.statusText}`);
+            } else {
+                // generic error
+                window.alert(`Error completing job: ${error.message}`);
+            }
+        }
+    }
+
 
     // ########## Job Parsers  ##########
 
@@ -567,6 +616,14 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
         return {
             "type": "msed",
             "id0": formData.get("id0")
+        }
+    }
+
+    async function parseFcLfcsUpload(formData) {
+        const lfcsDataBase64 = await blobToBase64(formData.get("lfcs_file"));
+        return {
+            "result": lfcsDataBase64,
+            "format": "b64"
         }
     }
 

@@ -161,10 +161,15 @@ class JobManager():
         save_result(key, result, key_type=job.type)
 
     # save result to disk and delete job
-    def complete_job(self, key, result):
+    def complete_job(self, key, result, skip_work=False):
         with self.lock:
             job = self.jobs[key]
-            job.complete()
+            # terrible fix to allow LFCS submission
+            # job.complete() should be the only way
+            if skip_work:
+                job.to_done()
+            else:
+                job.complete()
             self._save_job_result(key, result)
             self.fulfill_dependents(key, result)
             self.delete_job(key)
