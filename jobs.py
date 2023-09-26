@@ -617,11 +617,11 @@ def read_result(key, key_type=None):
 def save_result(key, result, key_type=None):
     if not key_type:
         key_type = get_key_type(key)
-    if 'fc-lfcs' == job.type:
+    if 'fc-lfcs' == key_type:
         fc_save_lfcs(key, result)
-    elif 'mii-lfcs' == job.type:
+    elif 'mii-lfcs' == key_type:
         sid_save_lfcs(key, result)
-    elif 'msed' == job.type:
+    elif 'msed' == key_type:
         save_movable(key, result)
 
 
