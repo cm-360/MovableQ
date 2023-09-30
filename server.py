@@ -22,8 +22,8 @@ from jobs import JobManager, Job, FcLfcsJob, MiiLfcsJob, MsedJob, read_movable, 
 from validators import is_job_key, is_id0, is_system_id, is_friend_code, validate_job_result, enforce_client_version
 
 
-# AES keys
-slot0x31KeyN = 0x59FC817E6446EA6190347B20E9BDCE52
+# AES keys are loaded from .env
+slot0x31KeyN = None
 
 # logging config
 dictConfig({
@@ -481,16 +481,21 @@ def get_system_id_from_mii_file(job_data) -> str:
             pass
     # get lfcs from encrypted mii data
     if mii_data_enc:
-        return get_system_id_from_enc_mii(mii_data_enc)
+        nk31 = unhexlify(job_data.get('slot_31_key_n', ''))
+        if not nk31:
+            nk31 = slot0x31KeyN
+        return get_system_id_from_enc_mii(mii_data_enc, nk31)
 
 # Modified from seedminer_launcher3.py by zoogie
 # https://github.com/zoogie/seedminer/blob/master/seedminer/seedminer_launcher3.py#L126-L130
-def get_system_id_from_enc_mii(mii_data_enc: bytes) -> str:
+def get_system_id_from_enc_mii(mii_data_enc: bytes, nk31: bytes) -> str:
     if 112 != len(mii_data_enc):
         raise ValueError('Incorrect Mii data length')
+    if not nk31:
+        raise ValueError('slot0x31KeyN not provided')
     # decrypt mii data
     nonce = mii_data_enc[:8] + (b'\x00' * 4)
-    cipher = AES.new(slot0x31KeyN.to_bytes(16, 'big'), AES.MODE_CCM, nonce)
+    cipher = AES.new(nk31, AES.MODE_CCM, nonce)
     mii_data_dec = cipher.decrypt(mii_data_enc[8:0x60])
     # get system id
     system_id = hexlify(mii_data_dec[4:12]).decode('ascii')
@@ -578,6 +583,11 @@ class InvalidSubmissionFieldError(Exception):
 
 if __name__ == '__main__':
     load_dotenv()
+    # load AES keys
+    try:
+        slot0x31KeyN = unhexlify(os.getenv('SLOT_31_KEY_N'))
+    except:
+        app.logger.warning('Failed loading AES keys!')
     # count previous stats
     mseds_mined = count_mseds_mined()
     lfcses_mined = count_lfcses_mined()
