@@ -1,23 +1,32 @@
-from flask import Flask, request, render_template, make_response, g
-from werkzeug.exceptions import HTTPException
-from werkzeug.middleware.proxy_fix import ProxyFix
-from functools import wraps
-from logging.config import dictConfig
-
-from pyzbar.pyzbar import decode as qr_decode
-from PIL import Image
-
-#from Cryptodome.Cipher import AES
-from Crypto.Cipher import AES
-from binascii import hexlify, unhexlify
-
-from dotenv import load_dotenv
+#!/usr/bin/env python3
 
 import base64
 import io
 import json
 import os
+from functools import wraps
+from logging.config import dictConfig
 
+# Flask server
+from flask import Flask, request, render_template, make_response, g
+from werkzeug.exceptions import HTTPException
+from werkzeug.middleware.proxy_fix import ProxyFix
+
+# QR decoding
+from pyzbar.pyzbar import decode as qr_decode
+from PIL import Image
+
+# AES decryption
+from binascii import hexlify, unhexlify
+try:    # pycryptodomex
+    from Cryptodome.Cipher import AES
+except: # pycryptodome
+    from Crypto.Cipher import AES
+
+# .env configuration
+from dotenv import load_dotenv
+
+# MovableQ modules
 from jobs import JobManager, Job, FcLfcsJob, MiiLfcsJob, MsedJob, read_movable, count_mseds_mined, count_lfcses_mined, count_lfcses_dumped
 from validators import is_job_key, is_id0, is_system_id, is_friend_code, validate_job_result, enforce_client_version
 
