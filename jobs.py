@@ -117,7 +117,7 @@ class JobManager():
 
     # pop from job queue if not empty and assign, optionally filtering by type
     def request_job(self, requested_types, worker_name=None, worker_ip=None):
-        if requested_types == set(["fc"]):
+        if requested_types == set(["fc-lfcs"]):
             worker_type = "friendbot"
         else:
             worker_type = "miiner"
