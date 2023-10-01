@@ -470,7 +470,7 @@ def upload_lfcs(system_id):
 		response = requests.post(
 			f'{base_url}/api/complete_job/{system_id}',
 			json = {
-				'result': str(base64.b64encode(part1_file.read()[:8]), 'utf-8'),
+				'result': str(base64.b64encode(part1_file.read()[:5]), 'utf-8'),
 				'format': 'b64'
 			}
 		).json()
