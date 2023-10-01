@@ -1,14 +1,18 @@
+#!/usr/bin/env python3
+
 import base64
 import os
-import requests
 import signal
 import struct
 import subprocess
 import sys
 import time
 from binascii import hexlify, unhexlify
-from urllib.parse import quote as url_quote
 from traceback import print_exc
+from urllib.parse import quote as url_quote
+
+import requests
+from dotenv import load_dotenv
 
 
 # This should be set by the server when downloaded. Only change if you know
