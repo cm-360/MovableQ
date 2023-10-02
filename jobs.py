@@ -192,16 +192,11 @@ class JobManager():
         save_result(key, result, key_type=job.type)
 
     # save result to disk and delete job
-    def complete_job(self, key, result, subkey=None, skip_work=False):
+    def complete_job(self, key, result, subkey=None):
         with self.lock:
             job = self.jobs[key]
             if subkey is not None or result is not None:
-                # terrible fix to allow LFCS submission
-                # job.complete() should be the only way
-                if skip_work:
-                    job.to_done()
-                else:
-                    job.complete(subkey)
+                job.complete(subkey)
                 if result is not None:
                     # also complete main job if there's result and is sub job
                     if subkey is not None:
@@ -383,7 +378,7 @@ class Job(Machine):
         },
         {
             'trigger': '_complete',
-            'source': 'working',
+            'source': ['waiting', 'working'],
             'dest': 'done'
         }
     ]

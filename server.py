@@ -281,8 +281,7 @@ def api_complete_job(key: str, subkey: str = None):
         manager.release_job(key, subkey)
         return error('Faulty result')
     # complete job
-    skip_work = "skip_work" in request.args
-    manager.complete_job(key, result, subkey, skip_work=skip_work)
+    manager.complete_job(key, result, subkey)
     app.logger.info(f'{log_prefix(key, subkey)} completed')
     # update counter
     if 'msed' == job_type:
