@@ -410,7 +410,7 @@ def request_job():
 
 def do_job(job):
 	job_type = job['type']
-	if 'mii' == job_type:
+	if 'mii-lfcs' == job_type:
 		print('Mii job received:')
 		print(f'  Model: {job["model"]}')
 		print(f'  Year:  {job["year"]}')
