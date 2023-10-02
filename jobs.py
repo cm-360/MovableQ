@@ -201,6 +201,7 @@ class JobManager():
                     # also complete main job if there's result and is sub job
                     if subkey is not None:
                         job.complete()
+                    result = truncate_result(key, result)
                     self._save_job_result(key, result)
                     self.fulfill_dependents(key, result)
                     self.delete_job(key)
@@ -805,6 +806,16 @@ def save_result(key, result, key_type=None):
         sid_save_lfcs(key, result)
     elif 'msed' == key_type:
         save_movable(key, result)
+
+def truncate_result(key, result, key_type=None):
+    if not key_type:
+        key_type = get_key_type(key)
+    if 'fc-lfcs' == key_type:
+        return result[:5]
+    elif 'mii-lfcs' == key_type:
+        return result[:5]
+    elif 'msed' == key_type:
+        return result
 
 
 def count_lfcses_mined():
