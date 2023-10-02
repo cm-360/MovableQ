@@ -18,6 +18,32 @@ mseds_path = os.getenv('MSEDS_PATH', './mseds')
 job_lifetime = timedelta(minutes=5)
 worker_lifetime = timedelta(minutes=10)
 
+# LFCS bruteforce starting points from seedminer_launcher3.py by zoogie
+# https://github.com/zoogie/seedminer/blob/master/seedminer/seedminer_launcher3.py#L140-L184
+lfcs_starts_old = {
+	2011: 0x01000000,
+	2012: 0x04000000,
+	2013: 0x07000000,
+	2014: 0x09000000,
+	2015: 0x09800000,
+	2016: 0x0A000000,
+	2017: 0x0A800000
+}
+lfcs_starts_new = {
+	2014: 0x00800000,
+	2015: 0x01800000,
+	2016: 0x03000000,
+	2017: 0x04000000
+}
+# default starting points
+lfcs_default_old = 0x0B000000 // 2
+lfcs_default_new = 0x05000000 // 2
+# mii mining boundary from ocl_brute.c by zoogie
+# https://github.com/zoogie/bfCL/blob/master/ocl_brute.c#L505-L506
+lfcs_min_old = 0
+lfcs_max_old = 0x0B000000
+lfcs_min_new = 0
+lfcs_max_new = 0x05000000
 
 class JobManager():
 
@@ -62,7 +88,8 @@ class JobManager():
         with self.lock:
             job = self.jobs[key]
             job.to_canceled()
-            self._unqueue_job(key)
+            if job.is_canceled():
+                self._unqueue_job(key)
 
     # reset a canceled job
     def reset_job(self, key):
@@ -70,7 +97,7 @@ class JobManager():
             job = self.jobs[key]
             job.reset()
             job.prepare()
-            if 'ready' == job.state:
+            if job.is_ready():
                 self.queue_job(key)
 
     # delete job from the current job list if exists
@@ -86,7 +113,7 @@ class JobManager():
         else:
             self.wait_queue.append(key)
 
-    # add job id to queue, raises ValueError if it was already queued
+    # add job id to queue
     def queue_job(self, key, urgent=False):
         with self.lock:
             job = self.jobs[key]
@@ -113,7 +140,11 @@ class JobManager():
             job = self.jobs[key]
             if job.type in requested_types:
                 self.wait_queue.remove(key)
-                return job
+                subjob, requeue = job.get_job()
+                if subjob:
+                    if requeue:
+                        self._queue_job(key)
+                    return subjob
 
     # pop from job queue if not empty and assign, optionally filtering by type
     def request_job(self, requested_types, worker_name=None, worker_ip=None):
@@ -128,20 +159,20 @@ class JobManager():
                 job.assign(worker)
                 return job
 
-    # set job status to canceled, KeyError if it does not exist
-    def release_job(self, key):
+    # set job status back to waiting, KeyError if it does not exist
+    def release_job(self, key, subkey=None):
         with self.lock:
             job = self.jobs[key]
-            job.release()
+            job.release(subkey)
             self._queue_job(key, urgent=True)
 
     # returns False if a job was canceled, updates its time/worker and returns True otherwise
-    def update_job(self, key, worker_ip=None):
+    def update_job(self, key, subkey=None, worker_ip=None):
         with self.lock:
             job = self.jobs[key]
-            if 'canceled' == job.state:
+            if job.is_canceled():
                 return False
-            job.update()
+            job.update(subkey)
             if job.assignee:
                 self.update_worker(job.assignee.name, job.assignee.type, worker_ip)
             return True
@@ -161,18 +192,23 @@ class JobManager():
         save_result(key, result, key_type=job.type)
 
     # save result to disk and delete job
-    def complete_job(self, key, result, skip_work=False):
+    def complete_job(self, key, result, subkey=None, skip_work=False):
         with self.lock:
             job = self.jobs[key]
-            # terrible fix to allow LFCS submission
-            # job.complete() should be the only way
-            if skip_work:
-                job.to_done()
-            else:
-                job.complete()
-            self._save_job_result(key, result)
-            self.fulfill_dependents(key, result)
-            self.delete_job(key)
+            if subkey is not None or result is not None:
+                # terrible fix to allow LFCS submission
+                # job.complete() should be the only way
+                if skip_work:
+                    job.to_done()
+                else:
+                    job.complete(subkey)
+                if result is not None:
+                    # also complete main job if there's result and is sub job
+                    if subkey is not None:
+                        job.complete()
+                    self._save_job_result(key, result)
+                    self.fulfill_dependents(key, result)
+                    self.delete_job(key)
 
     # fulfill any jobs that have the given job as a prerequisite
     def fulfill_dependents(self, key, result):
@@ -183,10 +219,10 @@ class JobManager():
                     self.queue_job(job.key)
 
     # mark job as failed and attach note
-    def fail_job(self, key, note=None):
+    def fail_job(self, key, subkey=None, note=None):
         with self.lock:
             job = self.jobs[key]
-            job.fail(note)
+            job.fail(subkey, note)
 
     # auto-complete jobs that already have a result saved
     def autocomplete_jobs(self):
@@ -207,8 +243,7 @@ class JobManager():
         with self.lock:
             released = []
             for job in self.jobs.values():
-                if 'working' == job.state and job.has_timed_out():
-                    job.release()
+                if job.is_working() and job.release_if_timed_out():
                     released.append(job.key)
             for key in released:
                 self._queue_job(key, urgent=True)
@@ -219,7 +254,7 @@ class JobManager():
         with self.lock:
             deleted = []
             for job in self.jobs.values():
-                if 'canceled' == job.state and job.has_timed_out():
+                if job.is_canceled() and job.has_timed_out():
                     deleted.append(job.key)
             for key in deleted:
                 self.delete_job(key)
@@ -325,13 +360,13 @@ class Job(Machine):
             'dest': 'ready'
         },
         {
-            'trigger': 'assign',
+            'trigger': '_assign',
             'source': 'waiting',
             'dest': 'working',
             'before': 'on_assign'
         },
         {
-            'trigger': 'release',
+            'trigger': '_release',
             'source': 'working',
             'dest': 'waiting'
         },
@@ -341,13 +376,13 @@ class Job(Machine):
             'dest': 'submitted'
         },
         {
-            'trigger': 'fail',
+            'trigger': '_fail',
             'source': 'working',
             'dest': 'failed',
             'before': 'on_fail'
         },
         {
-            'trigger': 'complete',
+            'trigger': '_complete',
             'source': 'working',
             'dest': 'done'
         }
@@ -362,6 +397,7 @@ class Job(Machine):
         )
         # job properties
         self.key = key
+        self.subkey = None
         self.type = _type
         self.note = None
         # for queue
@@ -372,15 +408,31 @@ class Job(Machine):
         self.mining_rate = None
         self.mining_offset = None
 
-    def update(self):
+    def update(self, subkey=None):
         self.last_update = datetime.now(tz=timezone.utc)
 
-    def on_assign(self, worker):
+    def assign(self, worker, subkey=None):
+        self._assign(worker, subkey)
+
+    def release(self, subkey=None):
+        self._release(subkey)
+
+    def fail(self, subkey=None, note=None):
+        self._fail(subkey, note)
+
+    def complete(self, subkey=None):
+        self._complete(subkey)
+
+    def on_assign(self, worker, subkey=None):
         self.assignee = worker
         self.update()
 
-    def on_fail(self, note=None):
+    def on_fail(self, subkey=None, note=None):
         self.note = note
+
+    # 2nd ret: False to not requeue main job
+    def get_job(self):
+        return self, False
 
     def get_assignee_name(self):
         return self.assignee.name if self.assignee else None
@@ -388,6 +440,12 @@ class Job(Machine):
     # True if the job has timed out, False if it has not
     def has_timed_out(self):
         return datetime.now(tz=timezone.utc) > (self.last_update + job_lifetime)
+
+    def release_if_timed_out(self):
+        if self.has_timed_out():
+            self.release()
+            return True
+        return False
 
     def __iter__(self):
         # job properties
@@ -429,18 +487,125 @@ class MiiLfcsJob(Job):
 
     def __init__(self, system_id, model, year):
         super().__init__(system_id, 'mii-lfcs')
-        self.add_transition('prepare', 'submitted', 'ready')
+        self.add_transition('prepare', 'submitted', 'ready', before='on_prepare')
         # mii-specific job properties
         self.console_model = model
         self.console_year = year
+        # dummy distributed mining info
+        self.model_bytes = None
         # mii jobs are ready immediately
         self.prepare()
+
+    def on_prepare(self):
+        # init distributed mining info
+        start_lfcs, self.model_bytes, lfcs_min, lfcs_max = get_lfcs_start_range_flags(self.console_model, self.console_year)
+        self.lfcs_base = lfcs_min
+        self.lfcs_count = lfcs_max - lfcs_min
+        self.lfcs_istart = start_lfcs - lfcs_min
+        # should use ceil... but this works
+        self.progress = bytearray(self.lfcs_count // 8 + 1)
+        self.mining = {}
+
+    def check_progress(self, idx):
+        return self.progress[idx // 8] >> (idx % 8) & 0x1
+
+    def update_progress(self, idx, val):
+        pi = idx // 8
+        bi = idx % 8
+        self.progress[pi] &= ~(0b1 << bi)
+        self.progress[pi] |= (1 if val else 0) << bi
+
+    def get_next_idx(self):
+        offset = 0
+        min_reached = False
+        max_reached = False
+        while not min_reached or not max_reached:
+            idx = self.lfcs_istart + offset
+            if idx < 0:
+                min_reached = True
+            elif idx > self.lfcs_count:
+                max_reached = True
+            else:
+                if not self.check_progress(idx):
+                    return idx
+            if offset == 0:
+                offset = 1
+            elif offset > 0:
+                offset = -offset
+            elif offset < 0:
+                offset = -offset + 1
+        return None
+
+    def assign(self, worker, subkey=None):
+        if subkey in self.mining:
+            # this actually will never be run
+            self.mining[subkey].assign(worker)
+        elif subkey is None:
+            super().assign(worker, subkey)
+
+    def release(self, subkey=None):
+        if subkey in self.mining:
+            subjob = self.mining.pop(subkey)
+            self.update_progress(subjob.idx, 0)
+        elif subkey is None:
+            super().release(subkey)
+
+    def fail(self, subkey=None, note=None):
+        if subkey in self.mining:
+            subjob = self.mining.pop(subkey)
+            # currently treat it the same as release
+            self.update_progress(subjob.idx, 0)
+        elif subkey is None:
+            super().fail(subkey, note)
+
+    def complete(self, subkey=None):
+        if subkey in self.mining:
+            del self.mining[subkey]
+        elif subkey is None:
+            super().complete(subkey)
+
+    # 2nd ret: True to requeue main job
+    def get_job(self):
+        idx = self.get_next_idx()
+        if idx:
+            if self.is_waiting():
+                self.to_working()
+            self.update_progress(idx, 1)
+            subjob = MiiLfcsOffsetJob(self, self.lfcs_base + idx, idx)
+            self.mining[subjob.subkey] = subjob
+            return subjob, True
+        return None, False
 
     def __iter__(self):
         yield from super().__iter__()
         yield 'model', self.console_model
         yield 'year', self.console_year
+        yield 'model_bytes', self.model_bytes.hex()
         yield 'system_id', self.key
+
+
+# per offset sub-job of MiiLfcsJob
+class MiiLfcsOffsetJob(Job):
+
+    def __init__(self, _parent, offset, idx):
+        super().__init__(_parent.key, 'mii-lfcs-offset')
+        self._parent = _parent
+        if type(offset) == int:
+            self.subkey = offset.to_bytes(2, 'big').hex()
+        else:
+            self.subkey = offset
+        self.idx = idx
+        # working immediately
+        self.to_waiting()
+
+    # True if the job has timed out, False if it has not
+    def has_timed_out(self):
+        return datetime.now(tz=timezone.utc) > (self.last_update + job_lifetime)
+
+    def __iter__(self):
+        # might need to completely rewrite iter or select partially feilds
+        yield from self._parent.__iter__()
+        yield 'offset', self.subkey
 
 
 # Job to obtain LFCS from a friend exchange
@@ -514,6 +679,23 @@ class Worker():
         yield 'name', self.name
         yield 'ip', self.ip
         yield 'last_update', self.last_update.isoformat()
+
+
+# mii mining related helper
+def get_lfcs_start_range_flags(model, year):
+    if 'old' == model:
+        model_bytes = b'\x00\x00'
+        start_lfcs = lfcs_starts_old.get(year, lfcs_default_old)
+        lfcs_min = lfcs_min_old
+        lfcs_max = lfcs_max_old
+    elif 'new' == model:
+        model_bytes = b'\x02\x00'
+        start_lfcs = lfcs_starts_new.get(year, lfcs_default_new)
+        lfcs_min = lfcs_min_new
+        lfcs_max = lfcs_max_new
+    else:
+        raise ValueError('Invalid model')
+    return start_lfcs >> 16, model_bytes, lfcs_min >> 16, lfcs_max >> 16
 
 
 # lfcs storage by system id

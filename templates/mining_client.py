@@ -283,23 +283,29 @@ def do_benchmark():
 		cleanup_mining_files()
 		dry_run = False
 
-def do_mii_lfcs_mine(model, year, system_id, timeout=0):
+def do_mii_lfcs_mine(model, year, system_id, offset=None, model_bytes=None, timeout=0):
 	cleanup_mining_files()
 	try:
-		start_lfcs, model_bytes = get_lfcs_start_and_flags(model, year)
+		if offset is not None:
+			start_lfcs = int.from_bytes(unhexlify(offset), 'big') << 16
+		else:
+			start_lfcs, model_bytes = get_lfcs_start_and_flags(model, year)
+			model_bytes = hexlify(model_bytes).decode('ascii')
 		# bfCL
 		bfcl_args = [
 			'lfcs',
 			f'{endian4(start_lfcs):08X}',
-			hexlify(model_bytes).decode('ascii'),
+			model_bytes,
 			system_id,
 			f'{endian4(0):08X}'
 		]
-		run_bfcl(system_id, bfcl_args)
+		if offset is not None:
+			bfcl_args += [f'{endian4(start_lfcs):08X}', f'{endian4(start_lfcs):08X}']
+		run_bfcl(system_id, bfcl_args, offset)
 		# check output
-		if os.path.isfile('movable_part1.sed'):
+		if os.path.isfile('movable_part1.sed') or offset is not None:
 			print(f'Mining complete! Uploading movable_part1...')
-			upload_lfcs(system_id)
+			upload_lfcs(system_id, offset)
 		else:
 			print(f'bfCL was not able to complete the mining job!')
 	finally:
@@ -333,7 +339,7 @@ def do_msed_mine(id0, lfcs, timeout=0):
 	finally:
 		cleanup_mining_files()
 
-def run_bfcl(job_key, args, rws=force_reduced_work_size):
+def run_bfcl(job_key, args, subkey=None, rws=force_reduced_work_size):
 	try:
 		bfcl_args = [
 			('bfcl' if os.name == 'nt' else './bfcl'),
@@ -349,7 +355,7 @@ def run_bfcl(job_key, args, rws=force_reduced_work_size):
 				timer += 1
 				time.sleep(1)
 				if timer % update_interval == 0:
-					status = update_job(job_key)
+					status = update_job(job_key, subkey)
 					if status == 'canceled':
 						print('Job canceled')
 						kill_process(process)
@@ -357,22 +363,22 @@ def run_bfcl(job_key, args, rws=force_reduced_work_size):
 			# Help wanted for a better way of catching an exit code of '-5'
 			if not rws and (process.returncode == 251 or process.returncode == 0xFFFFFFFB):
 				time.sleep(3)  # Just wait a few seconds so we don't burn out our graphics card
-				return run_bfcl(job_key, args, True)
+				return run_bfcl(job_key, args, subkey, True)
 			else:
 				check_bfcl_return_code(process.returncode)
 		except KeyboardInterrupt:
 			kill_process(process)
 			print('Terminated bfCL, interrupt again to exit')
-			release_job(job_key)
+			release_job(job_key, subkey)
 			time.sleep(5)
 	except BfclReturnCodeError as e:
-		fail_job(job_key, f'{type(e).__name__}: {e}')
+		fail_job(job_key, f'{type(e).__name__}: {e}', subkey)
 		return e.return_code
 	except Exception as e:
 		print_exc()
 		print('bfCL was not able to run correctly!')
 		message = f'{type(e).__name__}: {e}'
-		fail_job(job_key, message)
+		fail_job(job_key, message, subkey)
 		raise BfclExecutionError(message) from e
 	return 0
 
@@ -415,10 +421,14 @@ def do_job(job):
 		print(f'  Model: {job["model"]}')
 		print(f'  Year:  {job["year"]}')
 		print(f'  SysID: {job["system_id"]}')
+		if job["offset"]:
+			print(f' Offset: {job["offset"]}')
 		do_mii_lfcs_mine(
 			job['model'],
 			job['year'],
-			job['system_id']
+			job['system_id'],
+			job['offset'],
+			job['model_bytes']
 		)
 	elif 'msed' == job_type:
 		print('Part1 job received:')
@@ -431,20 +441,26 @@ def do_job(job):
 	else:
 		print(f'Unknown job type "{job_type}" received, ignoring...')
 
-def update_job(key):
+def update_job(key, subkey=None):
 	if dry_run:
 		return
+	if subkey is not None:
+		key = f'{key}/{subkey}'
 	response = requests.get(f'{base_url}/api/update_job/{key}')
 	return response.json()['data'].get('status')
 
-def release_job(key):
+def release_job(key, subkey=None):
 	if dry_run:
 		return
+	if subkey is not None:
+		key = f'{key}/{subkey}'
 	requests.get(f'{base_url}/api/release_job/{key}')
 
-def fail_job(key, note):
+def fail_job(key, note, subkey=None):
 	if dry_run:
 		return
+	if subkey is not None:
+		key = f'{key}/{subkey}'
 	requests.post(
 		f'{base_url}/api/fail_job/{key}',
 		json={'note': note}
@@ -463,17 +479,26 @@ def upload_movable(id0):
 			}
 		).json()
 
-def upload_lfcs(system_id):
+def upload_lfcs(system_id, offset=None):
 	if dry_run:
 		return
-	with open('movable_part1.sed', 'rb') as part1_file:
-		response = requests.post(
-			f'{base_url}/api/complete_job/{system_id}',
-			json = {
+	if offset is not None:
+		system_id = f'{system_id}/{offset}'
+	data = None
+	if os.path.isfile('movable_part1.sed'):
+		with open('movable_part1.sed', 'rb') as part1_file:
+			data = {
 				'result': str(base64.b64encode(part1_file.read()[:5]), 'utf-8'),
 				'format': 'b64'
 			}
-		).json()
+	else:
+		data = {
+			'format': 'none'
+		}
+	response = requests.post(
+		f'{base_url}/api/complete_job/{system_id}',
+		json = data
+	).json()
 
 def kill_process(process):
 	try:
