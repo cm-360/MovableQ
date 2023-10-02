@@ -85,6 +85,10 @@ db_lfcses_new = []
 db_msed3s_old = []
 db_msed3s_new = []
 
+# worker mode
+worker_mode = False
+worker = None
+
 
 # Helper functions from seedminer_launcher3.py by zoogie
 # https://github.com/zoogie/seedminer/blob/master/seedminer/seedminer_launcher3.py#L51-L84
@@ -251,9 +255,11 @@ def erase_benchmark():
 # Modified from do_gpu @ seedminer_launcher3.py by zoogie
 # https://github.com/zoogie/seedminer/blob/master/seedminer/seedminer_launcher3.py#L394-L402
 def do_benchmark():
-	global dry_run
+	global dry_run, worker_mode
 	dry_run = True
 	cleanup_mining_files()
+	old_worker_mode = worker_mode
+	worker_mode = False
 	print('Benchmarking...')
 	# run and time bfCL
 	try:
@@ -282,6 +288,7 @@ def do_benchmark():
 	finally:
 		cleanup_mining_files()
 		dry_run = False
+		worker_mode = old_worker_mode
 
 def do_mii_lfcs_mine(model, year, system_id, offset=None, model_bytes=None, timeout=0):
 	cleanup_mining_files()
@@ -301,11 +308,11 @@ def do_mii_lfcs_mine(model, year, system_id, offset=None, model_bytes=None, time
 		]
 		if offset is not None:
 			bfcl_args += [f'{endian4(start_lfcs):08X}', f'{endian4(start_lfcs):08X}']
-		run_bfcl(system_id, bfcl_args, offset)
+		ret, result = run_bfcl(system_id, bfcl_args, offset)
 		# check output
-		if os.path.isfile('movable_part1.sed') or offset is not None:
+		if result or os.path.isfile('movable_part1.sed') or offset is not None:
 			print(f'Mining complete! Uploading movable_part1...')
-			upload_lfcs(system_id, offset)
+			upload_lfcs(system_id, offset, result)
 		else:
 			print(f'bfCL was not able to complete the mining job!')
 	finally:
@@ -329,17 +336,116 @@ def do_msed_mine(id0, lfcs, timeout=0):
 			f'{endian4(0):08X}',
 			f'{endian4(max_offset):08X}'
 		]
-		run_bfcl(id0, bfcl_args)
+		ret, result = run_bfcl(id0, bfcl_args)
 		# check output
-		if os.path.isfile('movable.sed'):
+		if result or os.path.isfile('movable.sed'):
 			print(f'Mining complete! Uploading movable...')
-			upload_movable(id0)
+			upload_movable(id0, result)
 		else:
 			print(f'bfCL was not able to complete the mining job!')
 	finally:
 		cleanup_mining_files()
 
-def run_bfcl(job_key, args, subkey=None, rws=force_reduced_work_size):
+def test_bfcl_worker():
+	try:
+		bfcl_args = [
+			('bfcl' if os.name == 'nt' else './bfcl'),
+			'worker',
+			'rws',
+			'stdio'
+		]
+		# start mining
+		process = subprocess.Popen(bfcl_args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+		out, err = process.communicate(b"exit\n")
+		if ">>>" in out.decode():
+			return True
+		#if process.returncode == -1 or process.returncode == 255 or process.returncode == 0xFFFFFFFF:
+	except Exception as e:
+		pass
+	return False
+
+def ensure_bfcl_worker(rws=force_reduced_work_size):
+	global worker
+	try:
+		if worker is None or worker.poll() is not None:
+			bfcl_args = [
+				('bfcl' if os.name == 'nt' else './bfcl'),
+				'worker',
+				('rws' if rws else 'sws'),
+				'stdio'
+			]
+			print(f'bfCL args: {" ".join(bfcl_args)}')
+			worker = subprocess.Popen(bfcl_args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+			while worker.poll() is None:
+				line = worker.stdout.readline().rstrip()
+				if ">>>" in line:
+					return True
+			# Help wanted for a better way of catching an exit code of '-5'
+			if not rws and (worker.returncode == 251 or worker.returncode == 0xFFFFFFFB):
+				time.sleep(3)  # Just wait a few seconds so we don't burn out our graphics card
+				return ensure_bfcl_worker(True)
+			else:
+				worker = None
+				worker_mode = False
+	except Exception as e:
+		print_exc()
+		print('bfCL was not able to run correctly!')
+		message = f'{type(e).__name__}: {e}'
+	return worker.poll() is None
+
+def run_bfcl_worker(job_key, args, subkey=None, rws=force_reduced_work_size):
+	global worker
+	if not ensure_bfcl_worker(rws):
+		return run_bfcl_process(job_key, args, subkey, rws)
+	result = None
+	try:
+		bfcl_args = [
+			*args,
+			*(['rws'] if rws else ['sws', 'sm'])
+		]
+		print(f'bfCL args: {" ".join(bfcl_args)}')
+		# start mining
+		try:
+			if worker.poll() is None:
+				ret = 0
+				worker.stdin.write(" ".join(bfcl_args))
+				worker.stdin.write('\r\n' if os.name == 'nt' else '\n')
+				worker.stdin.flush()
+				while worker.poll() is None:
+					line = worker.stdout.readline().rstrip()
+					if "<<<" in line:
+						result = line[4:]
+					if "|||" in line:
+						ret = int(line[4:])
+						print(f"ret: {ret}")
+					if ">>>" in line:
+						break
+				check_bfcl_return_code(ret)
+				return ret, result
+			# Help wanted for a better way of catching an exit code of '-5'
+			elif not rws and (worker.returncode == 251 or worker.returncode == 0xFFFFFFFB):
+				time.sleep(3)  # Just wait a few seconds so we don't burn out our graphics card
+				return run_bfcl_worker(job_key, args, subkey, True)
+			else:
+				check_bfcl_return_code(worker.returncode)
+		except KeyboardInterrupt:
+			kill_process(worker)
+			worker = None
+			print('Terminated bfCL, interrupt again to exit')
+			release_job(job_key, subkey)
+			time.sleep(5)
+	except BfclReturnCodeError as e:
+		fail_job(job_key, f'{type(e).__name__}: {e}', subkey)
+		return e.return_code
+	except Exception as e:
+		print_exc()
+		print('bfCL was not able to run correctly!')
+		message = f'{type(e).__name__}: {e}'
+		fail_job(job_key, message, subkey)
+		raise BfclExecutionError(message) from e
+	return 0, result
+
+def run_bfcl_process(job_key, args, subkey=None, rws=force_reduced_work_size):
 	try:
 		bfcl_args = [
 			('bfcl' if os.name == 'nt' else './bfcl'),
@@ -381,6 +487,12 @@ def run_bfcl(job_key, args, subkey=None, rws=force_reduced_work_size):
 		fail_job(job_key, message, subkey)
 		raise BfclExecutionError(message) from e
 	return 0
+
+def run_bfcl(job_key, args, subkey=None, rws=force_reduced_work_size):
+	if worker_mode:
+		return run_bfcl_worker(job_key, args, subkey, rws)
+	else:
+		return run_bfcl_process(job_key, args, subkey, rws)
 
 def check_bfcl_return_code(return_code):
 	if -1 == return_code:
@@ -467,25 +579,42 @@ def fail_job(key, note, subkey=None):
 	)
 
 # we actually upload only the keyY, but whatever
-def upload_movable(id0):
+def upload_movable(id0, result=None):
 	if dry_run:
 		return
-	with open('movable.sed', 'rb') as movable_file:
-		response = requests.post(
-			f'{base_url}/api/complete_job/{id0}',
-			json = {
+	data = None
+	if result:
+		data = {
+			'result': result,
+			'format': 'hex'
+		}
+	else:
+		with open('movable.sed', 'rb') as movable_file:
+			data = {
 				'result': str(base64.b64encode(movable_file.read()[0x110:0x120]), 'utf-8'),
 				'format': 'b64'
 			}
-		).json()
+	response = requests.post(
+		f'{base_url}/api/complete_job/{id0}',
+		json = data
+	).json()
 
-def upload_lfcs(system_id, offset=None):
+def upload_lfcs(system_id, offset=None, result=None):
 	if dry_run:
 		return
 	if offset is not None:
 		system_id = f'{system_id}/{offset}'
 	data = None
-	if os.path.isfile('movable_part1.sed'):
+	if result == "NOHIT":
+		data = {
+			'format': 'none'
+		}
+	elif result:
+		data = {
+			'result': result,
+			'format': 'hex'
+		}
+	elif os.path.isfile('movable_part1.sed'):
 		with open('movable_part1.sed', 'rb') as part1_file:
 			data = {
 				'result': str(base64.b64encode(part1_file.read()[:5]), 'utf-8'),
@@ -562,7 +691,8 @@ def update_client():
 	os.execv(sys.executable, args)
 
 def run_client():
-	global miner_name, acceptable_job_types
+	global miner_name, acceptable_job_types, worker_mode
+	worker_mode = test_bfcl_worker()
 	print(f'Client version {client_version}')
 	# remind miner to change name variable
 	if miner_name == 'CHANGE_ME':
