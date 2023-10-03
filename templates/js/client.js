@@ -180,7 +180,9 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
 
     function showFcLfcsView(miningStats) {
         startJobWatch();
-        botFriendCode.innerText = formatFriendCode(miningStats.assignee);
+        if (miningStats.assignee) {
+            botFriendCode.innerText = formatFriendCode(miningStats.assignee);
+        }
         showStepCollapse(fcLfcsStepCollapse);
     }
 
