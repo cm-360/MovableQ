@@ -194,7 +194,7 @@ def api_request_job():
         requested_types = set(requested_types.split(','))
     allowed_types = enforce_client_version(client_types, client_version, requested_types)
     # check for and assign jobs
-    job = manager.request_job(allowed_types, worker_name, worker_ip)
+    job = manager.request_job(allowed_types, worker_name, worker_ip, client_version)
     if job:
         app.logger.info(f'{log_prefix(job.key)} assigned to {worker_name}')
         return success(dict(job))
