@@ -492,10 +492,11 @@ class MsedJob(ChainJob):
 
 class Worker():
 
-    def __init__(self, name, worker_type, ip=None):
+    def __init__(self, name, worker_type, ip=None, version=None):
         self.name = name
         self.ip = ip
         self.type = worker_type
+        self.version = version
         self.update()
 
     def update(self, worker_type=None, ip=None, version=None):
