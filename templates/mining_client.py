@@ -553,15 +553,18 @@ def run_client():
 	if not validate_benchmark():
 		return
 	# main mining loop
+	waited_seconds = 0
 	while True:
 		try:
 			try:
 				job = request_job()
 				if job:
 					print() # wait message carriage return fix
+					waited_seconds = 0
 					do_job(job)
 				else:
-					print(f'No mining jobs, waiting {request_cooldown} seconds...', end='\r')
+					print(f'No mining jobs, waited {waited_seconds} seconds...', end='\r')
+					waited_seconds += request_cooldown
 					time.sleep(request_cooldown)
 			except Exception as e:
 				print() # wait message carriage return fix
