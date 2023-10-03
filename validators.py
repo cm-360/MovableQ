@@ -47,8 +47,10 @@ def get_key_type(key: str) -> str:
         return 'msed'
 
 
-def validate_job_result(job_type: str, result: bytes, key=None) -> bool:
-    if job_type in ['mii-lfcs', 'fc-lfcs']:
+def validate_job_result(job_type: str, result: bytes, key=None, subkey=None) -> bool:
+    if 'mii-lfcs' == job_type and subkey and result is None:
+        return True
+    elif job_type in ['mii-lfcs', 'fc-lfcs']:
         return validate_lfcs(result)
     elif 'msed' == job_type:
         return validate_movable(result, key)
@@ -126,4 +128,4 @@ def compare_versions(version_a: list, version_b: list) -> int:
 
 # removed in Python 3 lol
 def compare(a, b) -> int:
-    return (a > b) - (a < b) 
+    return (a > b) - (a < b)

@@ -555,7 +555,7 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
     async function apiCompleteJob(jobKey, resultData) {
         let response;
         try {
-            response = await fetch(`{{ url_for('api_complete_job', key='') }}${jobKey}?skip_work=1`, {
+            response = await fetch(`{{ url_for('api_complete_job', key='') }}${jobKey}`, {
                 method: "POST",
                 headers: {
                     "Accept": "application/json",
@@ -620,7 +620,7 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
     }
 
     async function parseFcLfcsUpload(formData) {
-        const lfcsDataBase64 = await blobToBase64(formData.get("lfcs_file"));
+        const lfcsDataBase64 = await blobToBase64(formData.get("lfcs_file").slice(0, 5));
         return {
             "result": lfcsDataBase64,
             "format": "b64"
