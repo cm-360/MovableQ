@@ -154,6 +154,7 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
     const lfcsUploadFile = document.getElementById("lfcs_file");
     const lfcsUploadUrl = document.getElementById("lfcs_url");
     // job info
+    const botFriendCode = document.getElementById("botFriendCode");
     const fcLfcsStatus = document.getElementById("fcLfcsStatus");
     // cancel button
     const fcLfcsCancelButton = document.getElementById("fcLfcsCancelButton");
@@ -173,8 +174,13 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
     lfcsUploadToggle.addEventListener("click", toggleLfcsUpload);
     toggleLfcsUpload();
 
+    function formatFriendCode(friendCode) {
+        return friendCode.match(/.{1,4}/g).join("-")
+    }
+
     function showFcLfcsView(miningStats) {
         startJobWatch();
+        botFriendCode.innerText = formatFriendCode(miningStats.assignee);
         showStepCollapse(fcLfcsStepCollapse);
     }
 
