@@ -178,10 +178,10 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
         return friendCode.match(/.{1,4}/g).join("-")
     }
 
-    function showFcLfcsView(miningStats) {
+    function showFcLfcsView(jobData) {
         startJobWatch();
-        if (miningStats.assignee) {
-            botFriendCode.innerText = formatFriendCode(miningStats.assignee);
+        if (jobData.mining_stats.assignee) {
+            botFriendCode.innerText = formatFriendCode(jobData.mining_stats.assignee);
         }
         showStepCollapse(fcLfcsStepCollapse);
     }
