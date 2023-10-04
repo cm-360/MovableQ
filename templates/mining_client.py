@@ -494,7 +494,7 @@ def request_job():
 	request_params = '&'.join([
 		f'version={client_version}',
 		f'name={miner_name}',
-		f'types={acceptable_job_types}'
+		f'types={config.get('Client', 'acceptable_job_types')}'
 	])
 	response = requests.get(f'{base_url}/api/request_job?{request_params}').json()
 	result = response['result']
@@ -671,7 +671,7 @@ def update_client():
 	os.execv(sys.executable, args)
 
 def run_client():
-	global miner_name, acceptable_job_types, worker_mode
+	global miner_name, worker_mode
 	worker_mode = test_bfcl_worker()
 	print(f'Client version {client_version}')
 	# remind miner to change name variable
@@ -683,7 +683,6 @@ def run_client():
 	load_lfcs_dbs()
 	# sanitize variables
 	miner_name = url_quote(miner_name)
-	acceptable_job_types = ','.join(acceptable_job_types)
 	# benchmark to find issues before claiming real jobs
 	if not validate_benchmark():
 		return
@@ -733,10 +732,7 @@ def load_config(filename):
 	default_values = {
 		'Client': {
 			'miner_name': 'CHANGE_ME',
-			'acceptable_job_types': [
-				'msed',
-				'mii-lfcs'
-			],
+			'acceptable_job_types': 'msed,mii-lfcs'
 			'auto_update': True
 		},
 		'bfCL': {
@@ -763,10 +759,10 @@ def load_config(filename):
 
 
 if __name__ == '__main__':
+	global miner_name, auto_update, force_reduced_work_size
 	# load config
 	config = load_config('mining_client.cfg')
 	miner_name = config.get('Client', 'miner_name')
-	acceptable_job_types = config.get('Client', 'acceptable_job_types')
 	auto_update = config.get('Client', 'auto_update')
 	force_reduced_work_size = config.get('bfCL', 'force_reduced_work_size')
 	# run client
