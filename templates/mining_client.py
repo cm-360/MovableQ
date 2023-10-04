@@ -503,7 +503,7 @@ def request_job():
 	result = response['result']
 	if 'success' != result:
 		error_message = response['message']
-		if config.get('Client', 'auto_update') and 'Outdated' in error_message:
+		if config.getboolean('Client', 'auto_update') and 'Outdated' in error_message:
 			update_client()
 		print(f'Error from server: {error_message}')
 		return
@@ -734,10 +734,10 @@ def load_config(filename):
 		'Client': {
 			'miner_name': 'CHANGE_ME',
 			'acceptable_job_types': 'msed,mii-lfcs',
-			'auto_update': True
+			'auto_update': 'true'
 		},
 		'bfCL': {
-			'force_reduced_work_size': False
+			'force_reduced_work_size': 'false'
 		}
 	}
 
@@ -761,8 +761,8 @@ def load_config(filename):
 
 if __name__ == '__main__':
 	# load config
-	global config, force_reduced_work_size
+	global config
 	config = load_config('mining_client.cfg')
-	force_reduced_work_size = config.get('bfCL', 'force_reduced_work_size')
+	force_reduced_work_size = config.getboolean('bfCL', 'force_reduced_work_size')
 	# run client
 	run_client()
