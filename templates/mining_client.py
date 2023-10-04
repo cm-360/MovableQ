@@ -678,7 +678,7 @@ def run_client():
 	worker_mode = test_bfcl_worker()
 	print(f'Client version {client_version}')
 	# remind miner to change name variable
-	if miner_name == 'CHANGE_ME':
+	if config.get('Client', 'miner_name') == 'CHANGE_ME':
 		print('Please enter a name first.')
 		return
 	# initialize
