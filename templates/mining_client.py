@@ -10,7 +10,7 @@ from traceback import print_exc
 from urllib.parse import quote as url_quote
 
 import requests
-from dotenv import load_dotenv
+#from dotenv import load_dotenv
 
 
 # This should be set by the server when downloaded. Only change if you know
