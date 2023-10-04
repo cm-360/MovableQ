@@ -88,8 +88,7 @@ class JobManager():
         with self.lock:
             job = self.jobs[key]
             job.to_canceled()
-            if job.is_canceled():
-                self._unqueue_job(key)
+            self._unqueue_job(key)
 
     # reset a canceled job
     def reset_job(self, key):
