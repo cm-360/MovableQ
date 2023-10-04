@@ -541,7 +541,7 @@ def do_job(job):
 			job['model_bytes']
 		)
 	elif 'msed' == job_type:
-		print('Part1 job received:')
+		print('Msed job received:')
 		print(f'  ID0:  {job["id0"]}')
 		print(f'  LFCS: {job["lfcs"]}')
 		do_msed_mine(
