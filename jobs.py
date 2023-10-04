@@ -147,13 +147,13 @@ class JobManager():
                     return subjob
 
     # pop from job queue if not empty and assign, optionally filtering by type
-    def request_job(self, requested_types, worker_name=None, worker_ip=None):
+    def request_job(self, requested_types, worker_name=None, worker_ip=None, worker_version=None):
         if requested_types == set(["fc-lfcs"]):
             worker_type = "friendbot"
         else:
             worker_type = "miiner"
         with self.lock:
-            worker = self.update_worker(worker_name, worker_type, worker_ip)
+            worker = self.update_worker(worker_name, worker_type, worker_ip, worker_version)
             job = self._request_job(requested_types)
             if job:
                 job.assign(worker)
@@ -178,13 +178,13 @@ class JobManager():
             return True
 
     # if a name is provided, updates that worker's ip and time, creating one if necessary; returns the Worker object
-    def update_worker(self, name, worker_type, ip=None):
+    def update_worker(self, name, worker_type, ip=None, version=None):
         with self.lock:
             if name:
                 if name in self.workers:
-                    self.workers[name].update(worker_type, ip)
+                    self.workers[name].update(worker_type, ip, version)
                 else:
-                    self.workers[name] = Worker(name, worker_type, ip)
+                    self.workers[name] = Worker(name, worker_type, ip, version)
                 return self.workers[name]
 
     def _save_job_result(self, key, result):
@@ -653,19 +653,21 @@ class MsedJob(ChainJob):
 
 class Worker():
 
-    def __init__(self, name, worker_type, ip=None):
+    def __init__(self, name, worker_type, ip=None, version=None):
         self.name = name
         self.ip = ip
         self.type = worker_type
+        self.version = version
         self.update()
 
-    def update(self, worker_type=None, ip=None):
-        if worker_type is None:
-            worker_type = self.type
+    def update(self, worker_type=None, ip=None, version=None):
         self.last_update = datetime.now(tz=timezone.utc)
-        self.type = worker_type
+        if worker_type:
+            self.type = worker_type
         if ip:
             self.ip = ip
+        if version:
+            self.version = version
 
     # True if the worker has timed out, False if they have not
     def has_timed_out(self):
@@ -674,6 +676,7 @@ class Worker():
     def __iter__(self):
         yield 'name', self.name
         yield 'ip', self.ip
+        yield 'version', self.version
         yield 'last_update', self.last_update.isoformat()
 
 

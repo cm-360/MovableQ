@@ -65,7 +65,7 @@ manager = JobManager()
 mining_client_filename = 'mining_client.py'
 client_types = {
     'miiner': {
-        'version': '2.0.1-fix1',
+        'version': '2.0.4-alpha',
         'allowed': {'mii-lfcs', 'msed'}
     },
     'friendbot': {
@@ -194,7 +194,7 @@ def api_request_job():
         requested_types = set(requested_types.split(','))
     allowed_types = enforce_client_version(client_types, client_version, requested_types)
     # check for and assign jobs
-    job = manager.request_job(allowed_types, worker_name, worker_ip)
+    job = manager.request_job(allowed_types, worker_name, worker_ip, client_version)
     if job:
         app.logger.info(f'{log_prefix(job.key, job.subkey)} assigned to {worker_name}')
         return success(dict(job))

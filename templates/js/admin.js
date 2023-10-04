@@ -181,6 +181,10 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
     ipCell.innerText = miner.ip;
     row.appendChild(ipCell);
 
+    const versionCell = document.createElement("td");
+    versionCell.innerText = miner.version;
+    row.appendChild(versionCell);
+
     const updatedCell = document.createElement("td");
     const updateDate = new Date(miner.last_update);
     updatedCell.innerText = updateDate.toLocaleString();
