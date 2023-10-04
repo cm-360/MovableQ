@@ -732,7 +732,7 @@ def load_config(filename):
 
 	default_values = {
 		'Client': {
-			'miner_name': 'CHANGE_ME',
+			'miner_name': '{{ miner_name }}',
 			'acceptable_job_types': 'msed,mii-lfcs',
 			'auto_update': 'true'
 		},
