@@ -494,7 +494,7 @@ def request_job():
 	request_params = '&'.join([
 		f'version={client_version}',
 		f'name={miner_name}',
-		f'types={config.get('Client', 'acceptable_job_types')}'
+		f'types={config.get("Client", "acceptable_job_types")}'
 	])
 	response = requests.get(f'{base_url}/api/request_job?{request_params}').json()
 	result = response['result']
