@@ -23,6 +23,9 @@ client_version = '{{ client_version }}'
 base_url = '{{ url_for("page_home", _external=True) }}'
 
 
+force_reduced_work_size = False
+
+
 # values are in seconds
 request_cooldown = 10
 error_cooldown = 30
@@ -493,14 +496,14 @@ def request_job():
 		return
 	request_params = '&'.join([
 		f'version={client_version}',
-		f'name={miner_name}',
+		f'name={url_quote(config.get("Client", "miner_name"))}',
 		f'types={config.get("Client", "acceptable_job_types")}'
 	])
 	response = requests.get(f'{base_url}/api/request_job?{request_params}').json()
 	result = response['result']
 	if 'success' != result:
 		error_message = response['message']
-		if auto_update and 'Outdated' in error_message:
+		if config.get('Client', 'auto_update') and 'Outdated' in error_message:
 			update_client()
 		print(f'Error from server: {error_message}')
 		return
@@ -659,7 +662,7 @@ def load_lfcs_db(lfcs_db_filename: str):
 
 def update_client():
 	# get new file from server
-	response = requests.get(f'{base_url}/get_mining_client?name={miner_name}')
+	response = requests.get(f'{base_url}/get_mining_client?name={url_quote(config.get("Client", "miner_name"))}')
 	with open(sys.argv[0], 'wb') as script_file:
 		for chunk in response.iter_content(chunk_size=128):
 			script_file.write(chunk)
@@ -671,7 +674,7 @@ def update_client():
 	os.execv(sys.executable, args)
 
 def run_client():
-	global miner_name, worker_mode
+	global worker_mode
 	worker_mode = test_bfcl_worker()
 	print(f'Client version {client_version}')
 	# remind miner to change name variable
@@ -681,8 +684,6 @@ def run_client():
 	# initialize
 	print('Loading LFCS/msed3 databases')
 	load_lfcs_dbs()
-	# sanitize variables
-	miner_name = url_quote(miner_name)
 	# benchmark to find issues before claiming real jobs
 	if not validate_benchmark():
 		return
@@ -759,11 +760,9 @@ def load_config(filename):
 
 
 if __name__ == '__main__':
-	global miner_name, auto_update, force_reduced_work_size
 	# load config
+	global config, force_reduced_work_size
 	config = load_config('mining_client.cfg')
-	miner_name = config.get('Client', 'miner_name')
-	auto_update = config.get('Client', 'auto_update')
 	force_reduced_work_size = config.get('bfCL', 'force_reduced_work_size')
 	# run client
 	run_client()
