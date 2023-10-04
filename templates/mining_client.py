@@ -1,4 +1,5 @@
 import base64
+import configparser
 import os
 import signal
 import struct
@@ -10,7 +11,6 @@ from traceback import print_exc
 from urllib.parse import quote as url_quote
 
 import requests
-#from dotenv import load_dotenv
 
 
 # This should be set by the server when downloaded. Only change if you know
@@ -22,24 +22,6 @@ client_version = '{{ client_version }}'
 # change this if you know what you are doing!
 base_url = '{{ url_for("page_home", _external=True) }}'
 
-# Set whether to download script updates automatically from the server
-auto_update = True
-
-
-# Enter a name for yourself. This name will be associated with your device on
-# the mining server and shown on the leaderboard. Any jobs you claim will be
-# associated with this name as well, so make sure its appropriate!
-miner_name = '{{ miner_name }}'
-
-# Choose which job types you are willing to mine. Note that mii mining jobs
-# are typically much more demanding than msed jobs, and can significantly
-# stress your GPU. Part1 jobs are typically shorter, though this does not
-# mean you will never claim a demanding/lengthy msed job!
-acceptable_job_types = [ 'msed', 'mii-lfcs' ]
-
-# set this variable to "True" (without the quotes) if you want to use less of your gpu while mining
-# your hash rate will decrease by a bit
-force_reduced_work_size = False
 
 # values are in seconds
 request_cooldown = 10
@@ -735,5 +717,57 @@ def run_client():
 			print(f'Error contacting mining site, waiting {error_cooldown} seconds...')
 			time.sleep(error_cooldown)
 
+
+def load_config(filename):
+    config = configparser.ConfigParser()
+
+	# read config file
+    try:
+        with open(filename, 'r') as config_file:
+            config.read_file(config_file)
+    except FileNotFoundError:
+        print(f"Config file '{filename}' not found, using defaults")
+    except configparser.Error as e:
+        print(f"Error reading config file '{filename}': {e}, using defaults")
+
+    default_values = {
+        'Client': {
+            'miner_name': 'CHANGE_ME',
+            'acceptable_job_types': [
+				'msed',
+				'mii-lfcs'
+			],
+            'auto_update': True
+        },
+        'bfCL': {
+            'force_reduced_work_size': False
+        }
+    }
+
+    # set default values if needed
+    for section, options in default_values.items():
+        if not config.has_section(section):
+            config.add_section(section)
+        for option, value in options.items():
+            if not config.has_option(section, option):
+                config.set(section, option, value)
+
+	# write updated config file
+	try:
+        with open(filename, 'w') as config_file:
+            config.write(config_file)
+	except:
+		pass
+
+    return config
+
+
 if __name__ == '__main__':
+	# load config
+	config = load_config('mining_client.cfg')
+	miner_name = config.get('Client', 'miner_name')
+	acceptable_job_types = config.get('Client', 'acceptable_job_types')
+	auto_update = config.get('Client', 'auto_update')
+	force_reduced_work_size = config.get('bfCL', 'force_reduced_work_size')
+	# run client
 	run_client()
