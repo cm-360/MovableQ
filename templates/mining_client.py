@@ -719,47 +719,47 @@ def run_client():
 
 
 def load_config(filename):
-    config = configparser.ConfigParser()
+	config = configparser.ConfigParser()
 
 	# read config file
-    try:
-        with open(filename, 'r') as config_file:
-            config.read_file(config_file)
-    except FileNotFoundError:
-        print(f"Config file '{filename}' not found, using defaults")
-    except configparser.Error as e:
-        print(f"Error reading config file '{filename}': {e}, using defaults")
+	try:
+		with open(filename, 'r') as config_file:
+			config.read_file(config_file)
+	except FileNotFoundError:
+		print(f"Config file '{filename}' not found, using defaults")
+	except configparser.Error as e:
+		print(f"Error reading config file '{filename}': {e}, using defaults")
 
-    default_values = {
-        'Client': {
-            'miner_name': 'CHANGE_ME',
-            'acceptable_job_types': [
+	default_values = {
+		'Client': {
+			'miner_name': 'CHANGE_ME',
+			'acceptable_job_types': [
 				'msed',
 				'mii-lfcs'
 			],
-            'auto_update': True
-        },
-        'bfCL': {
-            'force_reduced_work_size': False
-        }
-    }
+			'auto_update': True
+		},
+		'bfCL': {
+			'force_reduced_work_size': False
+		}
+	}
 
-    # set default values if needed
-    for section, options in default_values.items():
-        if not config.has_section(section):
-            config.add_section(section)
-        for option, value in options.items():
-            if not config.has_option(section, option):
-                config.set(section, option, value)
+	# set default values if needed
+	for section, options in default_values.items():
+		if not config.has_section(section):
+			config.add_section(section)
+		for option, value in options.items():
+			if not config.has_option(section, option):
+				config.set(section, option, value)
 
 	# write updated config file
 	try:
-        with open(filename, 'w') as config_file:
-            config.write(config_file)
+		with open(filename, 'w') as config_file:
+			config.write(config_file)
 	except:
 		pass
 
-    return config
+	return config
 
 
 if __name__ == '__main__':
