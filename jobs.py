@@ -790,11 +790,9 @@ def read_movable_from_bfm_site(id0):
         # bfm backend average response time is 2.5s~3s from personal test
         r = HTMLSession().post(bfm_site_base + bfm_site_endpoint, data={'searchterm': id0}, timeout=5)
         a = r.html.find('a[href^="/get_movable"]', first=True)
-        print(a)
         if a:
             # getting movable is very fast, 1s is probably too much
             r = requests.get(bfm_site_base + a.attrs['href'], timeout=1)
-            print(r)
             if r.status_code == 200:
                 movable = r.content  # size can be either 0x120 or 0x140
                 length = r.headers['content-length']
