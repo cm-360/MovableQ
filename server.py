@@ -154,19 +154,25 @@ def api_submit_job_chain():
     submission = request.get_json(silent=True)
     if not submission:
         return error('Missing request JSON')
-    # parse and submit chain
-    chain = parse_job_chain(submission)
-    manager.submit_job_chain(chain, overwrite_canceled=True)
-    # queue jobs with no prerequisites
-    first_job = chain[0]
-    if 'ready' == first_job.state:
-        manager.queue_job(first_job.key)
-    # complete jobs with existing result
-    manager.autocomplete_jobs()
-    # return job keys to submitter
-    chain_keys = [j.key for j in chain]
-    app.logger.info(f'{log_prefix(", ".join(chain_keys))} submitted')
-    return success(chain_keys)
+    try:
+        # parse and submit chain
+        chain = parse_job_chain(submission)
+        manager.submit_job_chain(chain, overwrite_canceled=True)
+        # if end job is already done, whole chain is discarded, so only do things if it's not
+        end_job = chain[-1]
+        if not end_job.is_already_done():
+            # queue jobs with no prerequisites
+            first_job = chain[0]
+            if first_job.is_ready() and not end_job.is_already_done():
+                manager.queue_job(first_job.key)
+            # complete jobs with existing result
+            manager.autocomplete_jobs()
+        # return job keys to submitter
+        chain_keys = [j.key for j in chain]
+        app.logger.info(f'{log_prefix(", ".join(chain_keys))} submitted')
+        return success(chain_keys)
+    except InvalidSubmissionFieldError as e:
+        return error(str(e))
 
 @app.route('/api/submit_mii_lfcs_job', methods=['POST'])
 def api_submit_mii_lfcs_job():
@@ -431,6 +437,8 @@ def parse_job_chain(chain_data) -> list[Job]:
                     jobs.append(parse_msed_job(entry, should_have_lfcs=True))
             else:
                 raise ValueError(f'Invalid job type {entry_type}')
+        except InvalidSubmissionFieldError:
+            raise
         except Exception as e:
             raise JobSubmissionError(e, entry_index)
         previous_job = jobs[entry_index]
@@ -456,7 +464,7 @@ def parse_mii_lfcs_job(job_data) -> MiiLfcsJob:
         # system id
         system_id = get_system_id_from_mii_lfcs_job(job_data)
         if not system_id:
-            invalid.append('system_id')
+            invalid.append('mii')
         if invalid:
             raise InvalidSubmissionFieldError(invalid)
         else:
