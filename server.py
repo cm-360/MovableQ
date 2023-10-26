@@ -157,6 +157,7 @@ def api_submit_job_chain():
     try:
         # parse and submit chain
         chain = parse_job_chain(submission)
+        chain_keys = [j.key for j in chain]
         manager.submit_job_chain(chain, overwrite_canceled=True)
         # if end job is already done, whole chain is discarded, so only do things if it's not
         end_job = chain[-1]
@@ -166,9 +167,8 @@ def api_submit_job_chain():
             if first_job.is_ready() and not end_job.is_already_done():
                 manager.queue_job(first_job.key)
             # complete jobs with existing result
-            manager.autocomplete_jobs()
+            manager.autocomplete_jobs(chain_keys)
         # return job keys to submitter
-        chain_keys = [j.key for j in chain]
         app.logger.info(f'{log_prefix(", ".join(chain_keys))} submitted')
         return success(chain_keys)
     except InvalidSubmissionFieldError as e:
