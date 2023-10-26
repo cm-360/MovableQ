@@ -125,6 +125,10 @@ def serve_js(filename: str):
     response.headers.set('Content-Type', 'text/javascript')
     return response
 
+@app.route('/favicon.png')
+def serve_favicon():
+    return send_static_file('favicon.png')
+
 @app.route('/get_mining_client')
 def get_mining_client():
     client_version = f'miiner-{client_types["miiner"]["version"]}'
