@@ -8,7 +8,7 @@ from functools import wraps
 from logging.config import dictConfig
 
 # Flask server
-from flask import Flask, request, render_template, make_response, send_static_file, g
+from flask import Flask, request, render_template, make_response, send_from_directory, g
 from werkzeug.exceptions import HTTPException
 from werkzeug.middleware.proxy_fix import ProxyFix
 
@@ -127,7 +127,7 @@ def serve_js(filename: str):
 
 @app.route('/favicon.png')
 def serve_favicon():
-    return send_static_file('favicon.png')
+    return send_from_directory('static', 'favicon.png')
 
 @app.route('/get_mining_client')
 def get_mining_client():
