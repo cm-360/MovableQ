@@ -159,12 +159,13 @@ def api_submit_job_chain():
     manager.submit_job_chain(chain, overwrite_canceled=True)
     # queue jobs with no prerequisites
     first_job = chain[0]
-    if 'ready' == first_job.state:
+    if first_job.is_ready():
         manager.queue_job(first_job.key)
-    # complete jobs with existing result
-    manager.autocomplete_jobs()
-    # return job keys to submitter
+    # job keys in chain
     chain_keys = [j.key for j in chain]
+    # complete jobs with existing result
+    manager.autocomplete_jobs(chain_keys)
+    # return job keys to submitter
     app.logger.info(f'{log_prefix(", ".join(chain_keys))} submitted')
     return success(chain_keys)
 
