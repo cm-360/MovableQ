@@ -13,6 +13,8 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
     let chainKeys;
     // Interval ID of job status checker
     let intervalId;
+    // flag for preventing submission spamming
+    let submitting = false;
 
 
     // ########## Step 1: Method Selection ##########
@@ -76,6 +78,9 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
 
     async function submitFcJob(event) {
         event.preventDefault();
+        if (submitting) {
+            return;
+        }
         const fcJobFormData = new FormData(fcJobForm);
         // submit job to server
         const fcJobChain = await parseFcJobChain(fcJobFormData);
@@ -124,6 +129,9 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
 
     async function submitMiiJob(event) {
         event.preventDefault();
+        if (submitting) {
+            return;
+        }
         const miiJobFormData = new FormData(miiJobForm);
         // fetch mii data if selected
         if (miiUploadUrl.classList.contains("show")) {
@@ -432,7 +440,9 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
             const msedJob = chainStatus[1]
             console.log(chainStatus);
             // check status
-            if ("done" !== lfcsJob.status) {
+            if ("done" === msedJob.status) {
+                updateStepView(5, null, msedJob.key);
+            } else if ("done" !== lfcsJob.status) {
                 updateStepView(3, lfcsJob.type, lfcsJob);
             } else if ("done" !== msedJob.status) {
                 updateStepView(4, null, msedJob);
@@ -449,6 +459,7 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
     }
 
     function startOver() {
+        submitting = false;
         setChainKeys("");
     }
 
@@ -502,6 +513,10 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
     }
 
     async function apiSubmitJobChain(chainData, feedbackTargetForm) {
+        if (submitting) {
+            return;
+        }
+        submitting = true;
         let response;
         try {
             response = await fetch("{{ url_for('api_submit_job_chain') }}", {
@@ -520,8 +535,10 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
             } else {
                 // throw error with server message
                 throw new Error(responseJson.message);
+                submitting = false;
             }
         } catch (error) {
+            submitting = false;
             if (error instanceof SyntaxError) {
                 // syntax error from parsing non-JSON server error response
                 window.alert(`Error submitting jobs: ${response.status} - ${response.statusText}`);

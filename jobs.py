@@ -10,10 +10,15 @@ from binascii import hexlify
 
 from validators import is_id0, is_system_id, is_friend_code, get_key_type
 
+import requests
+from requests_html import HTMLSession
+
 
 fc_lfcses_path = os.getenv('FC_LFCSES_PATH', './lfcses/fc')
 sid_lfcses_path = os.getenv('SID_LFCSES_PATH', './lfcses/sid')
 mseds_path = os.getenv('MSEDS_PATH', './mseds')
+bfm_site_base = os.getenv('BFM_SITE_BASE', 'https://seedminer.hacks.guide')
+bfm_site_endpoint = os.getenv('BFM_SITE_ENDPOINT', '')
 
 job_lifetime = timedelta(minutes=5)
 worker_lifetime = timedelta(minutes=10)
@@ -61,7 +66,7 @@ class JobManager():
     def submit_job(self, job, overwrite_canceled=False):
         with self.lock:
             if self.job_exists(job.key):
-                if overwrite_canceled and 'canceled' == self.jobs[job.key].state:
+                if overwrite_canceled and self.jobs[job.key].is_canceled():
                     self.delete_job(job.key)
                 else:
                     raise ValueError(f'Duplicate job: {job.key}')
@@ -69,12 +74,16 @@ class JobManager():
 
     def submit_job_chain(self, chain, overwrite_canceled=False):
         with self.lock:
+            end_job = chain[-1]
+            if end_job.is_already_done():
+                # if the end (target) job is already done, skip the whole chain
+                return
             to_delete = []
             # loop twice so we submit no jobs if any are duplicates
             for job in chain:
                 if not self.job_exists(job.key):
                     continue
-                if overwrite_canceled and 'canceled' == self.jobs[job.key].state:
+                if overwrite_canceled and self.jobs[job.key].is_canceled():
                     to_delete.append(job.key)
                 else:
                     raise ValueError(f'Duplicate job: {job.key}')
@@ -234,10 +243,9 @@ class JobManager():
             completed = []
             for key in keys:
                 job = self.jobs[key]
-                result = read_result(job.key)
-                if result:
+                if job.is_already_done():
                     self._unqueue_job(job.key)
-                    self.fulfill_dependents(job.key, result)
+                    self.fulfill_dependents(job.key, read_result(job.key))
                     completed.append(job.key)
             for key in completed:
                 self.delete_job(key)
@@ -279,7 +287,7 @@ class JobManager():
             except KeyError as e:
                 if result_exists(key):
                     return 'done'
-                raise e
+                return 'nonexistent'
 
     def get_mining_stats(self, key):
         with self.lock:
@@ -435,6 +443,14 @@ class Job(Machine):
     def on_fail(self, subkey=None, note=None):
         self.note = note
 
+    def is_already_done(self):
+        if self.is_done():
+            return True
+        if read_result(self.key):
+            self.to_done()
+            return True
+        return False
+
     # 2nd ret: False to not requeue main job
     def get_job(self):
         return self, False
@@ -499,7 +515,8 @@ class MiiLfcsJob(Job):
         # dummy distributed mining info
         self.model_bytes = None
         # mii jobs are ready immediately
-        self.prepare()
+        if not self.is_already_done():
+            self.prepare()
 
     def on_prepare(self):
         # init distributed mining info
@@ -622,7 +639,8 @@ class FcLfcsJob(Job):
         # fc-specific job properties
         self.friend_code = friend_code
         # fc jobs are ready immediately
-        self.prepare()
+        if not self.is_already_done():
+            self.prepare()
 
     def __iter__(self):
         yield from super().__iter__()
@@ -638,7 +656,8 @@ class MsedJob(ChainJob):
             raise ValueError('Must supply either a LFCS or a prerequisite job key')
         # msed-specific job properties
         self.lfcs = lfcs
-        self.prepare()
+        if not self.is_already_done():
+            self.prepare()
 
     def on_prepare(self):
         # msed jobs need lfcs first
@@ -776,9 +795,36 @@ def save_movable(id0, movable):
     with open(id0_to_movable_path(id0, create=True), 'wb') as movable_file:
         movable_file.write(movable)
 
+def read_movable_from_bfm_site(id0):
+    try:
+        # bfm backend average response time is 2.5s~3s from personal test
+        r = HTMLSession().post(bfm_site_base + bfm_site_endpoint, data={'searchterm': id0}, timeout=5)
+        a = r.html.find('a[href^="/get_movable"]', first=True)
+        if a:
+            # getting movable is very fast, 1s is probably too much
+            r = requests.get(bfm_site_base + a.attrs['href'], timeout=1)
+            if r.status_code == 200:
+                movable = r.content  # size can be either 0x120 or 0x140
+                length = r.headers['content-length']
+                if length and len(movable) != int(length):
+                    return None
+                try:
+                    return r.content[0x110:0x120]
+                except IndexError as e:
+                    return None
+
+    except:
+        return None
+
 def read_movable(id0):
     if not movable_exists(id0):
-        return
+        bfm_movable = read_movable_from_bfm_site(id0)
+        if bfm_movable:
+            save_movable(id0, bfm_movable)
+            return bfm_movable
+        else:
+            return
+
     with open(id0_to_movable_path(id0), 'rb') as movable_file:
         movable = movable_file.read()
         if len(movable) == 0x10: # reduced size
