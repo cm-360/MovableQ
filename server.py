@@ -8,7 +8,7 @@ from functools import wraps
 from logging.config import dictConfig
 
 # Flask server
-from flask import Flask, request, render_template, make_response, g
+from flask import Flask, request, render_template, make_response, send_static_file, g
 from werkzeug.exceptions import HTTPException
 from werkzeug.middleware.proxy_fix import ProxyFix
 
