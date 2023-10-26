@@ -218,9 +218,18 @@ class JobManager():
     def fulfill_dependents(self, key, result):
         with self.lock:
             for job in self.jobs.values():
-                if isinstance(job, ChainJob) and job.prereq_key == key and not job.is_done():
-                    job.pass_prereq(result)
-                    self.queue_job(job.key)
+                # only chain jobs have prereqs
+                if not isinstance(job, ChainJob):
+                    continue
+                # only fulfill dependents
+                if not job.prereq_key == key:
+                    continue
+                # pass_prereq() is an enforced transition
+                if not 'need_prereq' == job.state:
+                    continue
+                # pass result and queue job
+                job.pass_prereq(result)
+                self.queue_job(job.key)
 
     # mark job as failed and attach note
     def fail_job(self, key, subkey=None, note=None):
@@ -229,10 +238,11 @@ class JobManager():
             job.fail(subkey, note)
 
     # auto-complete jobs that already have a result saved
-    def autocomplete_jobs(self):
+    def autocomplete_jobs(self, keys):
         with self.lock:
             completed = []
-            for job in self.jobs.values():
+            for key in keys:
+                job = self.jobs[key]
                 if job.is_already_done():
                     self._unqueue_job(job.key)
                     self.fulfill_dependents(job.key, read_result(job.key))
