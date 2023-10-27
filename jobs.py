@@ -146,10 +146,6 @@ class JobManager():
         if len(self.wait_queue) == 0:
             return
         for key in self.wait_queue:
-            # extra check to avoid ghost task in queue, probably not necessary
-            if not self.job_exists(key):
-                self._unqueue(key)
-                continue
             job = self.jobs[key]
             if job.type in requested_types:
                 self.wait_queue.remove(key)
