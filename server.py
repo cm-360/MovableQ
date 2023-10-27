@@ -28,7 +28,7 @@ from dotenv import load_dotenv
 
 # MovableQ modules
 from jobs import JobManager, Job, FcLfcsJob, MiiLfcsJob, MsedJob, read_movable, count_mseds_mined, count_lfcses_mined, count_lfcses_dumped
-from validators import is_job_key, is_id0, is_system_id, is_friend_code, validate_job_result, enforce_client_version
+from validators import is_job_key, is_id0, is_system_id, is_friend_code, is_blacklisted_friend_code, validate_job_result, enforce_client_version
 
 
 # AES keys are loaded from .env
@@ -534,7 +534,7 @@ def parse_fc_job(job_data) -> FcLfcsJob:
     try:
         # friend code
         friend_code = job_data['friend_code'].replace('-', '')
-        if not is_friend_code(friend_code):
+        if not is_friend_code(friend_code) or is_blacklisted_friend_code(friend_code):
             raise InvalidSubmissionFieldError(['friend_code'])
         else:
             return FcLfcsJob(friend_code)
