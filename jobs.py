@@ -130,10 +130,11 @@ class JobManager():
 
     # removes an id0 from the job queue if it was queued before
     def _unqueue_job(self, key):
-        if key in self.wait_queue:
+        # subjob make jobs possible to be queued multiple times, so remove until fully gone
+        while key in self.wait_queue:
             self.wait_queue.remove(key)
 
-    # removes an id0 from the job queue, raises ValueError if it was not queued
+    # removes an id0 from the job queue
     def unqueue_job(self, key):
         with self.lock:
             job = self.jobs[key]
@@ -145,6 +146,10 @@ class JobManager():
         if len(self.wait_queue) == 0:
             return
         for key in self.wait_queue:
+            # extra check to avoid ghost task in queue, probably not necessary
+            if not self.job_exists(key):
+                self._unqueue(key)
+                continue
             job = self.jobs[key]
             if job.type in requested_types:
                 self.wait_queue.remove(key)
@@ -225,7 +230,7 @@ class JobManager():
                 if not job.prereq_key == key:
                     continue
                 # pass_prereq() is an enforced transition
-                if not 'need_prereq' == job.state:
+                if not job.is_need_prereq:
                     continue
                 # pass result and queue job
                 job.pass_prereq(result)
