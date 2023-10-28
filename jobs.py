@@ -531,83 +531,50 @@ class MiiLfcsJob(SplitJob):
         self.console_model = model
         self.console_year = year
         # init distributed mining info
-        start_lfcs, self.model_bytes, lfcs_min, lfcs_max = get_lfcs_start_range_flags(self.console_model, self.console_year)
-        self.lfcs_base = lfcs_min
-        self.lfcs_count = lfcs_max - lfcs_min
-        self.lfcs_istart = start_lfcs - lfcs_min
-        # should use ceil... but this works
-        self.progress = bytearray(self.lfcs_count // 8 + 1)
+        self.set_lfcs_range_info()
+        self.lfcs_istart = self.start_lfcs - self.lfcs_min
         # ready immediately
         self.prepare()
 
-    def check_progress(self, idx):
-        return self.progress[idx // 8] >> (idx % 8) & 0x1
+    # mii mining related helper
+    def set_lfcs_range_info(self):
+        if 'old' == self.console_model:
+            self.model_bytes = b'\x00\x00'
+            self.start_lfcs = lfcs_starts_old.get(self.console_year, lfcs_default_old)
+            self.lfcs_min = lfcs_min_old
+            self.lfcs_max = lfcs_max_old
+        elif 'new' == self.console_model:
+            self.model_bytes = b'\x02\x00'
+            self.start_lfcs = lfcs_starts_new.get(self.console_year, lfcs_default_new)
+            self.lfcs_min = lfcs_min_new
+            self.lfcs_max = lfcs_max_new
+        else:
+            raise ValueError('Invalid model')
+        self.start_lfcs = self.start_lfcs >> 16     # LFCS search starting point
+        self.lfcs_min = self.lfcs_min >> 16         # minimum viable LFCS
+        self.lfcs_max = self.lfcs_max >> 16         # maximum viable LFCS
+        #
+        self.current_lfcs_counter = 0
 
-    def update_progress(self, idx, val):
-        pi = idx // 8
-        bi = idx % 8
-        self.progress[pi] &= ~(0b1 << bi)
-        self.progress[pi] |= (1 if val else 0) << bi
-
-    def get_next_idx(self):
-        offset = 0
-        min_reached = False
-        max_reached = False
-        while not min_reached or not max_reached:
-            idx = self.lfcs_istart + offset
-            if idx < 0:
-                min_reached = True
-            elif idx > self.lfcs_count:
-                max_reached = True
-            else:
-                if not self.check_progress(idx):
-                    return idx
-            if offset == 0:
-                offset = 1
-            elif offset > 0:
-                offset = -offset
-            elif offset < 0:
-                offset = -offset + 1
-        return None
-
-    # def assign(self, worker, subkey=None):
-    #     if subkey in self.mining:
-    #         # this actually will never be run
-    #         self.mining[subkey].assign(worker)
-    #     elif subkey is None:
-    #         super().assign(worker, subkey)
-
-    # def release(self, subkey=None):
-    #     if subkey in self.mining:
-    #         subjob = self.mining.pop(subkey)
-    #         self.update_progress(subjob.idx, 0)
-    #     elif subkey is None:
-    #         super().release(subkey)
-
-    # def fail(self, subkey=None, note=None):
-    #     if subkey in self.mining:
-    #         subjob = self.mining.pop(subkey)
-    #         # currently treat it the same as release
-    #         self.update_progress(subjob.idx, 0)
-    #     elif subkey is None:
-    #         super().fail(subkey, note)
-
-    # def complete(self, subkey=None):
-    #     if subkey in self.mining:
-    #         del self.mining[subkey]
-    #     elif subkey is None:
-    #         super().complete(subkey)
+    def get_next_lfcs_info(self):
+        # determine next offset from LFCS counter
+        if self.current_lfcs_counter % 2 == 0:
+            offset = -(self.current_lfcs_counter // 2)
+        else:
+            offset = (self.current_lfcs_counter // 2) + 1
+        # increment LFCS counter
+        self.current_lfcs_counter += 1
+        # calculate next index
+        return self.start_lfcs + offset, offset
 
     def get_next_partial_job(self):
-        next_index = self.get_next_idx()
+        next_index, next_offset = self.get_next_lfcs_info()
         if next_index:
-            self.update_progress(next_index, 1)
             # create next partial job
-            next_offset = self.lfcs_base + next_index
             return MiiLfcsOffsetJob(
                 self,
-                next_offset.to_bytes(2, 'big').hex(),
-                next_index
+                next_offset,
+                next_index.to_bytes(2, 'big').hex()
             )
         return None
 
@@ -622,8 +589,8 @@ class MiiLfcsJob(SplitJob):
 # per offset sub-job of MiiLfcsJob
 class MiiLfcsOffsetJob(PartialJob):
 
-    def __init__(self, parent: MiiLfcsJob, offset: str, index: int):
-        super().__init__(f'{parent.key}-{offset}', 'mii-lfcs-offset', parent)
+    def __init__(self, parent: MiiLfcsJob, offset: str, index: str):
+        super().__init__(f'{parent.key}-{index}', 'mii-lfcs-offset', parent)
         self.add_transition('prepare', 'submitted', 'ready')
         # type-specific job properties
         self.offset = offset
@@ -710,23 +677,6 @@ class Worker():
         yield 'ip', self.ip
         yield 'version', self.version
         yield 'last_update', self.last_update.isoformat()
-
-
-# mii mining related helper
-def get_lfcs_start_range_flags(model, year):
-    if 'old' == model:
-        model_bytes = b'\x00\x00'
-        start_lfcs = lfcs_starts_old.get(year, lfcs_default_old)
-        lfcs_min = lfcs_min_old
-        lfcs_max = lfcs_max_old
-    elif 'new' == model:
-        model_bytes = b'\x02\x00'
-        start_lfcs = lfcs_starts_new.get(year, lfcs_default_new)
-        lfcs_min = lfcs_min_new
-        lfcs_max = lfcs_max_new
-    else:
-        raise ValueError('Invalid model')
-    return start_lfcs >> 16, model_bytes, lfcs_min >> 16, lfcs_max >> 16
 
 
 # lfcs storage by system id
