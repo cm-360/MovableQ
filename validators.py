@@ -23,6 +23,7 @@ def is_id0(value: str) -> bool:
     return bool(id0_regex.fullmatch(value))
 
 def is_system_id(value: str) -> bool:
+    value = value.split('-')[0]
     return bool(system_id_regex.fullmatch(value))
 
 # Modified from verify_3ds_fc @ friendcode.py by nh-server
@@ -47,10 +48,8 @@ def get_key_type(key: str) -> str:
         return 'msed'
 
 
-def validate_job_result(job_type: str, result: bytes, key=None, subkey=None) -> bool:
-    if 'mii-lfcs' == job_type and subkey and result is None:
-        return True
-    elif job_type in ['mii-lfcs', 'fc-lfcs']:
+def validate_job_result(job_type: str, result: bytes, key=None) -> bool:
+    if job_type in ['mii-lfcs', 'mii-lfcs-offset', 'fc-lfcs']:
         return validate_lfcs(result)
     elif 'msed' == job_type:
         return validate_movable(result, key)
