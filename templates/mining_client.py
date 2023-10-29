@@ -276,8 +276,10 @@ def do_benchmark():
 def do_mii_lfcs_mine(model, year, system_id, offset=None, model_bytes=None, timeout=0):
 	cleanup_mining_files()
 	try:
+		job_key = system_id
 		if offset is not None:
 			start_lfcs = int.from_bytes(unhexlify(offset), 'big') << 16
+			job_key += f'-{offset}'
 		else:
 			start_lfcs, model_bytes = get_lfcs_start_and_flags(model, year)
 			model_bytes = hexlify(model_bytes).decode('ascii')
@@ -291,11 +293,11 @@ def do_mii_lfcs_mine(model, year, system_id, offset=None, model_bytes=None, time
 		]
 		if offset is not None:
 			bfcl_args += [f'{endian4(start_lfcs):08X}', f'{endian4(start_lfcs):08X}']
-		ret, result = run_bfcl(system_id, bfcl_args, offset)
+		ret, result = run_bfcl(job_key, bfcl_args, offset)
 		# check output
-		if result or os.path.isfile('movable_part1.sed') or offset is not None:
+		if result or os.path.isfile('movable_part1.sed'):
 			print(f'Mining complete! Uploading movable_part1...')
-			upload_lfcs(system_id, offset, result)
+			upload_lfcs(job_key, offset, result)
 		else:
 			print(f'bfCL was not able to complete the mining job!')
 	finally:
@@ -419,7 +421,7 @@ def run_bfcl_worker(job_key, args, rws=force_reduced_work_size):
 			time.sleep(5)
 	except BfclReturnCodeError as e:
 		fail_job(job_key, f'{type(e).__name__}: {e}')
-		return e.return_code
+		return e.return_code, None
 	except Exception as e:
 		print_exc()
 		print('bfCL was not able to run correctly!')
@@ -448,7 +450,7 @@ def run_bfcl_process(job_key, args, rws=force_reduced_work_size):
 					if status == 'canceled':
 						print('Job canceled')
 						kill_process(process)
-						return 0
+						return 0, None
 			# Help wanted for a better way of catching an exit code of '-5'
 			if not rws and (process.returncode == 251 or process.returncode == 0xFFFFFFFB):
 				time.sleep(3)  # Just wait a few seconds so we don't burn out our graphics card
@@ -462,14 +464,14 @@ def run_bfcl_process(job_key, args, rws=force_reduced_work_size):
 			time.sleep(5)
 	except BfclReturnCodeError as e:
 		fail_job(job_key, f'{type(e).__name__}: {e}')
-		return e.return_code
+		return e.return_code, None
 	except Exception as e:
 		print_exc()
 		print('bfCL was not able to run correctly!')
 		message = f'{type(e).__name__}: {e}'
 		fail_job(job_key, message)
 		raise BfclExecutionError(message) from e
-	return 0
+	return 0, None
 
 def run_bfcl(job_key, args, rws=force_reduced_work_size):
 	if worker_mode:
@@ -480,6 +482,8 @@ def run_bfcl(job_key, args, rws=force_reduced_work_size):
 def check_bfcl_return_code(return_code):
 	if -1 == return_code:
 		raise BfclReturnCodeError(return_code, 'invalid arguments (not verified, could be generic error)')
+	elif 1 == return_code:
+		raise BfclReturnCodeError(return_code, 'did not get a hit')
 	elif 101 == return_code:
 		raise BfclReturnCodeError(return_code, 'maximum offset reached without a hit')
 
@@ -531,7 +535,7 @@ def do_job(job):
 			job['parent']['model'],
 			job['parent']['year'],
 			job['parent']['system_id'],
-			job['offset'],
+			job['index'],
 			job['parent']['model_bytes']
 		)
 	elif 'msed' == job_type:
@@ -559,10 +563,10 @@ def release_job(key):
 def fail_job(key, note):
 	if dry_run:
 		return
-	requests.post(
+	response = requests.post(
 		f'{base_url}/api/fail_job/{key}',
 		json={'note': note}
-	)
+	).json()
 
 # we actually upload only the keyY, but whatever
 def upload_movable(id0, result=None):
@@ -580,6 +584,8 @@ def upload_movable(id0, result=None):
 				'result': str(base64.b64encode(movable_file.read()[0x110:0x120]), 'utf-8'),
 				'format': 'b64'
 			}
+	if not data:
+		return
 	response = requests.post(
 		f'{base_url}/api/complete_job/{id0}',
 		json = data
@@ -588,14 +594,8 @@ def upload_movable(id0, result=None):
 def upload_lfcs(system_id, offset=None, result=None):
 	if dry_run:
 		return
-	if offset is not None:
-		system_id = f'{system_id}/{offset}'
 	data = None
-	if result == "NOHIT":
-		data = {
-			'format': 'none'
-		}
-	elif result:
+	if result:
 		data = {
 			'result': result,
 			'format': 'hex'
@@ -606,10 +606,8 @@ def upload_lfcs(system_id, offset=None, result=None):
 				'result': str(base64.b64encode(part1_file.read()[:5]), 'utf-8'),
 				'format': 'b64'
 			}
-	else:
-		data = {
-			'format': 'none'
-		}
+	if not data:
+		return
 	response = requests.post(
 		f'{base_url}/api/complete_job/{system_id}',
 		json = data
