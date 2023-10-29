@@ -437,22 +437,32 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
             const chainStatus = await apiCheckChainStatus();
             console.log(chainStatus);
             const lfcsJob = chainStatus[0];
-            const msedJob = chainStatus[1]
-            console.log(chainStatus);
+            const msedJob = chainStatus[1];
             // check status
-            if ("done" === msedJob.status) {
+            if ("nonexistent" === msedJob.status) {
+                // msed job not found
+                alert(`Unknown job! Key: ${msedJob.key}`);
+                startOver();
+            } else if ("done" === msedJob.status) {
+                // done view
                 updateStepView(5, null, msedJob.key);
-            } else if ("done" !== lfcsJob.status) {
-                updateStepView(3, lfcsJob.type, lfcsJob);
-            } else if ("done" !== msedJob.status) {
+            } else if ("nonexistent" === lfcsJob.status) {
+                // lfcs job not found
+                alert(`Unknown job! Key: ${lfcsJob.key}`);
+                startOver();
+            } else if ("done" === lfcsJob.status) {
+                // msed status view
                 updateStepView(4, null, msedJob);
             } else {
-                updateStepView(5, null, msedJob.key);
+                // lfcs status view
+                updateStepView(3, lfcsJob.type, lfcsJob);
             }
         } else {
             if (forcedMethod) {
+                // form submission view
                 updateStepView(2, forcedMethod);
             } else {
+                // method selection view
                 updateStepView(1);
             }
         }

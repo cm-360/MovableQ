@@ -305,7 +305,7 @@ class JobManager():
             except KeyError as e:
                 if result_exists(key):
                     return 'done'
-                raise e
+                return 'nonexistent'
 
     def get_mining_stats(self, key):
         with self.lock:

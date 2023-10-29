@@ -376,10 +376,10 @@ def ensure_bfcl_worker(rws=force_reduced_work_size):
 		message = f'{type(e).__name__}: {e}'
 	return worker.poll() is None
 
-def run_bfcl_worker(job_key, args, subkey=None, rws=force_reduced_work_size):
+def run_bfcl_worker(job_key, args, rws=force_reduced_work_size):
 	global worker
 	if not ensure_bfcl_worker(rws):
-		return run_bfcl_process(job_key, args, subkey, rws)
+		return run_bfcl_process(job_key, args, rws)
 	result = None
 	try:
 		bfcl_args = [
@@ -408,27 +408,27 @@ def run_bfcl_worker(job_key, args, subkey=None, rws=force_reduced_work_size):
 			# Help wanted for a better way of catching an exit code of '-5'
 			elif not rws and (worker.returncode == 251 or worker.returncode == 0xFFFFFFFB):
 				time.sleep(3)  # Just wait a few seconds so we don't burn out our graphics card
-				return run_bfcl_worker(job_key, args, subkey, True)
+				return run_bfcl_worker(job_key, args, True)
 			else:
 				check_bfcl_return_code(worker.returncode)
 		except KeyboardInterrupt:
 			kill_process(worker)
 			worker = None
 			print('Terminated bfCL, interrupt again to exit')
-			release_job(job_key, subkey)
+			release_job(job_key)
 			time.sleep(5)
 	except BfclReturnCodeError as e:
-		fail_job(job_key, f'{type(e).__name__}: {e}', subkey)
+		fail_job(job_key, f'{type(e).__name__}: {e}')
 		return e.return_code
 	except Exception as e:
 		print_exc()
 		print('bfCL was not able to run correctly!')
 		message = f'{type(e).__name__}: {e}'
-		fail_job(job_key, message, subkey)
+		fail_job(job_key, message)
 		raise BfclExecutionError(message) from e
 	return 0, result
 
-def run_bfcl_process(job_key, args, subkey=None, rws=force_reduced_work_size):
+def run_bfcl_process(job_key, args, rws=force_reduced_work_size):
 	try:
 		bfcl_args = [
 			('bfcl' if os.name == 'nt' else './bfcl'),
@@ -444,7 +444,7 @@ def run_bfcl_process(job_key, args, subkey=None, rws=force_reduced_work_size):
 				timer += 1
 				time.sleep(1)
 				if timer % update_interval == 0:
-					status = update_job(job_key, subkey)
+					status = update_job(job_key)
 					if status == 'canceled':
 						print('Job canceled')
 						kill_process(process)
@@ -452,30 +452,30 @@ def run_bfcl_process(job_key, args, subkey=None, rws=force_reduced_work_size):
 			# Help wanted for a better way of catching an exit code of '-5'
 			if not rws and (process.returncode == 251 or process.returncode == 0xFFFFFFFB):
 				time.sleep(3)  # Just wait a few seconds so we don't burn out our graphics card
-				return run_bfcl(job_key, args, subkey, True)
+				return run_bfcl(job_key, args, True)
 			else:
 				check_bfcl_return_code(process.returncode)
 		except KeyboardInterrupt:
 			kill_process(process)
 			print('Terminated bfCL, interrupt again to exit')
-			release_job(job_key, subkey)
+			release_job(job_key)
 			time.sleep(5)
 	except BfclReturnCodeError as e:
-		fail_job(job_key, f'{type(e).__name__}: {e}', subkey)
+		fail_job(job_key, f'{type(e).__name__}: {e}')
 		return e.return_code
 	except Exception as e:
 		print_exc()
 		print('bfCL was not able to run correctly!')
 		message = f'{type(e).__name__}: {e}'
-		fail_job(job_key, message, subkey)
+		fail_job(job_key, message)
 		raise BfclExecutionError(message) from e
 	return 0
 
-def run_bfcl(job_key, args, subkey=None, rws=force_reduced_work_size):
+def run_bfcl(job_key, args, rws=force_reduced_work_size):
 	if worker_mode:
-		return run_bfcl_worker(job_key, args, subkey, rws)
+		return run_bfcl_worker(job_key, args, rws)
 	else:
-		return run_bfcl_process(job_key, args, subkey, rws)
+		return run_bfcl_process(job_key, args, rws)
 
 def check_bfcl_return_code(return_code):
 	if -1 == return_code:
@@ -516,14 +516,23 @@ def do_job(job):
 		print(f'  Model: {job["model"]}')
 		print(f'  Year:  {job["year"]}')
 		print(f'  SysID: {job["system_id"]}')
-		if job["offset"]:
-			print(f' Offset: {job["offset"]}')
 		do_mii_lfcs_mine(
 			job['model'],
 			job['year'],
-			job['system_id'],
+			job['system_id']
+		)
+	elif 'mii-lfcs-offset' == job_type:
+		print('Mii-offset job received:')
+		print(f'  Model: {job["parent"]["model"]}')
+		print(f'  Year:  {job["parent"]["year"]}')
+		print(f'  SysID: {job["parent"]["system_id"]}')
+		print(f'  Offset: {job["offset"]}')
+		do_mii_lfcs_mine(
+			job['parent']['model'],
+			job['parent']['year'],
+			job['parent']['system_id'],
 			job['offset'],
-			job['model_bytes']
+			job['parent']['model_bytes']
 		)
 	elif 'msed' == job_type:
 		print('Msed job received:')
@@ -536,26 +545,20 @@ def do_job(job):
 	else:
 		print(f'Unknown job type "{job_type}" received, ignoring...')
 
-def update_job(key, subkey=None):
+def update_job(key):
 	if dry_run:
 		return
-	if subkey is not None:
-		key = f'{key}/{subkey}'
 	response = requests.get(f'{base_url}/api/update_job/{key}')
 	return response.json()['data'].get('status')
 
-def release_job(key, subkey=None):
+def release_job(key):
 	if dry_run:
 		return
-	if subkey is not None:
-		key = f'{key}/{subkey}'
 	requests.get(f'{base_url}/api/release_job/{key}')
 
-def fail_job(key, note, subkey=None):
+def fail_job(key, note):
 	if dry_run:
 		return
-	if subkey is not None:
-		key = f'{key}/{subkey}'
 	requests.post(
 		f'{base_url}/api/fail_job/{key}',
 		json={'note': note}
