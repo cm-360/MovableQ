@@ -540,7 +540,7 @@ class MiiLfcsJob(SplitJob):
     def set_lfcs_range_info(self):
         if 'old' == self.console_model:
             self.model_bytes = b'\x00\x00'
-            self.start_lfcs = lfcs_starts_old.get(self.console_year, lfcs_default_old)
+            self.lfcs_start = lfcs_starts_old.get(self.console_year, lfcs_default_old)
             self.lfcs_min = lfcs_min_old
             self.lfcs_max = lfcs_max_old
         elif 'new' == self.console_model:
