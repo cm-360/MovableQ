@@ -265,6 +265,7 @@ def do_benchmark():
 			print('Unfortunately, your graphics card is too slow to help mine.')
 		else:
 			print('Good news, your GPU is fast enough to help mine!')
+			time.sleep(5)
 			return True
 	except BfclExecutionError:
 		print('There was an error running bfCL! Please figure this out before joining the mining network.')
@@ -684,13 +685,15 @@ def run_client():
 	print(f'Client version {client_version}')
 	# remind miner to change name variable
 	if config.get('Client', 'miner_name') == 'CHANGE_ME':
-		print('Please enter a name first.')
+		print('Please enter a name in the config first.')
+		input('Press enter to continue...')
 		return
 	# initialize
 	print('Loading LFCS/msed3 databases')
 	load_lfcs_dbs()
 	# benchmark to find issues before claiming real jobs
 	if not validate_benchmark():
+		input('Press enter to continue...')
 		return
 	# main mining loop
 	waited_seconds = 0
