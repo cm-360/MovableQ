@@ -167,10 +167,11 @@ class JobManager():
             # split jobs have special handling
             if isinstance(job, SplitJob):
                 next_partial = job.get_next_partial_job()
-                next_partial.to_waiting()
-                next_partial.assign(worker)
-                # must store partial for correct functionality
-                self.jobs[next_partial.key] = next_partial
+                if next_partial is not None:
+                    next_partial.to_waiting()
+                    next_partial.assign(worker)
+                    # must store partial for correct functionality
+                    self.jobs[next_partial.key] = next_partial
                 # requeue parent job
                 self._queue_job(job.key, False)
                 # return partial job instead of parent
