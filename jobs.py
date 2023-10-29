@@ -528,6 +528,7 @@ class MiiLfcsJob(SplitJob):
         super().__init__(system_id, 'mii-lfcs')
         self.add_transition('prepare', 'submitted', 'ready')
         # type-specific job properties
+        self.system_id = system_id
         self.console_model = model
         self.console_year = year
         # init distributed mining info
@@ -589,10 +590,10 @@ class MiiLfcsJob(SplitJob):
 
     def __iter__(self):
         yield from super().__iter__()
+        yield 'system_id', self.system_id
         yield 'model', self.console_model
         yield 'year', self.console_year
         yield 'model_bytes', self.model_bytes.hex()
-        yield 'system_id', self.key
 
 
 # per offset sub-job of MiiLfcsJob
