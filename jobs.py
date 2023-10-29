@@ -533,6 +533,7 @@ class MiiLfcsJob(SplitJob):
         self.console_year = year
         # init distributed mining info
         self.set_lfcs_range_info()
+        self.lfcs_failure_count = 0
         # ready immediately
         self.prepare()
 
@@ -556,6 +557,8 @@ class MiiLfcsJob(SplitJob):
         self.lfcs_max = self.lfcs_max >> 16         # maximum viable LFCS
         # init LFCS counter
         self.lfcs_counter = 0
+        # for failure count tracking
+        self.lfcs_range_size = self.lfcs_max - self.lfcs_min
 
     def get_next_lfcs_info(self):
         # determine next offset from LFCS counter
@@ -609,7 +612,10 @@ class MiiLfcsOffsetJob(PartialJob):
         self.prepare()
 
     def on_fail(self, note=None):
-        self.parent.update_progress(self.index, 0)
+        self.parent.lfcs_failure_count += 1
+        # fail if that was the last one
+        if self.parent.lfcs_failure_count >= self.parent.lfcs_range_size:
+            self.parent.fail('Maximum offset reached without a hit')
 
     def __iter__(self):
         yield from super().__iter__()
