@@ -78,7 +78,7 @@
 					<form id="miiJobForm" class="card-body">
 						<div class="d-grid gap-3 mb-3">
 							<div class="card-text">
-								This section is for <b>Mii mining</b>. To get started, enter your console's information into the boxes below.
+								This section is for <b>Mii mining</b>. To get started, enter your console's information into the boxes below. If you happen to know your console's manufacturing year, 
 							</div>
 							<div>
 								<label for="mii_id0" class="form-label">ID0</label>
@@ -91,14 +91,19 @@
 								<label for="mii_model" class="form-label">Model</label>
 								<select required id="mii_model" class="form-control" name="model">
 									<option selected disabled value="">Choose...</option>
-									<option value="old">Old</option>
-									<option value="new">New</option>
+									<option value="old,2011">Old 3DS</option>
+									<option value="old,2013">Old 3DS XL</option>
+									<option value="old,2015">Old 2DS</option>
+									<option value="new,2016">New 3DS</option>
+									<option value="new,2016">New 3DS XL</option>
+									<option value="new,2017">New 2DS XL</option>
 								</select>
 								<div class="invalid-feedback">
 									Please choose your device's model.
 								</div>
+								<button type="button" class="btn btn-link btn-sm p-0" data-bs-toggle="collapse" data-bs-target="#miiConsoleYearCollapse" role="button" aria-expanded="false" aria-controls="miiConsoleYearCollapse">Override manufacturing year</button>
 							</div>
-							<div>
+							<div class="collapse" id="miiConsoleYearCollapse">
 								<label for="mii_year" class="form-label">Manufacturing year</label>
 								<input type="number" class="form-control" id="mii_year" name="year" min="2011" max="2020" value="" placeholder="20XX">
 								<div class="invalid-feedback">

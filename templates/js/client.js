@@ -97,6 +97,8 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
     const miiJobForm = document.getElementById("miiJobForm");
     // Back to method selection button
     const miiJobBackButton = document.getElementById("miiJobBackButton");
+    // console year field collapse
+    const miiConsoleYearCollapse = document.getElementById("miiConsoleYearCollapse");
     // upload method toggle
     const miiUploadToggle = document.getElementById("miiUploadToggle");
     const miiUploadFile = document.getElementById("mii_file");
@@ -133,6 +135,14 @@ import { getCookie, setCookie, blobToBase64 } from "{{ url_for('serve_js', filen
             return;
         }
         const miiJobFormData = new FormData(miiJobForm);
+        // process console selection
+        let consoleSplit = miiJobFormData.get("model").split(",");
+        let consoleType = consoleSplit[0];
+        let consoleYear = consoleSplit[1];
+        miiJobFormData.set("model", consoleType);
+        if (!miiConsoleYearCollapse.classList.contains("show") || !miiJobFormData.get("year")) {
+            miiJobFormData.set("year", consoleYear);
+        }
         // fetch mii data if selected
         if (miiUploadUrl.classList.contains("show")) {
             try {
