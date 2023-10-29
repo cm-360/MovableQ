@@ -65,7 +65,7 @@ manager = JobManager()
 mining_client_filename = 'mining_client.py'
 client_types = {
     'miiner': {
-        'version': '2.2.0-alpha',
+        'version': '2.2.1-alpha',
         'allowed': {'mii-lfcs', 'mii-lfcs-offset', 'msed'}
     },
     'friendbot': {

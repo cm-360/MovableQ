@@ -422,11 +422,13 @@ def run_bfcl_worker(job_key, args, rws=force_reduced_work_size):
 	except BfclReturnCodeError as e:
 		fail_job(job_key, f'{type(e).__name__}: {e}')
 		return e.return_code, None
+	except BfclExecutionError as e:
+		raise e
 	except Exception as e:
 		print_exc()
 		print('bfCL was not able to run correctly!')
 		message = f'{type(e).__name__}: {e}'
-		fail_job(job_key, message)
+		release_job(job_key)
 		raise BfclExecutionError(message) from e
 	return 0, result
 
@@ -465,11 +467,13 @@ def run_bfcl_process(job_key, args, rws=force_reduced_work_size):
 	except BfclReturnCodeError as e:
 		fail_job(job_key, f'{type(e).__name__}: {e}')
 		return e.return_code, None
+	except BfclExecutionError as e:
+		raise e
 	except Exception as e:
 		print_exc()
 		print('bfCL was not able to run correctly!')
 		message = f'{type(e).__name__}: {e}'
-		fail_job(job_key, message)
+		release_job(job_key)
 		raise BfclExecutionError(message) from e
 	return 0, None
 
@@ -481,7 +485,7 @@ def run_bfcl(job_key, args, rws=force_reduced_work_size):
 
 def check_bfcl_return_code(return_code):
 	if -1 == return_code:
-		raise BfclReturnCodeError(return_code, 'invalid arguments (not verified, could be generic error)')
+		raise BfclExecutionError('invalid arguments (not verified, could be generic error)')
 	elif 1 == return_code:
 		raise BfclReturnCodeError(return_code, 'did not get a hit')
 	elif 101 == return_code:
