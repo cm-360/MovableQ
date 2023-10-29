@@ -532,7 +532,6 @@ class MiiLfcsJob(SplitJob):
         self.console_year = year
         # init distributed mining info
         self.set_lfcs_range_info()
-        self.lfcs_istart = self.start_lfcs - self.lfcs_min
         # ready immediately
         self.prepare()
 
@@ -550,22 +549,32 @@ class MiiLfcsJob(SplitJob):
             self.lfcs_max = lfcs_max_new
         else:
             raise ValueError('Invalid model')
+        # apply bitshifts to shrink values
         self.start_lfcs = self.start_lfcs >> 16     # LFCS search starting point
         self.lfcs_min = self.lfcs_min >> 16         # minimum viable LFCS
         self.lfcs_max = self.lfcs_max >> 16         # maximum viable LFCS
-        #
+        # init LFCS counter
         self.current_lfcs_counter = 0
 
     def get_next_lfcs_info(self):
         # determine next offset from LFCS counter
         if self.current_lfcs_counter % 2 == 0:
-            offset = -(self.current_lfcs_counter // 2)
+            next_offset = -(self.current_lfcs_counter // 2)
         else:
-            offset = (self.current_lfcs_counter // 2) + 1
-        # increment LFCS counter
+            next_offset = (self.current_lfcs_counter // 2) + 1
         self.current_lfcs_counter += 1
         # calculate next index
-        return self.start_lfcs + offset, offset
+        next_index = self.start_lfcs + next_offset
+        if self.lfcs_min <= next_index <= self.lfcs_max:
+            # calculated index is valid
+            return next_index, next_offset
+        else:
+            # calculated index is out of bounds, try next
+            next_pair = self.get_next_lfcs_info()
+            if next_pair:
+                return next_pair
+            # next index was out of bounds too
+            return None
 
     def get_next_partial_job(self):
         next_index, next_offset = self.get_next_lfcs_info()
