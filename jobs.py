@@ -544,27 +544,27 @@ class MiiLfcsJob(SplitJob):
             self.lfcs_max = lfcs_max_old
         elif 'new' == self.console_model:
             self.model_bytes = b'\x02\x00'
-            self.start_lfcs = lfcs_starts_new.get(self.console_year, lfcs_default_new)
+            self.lfcs_start = lfcs_starts_new.get(self.console_year, lfcs_default_new)
             self.lfcs_min = lfcs_min_new
             self.lfcs_max = lfcs_max_new
         else:
             raise ValueError('Invalid model')
         # apply bitshifts to shrink values
-        self.start_lfcs = self.start_lfcs >> 16     # LFCS search starting point
+        self.lfcs_start = self.lfcs_start >> 16     # LFCS search starting point
         self.lfcs_min = self.lfcs_min >> 16         # minimum viable LFCS
         self.lfcs_max = self.lfcs_max >> 16         # maximum viable LFCS
         # init LFCS counter
-        self.current_lfcs_counter = 0
+        self.lfcs_counter = 0
 
     def get_next_lfcs_info(self):
         # determine next offset from LFCS counter
-        if self.current_lfcs_counter % 2 == 0:
-            next_offset = -(self.current_lfcs_counter // 2)
+        if self.lfcs_counter % 2 == 0:
+            next_offset = -(self.lfcs_counter // 2)
         else:
-            next_offset = (self.current_lfcs_counter // 2) + 1
-        self.current_lfcs_counter += 1
+            next_offset = (self.lfcs_counter // 2) + 1
+        self.lfcs_counter += 1
         # calculate next index
-        next_index = self.start_lfcs + next_offset
+        next_index = self.lfcs_start + next_offset
         if self.lfcs_min <= next_index <= self.lfcs_max:
             # calculated index is valid
             return next_index, next_offset
