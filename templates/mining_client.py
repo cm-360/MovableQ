@@ -257,7 +257,7 @@ def do_benchmark():
 			f'{endian4(0):08X}',
 			f'{endian4(5):08X}'
 		]
-		return_code = run_bfcl('benchmark', bfcl_args)
+		return_code, result = run_bfcl('benchmark', bfcl_args)
 		time_finish = time.time()
 		if return_code != 101:
 			print(f'Finished with an unexpected return code from bfCL: {return_code}')
