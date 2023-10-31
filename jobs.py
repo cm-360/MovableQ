@@ -561,7 +561,7 @@ class MiiLfcsJob(SplitJob):
         # for failure count tracking
         self.lfcs_range_size = self.lfcs_max - self.lfcs_min
 
-    def get_next_lfcs_info(self):
+    def get_next_lfcs_info(self, try_next=True):
         # determine next offset from LFCS counter
         if self.lfcs_counter % 2 == 0:
             next_offset = -(self.lfcs_counter // 2)
@@ -573,17 +573,14 @@ class MiiLfcsJob(SplitJob):
         if self.lfcs_min <= next_index <= self.lfcs_max:
             # calculated index is valid
             return next_index, next_offset
-        else:
+        elif try_next:
             # calculated index is out of bounds, try next
-            next_pair = self.get_next_lfcs_info()
-            if next_pair:
-                return next_pair
-            # next index was out of bounds too
-            return None
+            return self.get_next_lfcs_info(try_next=False)
 
     def get_next_partial_job(self):
-        next_index, next_offset = self.get_next_lfcs_info()
-        if next_index:
+        next_lfcs_info = self.get_next_lfcs_info()
+        if next_lfcs_info is not None:
+            next_index, next_offset = next_lfcs_info
             # create next partial job
             return MiiLfcsOffsetJob(
                 self,
