@@ -618,8 +618,9 @@ class MiiLfcsOffsetJob(PartialJob):
     def on_fail(self, note=None):
         self.parent.lfcs_failure_count += 1
         # fail if that was the last one
-        if self.parent.lfcs_failure_count >= self.parent.lfcs_range_size:
-            self.parent.fail('Maximum offset reached without a hit')
+        # TODO do not fail until sub-job counting is fixed
+        # if self.parent.lfcs_failure_count >= self.parent.lfcs_range_size:
+        #     self.parent.fail('Maximum offset reached without a hit')
 
     def __iter__(self):
         yield from super().__iter__()
