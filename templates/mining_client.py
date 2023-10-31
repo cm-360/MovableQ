@@ -257,7 +257,7 @@ def do_benchmark():
 			f'{endian4(0):08X}',
 			f'{endian4(5):08X}'
 		]
-		return_code = run_bfcl('benchmark', bfcl_args)
+		return_code, result = run_bfcl('benchmark', bfcl_args)
 		time_finish = time.time()
 		if return_code != 101:
 			print(f'Finished with an unexpected return code from bfCL: {return_code}')
@@ -265,6 +265,7 @@ def do_benchmark():
 			print('Unfortunately, your graphics card is too slow to help mine.')
 		else:
 			print('Good news, your GPU is fast enough to help mine!')
+			time.sleep(5)
 			return True
 	except BfclExecutionError:
 		print('There was an error running bfCL! Please figure this out before joining the mining network.')
@@ -276,8 +277,10 @@ def do_benchmark():
 def do_mii_lfcs_mine(model, year, system_id, offset=None, model_bytes=None, timeout=0):
 	cleanup_mining_files()
 	try:
+		job_key = system_id
 		if offset is not None:
 			start_lfcs = int.from_bytes(unhexlify(offset), 'big') << 16
+			job_key += f'-{offset}'
 		else:
 			start_lfcs, model_bytes = get_lfcs_start_and_flags(model, year)
 			model_bytes = hexlify(model_bytes).decode('ascii')
@@ -291,11 +294,11 @@ def do_mii_lfcs_mine(model, year, system_id, offset=None, model_bytes=None, time
 		]
 		if offset is not None:
 			bfcl_args += [f'{endian4(start_lfcs):08X}', f'{endian4(start_lfcs):08X}']
-		ret, result = run_bfcl(system_id, bfcl_args, offset)
+		ret, result = run_bfcl(job_key, bfcl_args, offset)
 		# check output
-		if result or os.path.isfile('movable_part1.sed') or offset is not None:
+		if result or os.path.isfile('movable_part1.sed'):
 			print(f'Mining complete! Uploading movable_part1...')
-			upload_lfcs(system_id, offset, result)
+			upload_lfcs(job_key, offset, result)
 		else:
 			print(f'bfCL was not able to complete the mining job!')
 	finally:
@@ -376,10 +379,10 @@ def ensure_bfcl_worker(rws=force_reduced_work_size):
 		message = f'{type(e).__name__}: {e}'
 	return worker.poll() is None
 
-def run_bfcl_worker(job_key, args, subkey=None, rws=force_reduced_work_size):
+def run_bfcl_worker(job_key, args, rws=force_reduced_work_size):
 	global worker
 	if not ensure_bfcl_worker(rws):
-		return run_bfcl_process(job_key, args, subkey, rws)
+		return run_bfcl_process(job_key, args, rws)
 	result = None
 	try:
 		bfcl_args = [
@@ -408,27 +411,29 @@ def run_bfcl_worker(job_key, args, subkey=None, rws=force_reduced_work_size):
 			# Help wanted for a better way of catching an exit code of '-5'
 			elif not rws and (worker.returncode == 251 or worker.returncode == 0xFFFFFFFB):
 				time.sleep(3)  # Just wait a few seconds so we don't burn out our graphics card
-				return run_bfcl_worker(job_key, args, subkey, True)
+				return run_bfcl_worker(job_key, args, True)
 			else:
 				check_bfcl_return_code(worker.returncode)
 		except KeyboardInterrupt:
 			kill_process(worker)
 			worker = None
 			print('Terminated bfCL, interrupt again to exit')
-			release_job(job_key, subkey)
+			release_job(job_key)
 			time.sleep(5)
 	except BfclReturnCodeError as e:
-		fail_job(job_key, f'{type(e).__name__}: {e}', subkey)
-		return e.return_code
+		fail_job(job_key, f'{type(e).__name__}: {e}')
+		return e.return_code, None
+	except BfclExecutionError as e:
+		raise e
 	except Exception as e:
 		print_exc()
 		print('bfCL was not able to run correctly!')
 		message = f'{type(e).__name__}: {e}'
-		fail_job(job_key, message, subkey)
+		release_job(job_key)
 		raise BfclExecutionError(message) from e
 	return 0, result
 
-def run_bfcl_process(job_key, args, subkey=None, rws=force_reduced_work_size):
+def run_bfcl_process(job_key, args, rws=force_reduced_work_size):
 	try:
 		bfcl_args = [
 			('bfcl' if os.name == 'nt' else './bfcl'),
@@ -444,42 +449,46 @@ def run_bfcl_process(job_key, args, subkey=None, rws=force_reduced_work_size):
 				timer += 1
 				time.sleep(1)
 				if timer % update_interval == 0:
-					status = update_job(job_key, subkey)
+					status = update_job(job_key)
 					if status == 'canceled':
 						print('Job canceled')
 						kill_process(process)
-						return 0
+						return 0, None
 			# Help wanted for a better way of catching an exit code of '-5'
 			if not rws and (process.returncode == 251 or process.returncode == 0xFFFFFFFB):
 				time.sleep(3)  # Just wait a few seconds so we don't burn out our graphics card
-				return run_bfcl(job_key, args, subkey, True)
+				return run_bfcl(job_key, args, True)
 			else:
 				check_bfcl_return_code(process.returncode)
 		except KeyboardInterrupt:
 			kill_process(process)
 			print('Terminated bfCL, interrupt again to exit')
-			release_job(job_key, subkey)
+			release_job(job_key)
 			time.sleep(5)
 	except BfclReturnCodeError as e:
-		fail_job(job_key, f'{type(e).__name__}: {e}', subkey)
-		return e.return_code
+		fail_job(job_key, f'{type(e).__name__}: {e}')
+		return e.return_code, None
+	except BfclExecutionError as e:
+		raise e
 	except Exception as e:
 		print_exc()
 		print('bfCL was not able to run correctly!')
 		message = f'{type(e).__name__}: {e}'
-		fail_job(job_key, message, subkey)
+		release_job(job_key)
 		raise BfclExecutionError(message) from e
-	return 0
+	return 0, None
 
-def run_bfcl(job_key, args, subkey=None, rws=force_reduced_work_size):
+def run_bfcl(job_key, args, rws=force_reduced_work_size):
 	if worker_mode:
-		return run_bfcl_worker(job_key, args, subkey, rws)
+		return run_bfcl_worker(job_key, args, rws)
 	else:
-		return run_bfcl_process(job_key, args, subkey, rws)
+		return run_bfcl_process(job_key, args, rws)
 
 def check_bfcl_return_code(return_code):
 	if -1 == return_code:
-		raise BfclReturnCodeError(return_code, 'invalid arguments (not verified, could be generic error)')
+		raise BfclExecutionError('invalid arguments (not verified, could be generic error)')
+	elif 1 == return_code:
+		raise BfclReturnCodeError(return_code, 'did not get a hit')
 	elif 101 == return_code:
 		raise BfclReturnCodeError(return_code, 'maximum offset reached without a hit')
 
@@ -516,14 +525,23 @@ def do_job(job):
 		print(f'  Model: {job["model"]}')
 		print(f'  Year:  {job["year"]}')
 		print(f'  SysID: {job["system_id"]}')
-		if job["offset"]:
-			print(f' Offset: {job["offset"]}')
 		do_mii_lfcs_mine(
 			job['model'],
 			job['year'],
-			job['system_id'],
-			job['offset'],
-			job['model_bytes']
+			job['system_id']
+		)
+	elif 'mii-lfcs-offset' == job_type:
+		print('Mii-offset job received:')
+		print(f'  Model: {job["parent"]["model"]}')
+		print(f'  Year:  {job["parent"]["year"]}')
+		print(f'  SysID: {job["parent"]["system_id"]}')
+		print(f'  Offset: {job["offset"]}')
+		do_mii_lfcs_mine(
+			job['parent']['model'],
+			job['parent']['year'],
+			job['parent']['system_id'],
+			job['index'],
+			job['parent']['model_bytes']
 		)
 	elif 'msed' == job_type:
 		print('Msed job received:')
@@ -536,30 +554,24 @@ def do_job(job):
 	else:
 		print(f'Unknown job type "{job_type}" received, ignoring...')
 
-def update_job(key, subkey=None):
+def update_job(key):
 	if dry_run:
 		return
-	if subkey is not None:
-		key = f'{key}/{subkey}'
 	response = requests.get(f'{base_url}/api/update_job/{key}')
 	return response.json()['data'].get('status')
 
-def release_job(key, subkey=None):
+def release_job(key):
 	if dry_run:
 		return
-	if subkey is not None:
-		key = f'{key}/{subkey}'
 	requests.get(f'{base_url}/api/release_job/{key}')
 
-def fail_job(key, note, subkey=None):
+def fail_job(key, note):
 	if dry_run:
 		return
-	if subkey is not None:
-		key = f'{key}/{subkey}'
-	requests.post(
+	response = requests.post(
 		f'{base_url}/api/fail_job/{key}',
 		json={'note': note}
-	)
+	).json()
 
 # we actually upload only the keyY, but whatever
 def upload_movable(id0, result=None):
@@ -577,6 +589,8 @@ def upload_movable(id0, result=None):
 				'result': str(base64.b64encode(movable_file.read()[0x110:0x120]), 'utf-8'),
 				'format': 'b64'
 			}
+	if not data:
+		return
 	response = requests.post(
 		f'{base_url}/api/complete_job/{id0}',
 		json = data
@@ -585,14 +599,8 @@ def upload_movable(id0, result=None):
 def upload_lfcs(system_id, offset=None, result=None):
 	if dry_run:
 		return
-	if offset is not None:
-		system_id = f'{system_id}/{offset}'
 	data = None
-	if result == "NOHIT":
-		data = {
-			'format': 'none'
-		}
-	elif result:
+	if result:
 		data = {
 			'result': result,
 			'format': 'hex'
@@ -603,10 +611,8 @@ def upload_lfcs(system_id, offset=None, result=None):
 				'result': str(base64.b64encode(part1_file.read()[:5]), 'utf-8'),
 				'format': 'b64'
 			}
-	else:
-		data = {
-			'format': 'none'
-		}
+	if not data:
+		return
 	response = requests.post(
 		f'{base_url}/api/complete_job/{system_id}',
 		json = data
@@ -679,13 +685,15 @@ def run_client():
 	print(f'Client version {client_version}')
 	# remind miner to change name variable
 	if config.get('Client', 'miner_name') == 'CHANGE_ME':
-		print('Please enter a name first.')
+		print('Please enter a name in the config first.')
+		input('Press enter to continue...')
 		return
 	# initialize
 	print('Loading LFCS/msed3 databases')
 	load_lfcs_dbs()
 	# benchmark to find issues before claiming real jobs
 	if not validate_benchmark():
+		input('Press enter to continue...')
 		return
 	# main mining loop
 	waited_seconds = 0

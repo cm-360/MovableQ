@@ -65,8 +65,8 @@ manager = JobManager()
 mining_client_filename = 'mining_client.py'
 client_types = {
     'miiner': {
-        'version': '2.1.1-alpha',
-        'allowed': {'mii-lfcs', 'msed'}
+        'version': '2.2.2-alpha',
+        'allowed': {'mii-lfcs', 'mii-lfcs-offset', 'msed'}
     },
     'friendbot': {
         'version': '1.0.0',
@@ -206,18 +206,17 @@ def api_request_job():
     # check for and assign jobs
     job = manager.request_job(allowed_types, worker_name, worker_ip, client_version)
     if job:
-        app.logger.info(f'{log_prefix(job.key, job.subkey)} assigned to {worker_name}')
+        app.logger.info(f'{log_prefix(job.key)} assigned to {worker_name}')
         return success(dict(job))
     else:
         return success()
 
 @app.route('/api/release_job/<key>')
-@app.route('/api/release_job/<key>/<subkey>')
-def api_release_job(key: str, subkey: str = None):
+def api_release_job(key: str):
     if not is_job_key(key):
         return error('Invalid Job Key')
-    manager.release_job(key, subkey)
-    app.logger.info(f'{log_prefix(key, subkey)} released')
+    manager.release_job(key)
+    app.logger.info(f'{log_prefix(key)} released')
     return success()
 
 @app.route('/api/check_job_statuses/<job_keys>')
@@ -237,12 +236,11 @@ def api_check_job_statuses(job_keys: str):
     return success(statuses)
 
 @app.route('/api/update_job/<key>')
-@app.route('/api/update_job/<key>/<subkey>')
-def api_update_job(key: str, subkey: str = None):
+def api_update_job(key: str):
     if not is_job_key(key):
         return error('Invalid Job Key')
-    app.logger.info(f'{log_prefix(key, subkey)} still mining')
-    if manager.update_job(key, subkey, worker_ip=get_request_ip()):
+    app.logger.info(f'{log_prefix(key)} still mining')
+    if manager.update_job(key, worker_ip=get_request_ip()):
         return success()
     else:
         return success({'status': 'canceled'})
@@ -265,8 +263,7 @@ def api_reset_job(key: str):
     return success()
 
 @app.route('/api/complete_job/<key>', methods=['POST'])
-@app.route('/api/complete_job/<key>/<subkey>', methods=['POST'])
-def api_complete_job(key: str, subkey: str = None):
+def api_complete_job(key: str):
     global mseds_mined, lfcses_mined, lfcses_dumped
     if not is_job_key(key):
         return error('Invalid Job Key')
@@ -286,13 +283,13 @@ def api_complete_job(key: str, subkey: str = None):
         raise KeyError(f'Missing parameter {e}')
     # validate result
     job_type = manager.get_job(key).type
-    if not validate_job_result(job_type, result, key, subkey):
-        app.logger.warning(f'{log_prefix(key, subkey)} got faulty result')
-        manager.release_job(key, subkey)
+    if not validate_job_result(job_type, result, key):
+        app.logger.warning(f'{log_prefix(key)} got faulty result')
+        manager.release_job(key)
         return error('Faulty result')
     # complete job
-    manager.complete_job(key, result, subkey)
-    app.logger.info(f'{log_prefix(key, subkey)} completed')
+    manager.complete_job(key, result)
+    app.logger.info(f'{log_prefix(key)} completed')
     # update counter
     if 'msed' == job_type:
         mseds_mined += 1
@@ -303,12 +300,11 @@ def api_complete_job(key: str, subkey: str = None):
     return success()
 
 @app.route('/api/fail_job/<key>', methods=['POST'])
-@app.route('/api/fail_job/<key>/<subkey>', methods=['POST'])
-def api_fail_job(key: str, subkey: str = None):
+def api_fail_job(key: str):
     if not is_job_key(key):
         return error('Invalid Job Key')
-    manager.fail_job(key, subkey, request.json.get('note'))
-    app.logger.info(f'{log_prefix(key, subkey)} failed')
+    manager.fail_job(key, request.json.get('note'))
+    app.logger.info(f'{log_prefix(key)} failed')
     return success()
 
 @app.route('/api/list_claimed_jobs')
@@ -386,12 +382,10 @@ def error(message, code=400):
     })
     return make_response(response_json, code)
 
-def log_prefix(key=None, subkey=None) -> str:
+def log_prefix(key=None) -> str:
     prefix = '(' + get_request_ip() + ')'
     if key:
         prefix += f' {key}'
-    if subkey:
-        prefix += f'-{subkey}'
     return prefix
 
 @app.errorhandler(Exception)

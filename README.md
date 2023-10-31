@@ -1,6 +1,6 @@
 # MovableQ
 
-MovableQ is a service meant to automatically connect people who need their 3DS console's `movable.sed` bruteforced with volunteers that can offer the computing power to do so. Currently part1 mining and Mii mining are supported.
+MovableQ is a service meant to automatically connect people who need their 3DS console's `movable.sed` bruteforced with volunteers that can offer the computing power to do so. Currently `movable.sed` mining, Mii LFCS mining, and friend exchange LFCS dumping jobs are supported.
 
 
 ## Server Setup (Website)
@@ -18,8 +18,8 @@ git clone --recursive https://github.com/cm-360/MovableQ.git
 cd MovableQ
 pipenv install
 ```
-2. Configure host settings and admin credentials in `.env`
-3. Run the server:
+1. Configure host settings and admin credentials in `.env`
+1. Run the server:
 ```bash
 pipenv run python3 server.py
 ```
@@ -31,22 +31,23 @@ pipenv run python3 server.py
 
 - [Python 3.10+](https://www.python.org/)
 - [requests](https://pypi.org/project/requests/)
-- [pycryptodomex](https://pypi.org/project/pycryptodomex/)
 
 ### Instructions
 
-1. Download and extract the latest release of [Seedminer](https://github.com/zoogie/seedminer/releases) for your operating system.
-2. Download the mining client script from the MovableQ website, or [from this GitHub repository](./templates/mining_client.py). Place it inside the extracted Seedminer directory, in the same place as `seedminer_launcher_3.py`.
-3. Open the script in a text editor to change the `miner_name` variable and give yourself a username.
-   - **NOTE**: If you downloaded the script from GitHub, you will also need to adjust the `base_url` variable, replacing all text in the quotes.
-4. Install the `requests` and `pycryptodomex` packages if you haven't already:
+1. Download and extract the latest release of [danny8376's Seedminer](https://github.com/danny8376/seedminer/releases) for your operating system.
+1. Download the [mining client script](https://cm360.xyz/movableq/get_mining_client) from the MovableQ website. Place it inside the extracted Seedminer directory, in the same place as `seedminer_launcher_3.py`.
+1. Install the `requests` package if you haven't already:
 ```bash
-pip install requests pycryptodomex
+pip install requests
 ```
-5. Run the mining client:
+1. Run the mining client and allow it to generate a default configuration file:
 ```bash
 python3 mining_client.py
 ```
+1. Open `mining_client.cfg` in a text editor to change the `miner_name` variable and give yourself a username.
+1. Run the mining client again. If everything was set up correctly and the benchmark passes, it should start checking for jobs.
+
+**NOTE**: If you download the script directly from GitHub instead of the website, you will also need to adjust the `client_version` and `base_url` variables.
 
 
 ## About
