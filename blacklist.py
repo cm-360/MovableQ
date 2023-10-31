@@ -10,6 +10,7 @@
 # These should not be accepted; users often enter the friend code seen in
 # video guides instead of their own
 FC_knownFriendCodes = [
+    '044770074962',  # CM360
     '113541082053',  # valid
     '281029350533',  # RANDAL
     '190853507948',  # ASP
@@ -32,5 +33,5 @@ FC_knownFriendCodes = [
     '143609644804',  # THEWIZWIKI
     '354064119835',  # THEWIZWIKI
     '547304741531',  # DARKFELIN
-    '233801992881'   # LINK GAMEPLAY
+    '233801992881',  # LINK GAMEPLAY
 ]
