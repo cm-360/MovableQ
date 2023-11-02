@@ -580,6 +580,9 @@ class MiiLfcsJob(SplitJob):
         self.lfcs_counter += 1
         # calculate next index
         next_index = self.lfcs_start + next_offset
+        # TODO: skip assigning index 0000, it will hang bfcl
+        if next_index == 0:
+            get_next_lfcs_info(self, try_next)
         if self.lfcs_min <= next_index <= self.lfcs_max:
             # calculated index is valid
             return next_index, next_offset
