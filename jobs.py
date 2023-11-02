@@ -525,12 +525,6 @@ class PartialJob(Job):
         super().update()
         self.parent.update()
 
-    def on_assign(self, worker):
-        super().on_assign(worker)
-        # safely move parent to waiting state
-        if self.parent.is_waiting():
-            self.parent.assign(None)
-
 
 # Job to obtain LFCS from the system ID in Mii data
 class MiiLfcsJob(SplitJob):
