@@ -521,6 +521,10 @@ class PartialJob(Job):
         super().__init__(key, _type)
         self.parent = parent
 
+    def update(self):
+        super().update()
+        self.parent.update()
+
     def on_assign(self, worker):
         super().on_assign(worker)
         # safely move parent to waiting state
