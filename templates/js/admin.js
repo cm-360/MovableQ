@@ -8,12 +8,14 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
   const jobsTableBody = document.getElementById("jobsTableBody");
   const jobQueue = document.getElementById("jobQueue");
   const minersTableBody = document.getElementById("minersTableBody");
+  const friendbotsTableBody = document.getElementById("friendbotsTableBody");
 
   const jobFilter = document.getElementById("jobFilter");
 
   let jobsData;
   let jobStrings;
   let minersData;
+  let friendbotsData;
 
   const inspectedJobs = new Set();
 
@@ -21,6 +23,7 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
   async function refreshTables() {
     refreshJobs();
     refreshMiners();
+    refreshFriendbots();
     refreshTablesTime.innerText = new Date().toLocaleTimeString();
   }
 
@@ -56,6 +59,20 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
     }
   }
 
+  async function refreshFriendbots() {
+    const response = await fetch("{{ url_for('api_admin_list_friendbots') }}");
+    const responseJson = await response.json();
+    if (response.ok) {
+      if (responseJson.result != "success") {
+        window.alert(responseJson.message);
+        return;
+      }
+      friendbotsData = responseJson.data.friendbots;
+      updateFriendbotsTable();
+    } else {
+      window.alert("Error retrieving miners: " + responseJson.message);
+    }
+  }
 
   function updateJobsTable() {
     jobsTableBody.innerHTML = "";
@@ -82,7 +99,14 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
   function updateMinersTable() {
     minersTableBody.innerHTML = "";
     for (let miner of minersData) {
-      minersTableBody.appendChild(createMinerRow(miner));
+      minersTableBody.appendChild(createWorkerRow(miner));
+    }
+  }
+
+  function updateFriendbotsTable() {
+    friendbotsTableBody.innerHTML = "";
+    for (let friendbot of friendbotsData) {
+      friendbotsTableBody.appendChild(createWorkerRow(friendbot));
     }
   }
 
@@ -179,24 +203,24 @@ import { getCookie, setCookie } from "{{ url_for('serve_js', filename='utils.js'
     return row;
   }
 
-  function createMinerRow(miner) {
+  function createWorkerRow(worker) {
     const row = document.createElement("tr");
     row.className = "align-middle";
 
     const nameCell = document.createElement("td");
-    nameCell.innerText = miner.name;
+    nameCell.innerText = worker.name;
     row.appendChild(nameCell);
 
     const ipCell = document.createElement("td");
-    ipCell.innerText = miner.ip;
+    ipCell.innerText = worker.ip;
     row.appendChild(ipCell);
 
     const versionCell = document.createElement("td");
-    versionCell.innerText = miner.version;
+    versionCell.innerText = worker.version;
     row.appendChild(versionCell);
 
     const updatedCell = document.createElement("td");
-    const updateDate = new Date(miner.last_update);
+    const updateDate = new Date(worker.last_update);
     updatedCell.innerText = updateDate.toLocaleString();
     row.appendChild(updatedCell);
 
