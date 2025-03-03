@@ -1,0 +1,13 @@
+# Ignore everything
+**
+
+# ...Except for what we want
+!Pipfile
+!Pipfile.lock
+!pyzbar/
+!static/
+!templates/
+!blacklist.py
+!jobs.py
+!server.py
+!validators.py

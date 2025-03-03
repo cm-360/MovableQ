@@ -1,0 +1,15 @@
+services:
+  movableq:
+    build: .
+    env_file: ./movableq.env
+    volumes:
+      - ./lfcses:/home/movableq/lfcses
+      - ./mseds:/home/movableq/mseds
+    ports:
+      - 7799:7799
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:7799/api/check_network_stats"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped

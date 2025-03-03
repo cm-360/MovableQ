@@ -2,6 +2,26 @@
 
 MovableQ is a service meant to automatically connect people who need their 3DS console's `movable.sed` bruteforced with volunteers that can offer the computing power to do so. Currently `movable.sed` mining, Mii LFCS mining, and friend exchange LFCS dumping jobs are supported.
 
+## Server Setup (Docker)
+
+### Requirements
+
+- [Docker](https://www.docker.com)
+- [Docker Compose](https://docs.docker.com/compose/install/)
+
+### Instructions
+
+1. Clone this GitHub repository
+```bash
+git clone --recursive https://github.com/cm-360/MovableQ.git
+cd MovableQ
+```
+1. Configure admin credentials and SLOT_31_KEY_N in `movableq.env`
+1. Configure the LFCS folder, MSED folder, and port mapping in `compose.yml`
+1. Run the server:
+```bash
+docker compose up -d
+```
 
 ## Server Setup (Website)
 
