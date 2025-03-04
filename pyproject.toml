@@ -1,0 +1,19 @@
+[project]
+name = "movableq"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "hypercorn>=0.17.3",
+    "pillow>=11.1.0",
+    "pycryptodomex>=3.21.0",
+    "python-dotenv>=1.0.1",
+    "pyzbar",
+    "quart>=0.19.9",
+    "quart-sqlalchemy>=3.0.4",
+    "sqlalchemy>=2.0.38",
+]
+
+[tool.uv.sources]
+pyzbar = { git = "https://github.com/nmccann/pyzbar" }
