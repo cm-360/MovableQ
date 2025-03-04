@@ -20,8 +20,8 @@ async def test_create_msed_job(client):
     def validate_job_data(data: dict):
         assert data["type"] == "msed"
         assert data["id0"] == id0
-        assert data["lfcs"] == None
-        assert data["assignee"] == None
+        assert data["lfcs"] is None
+        assert data["assignee"] is None
         assert data["status"] == 0
 
     # Validate job creation response
