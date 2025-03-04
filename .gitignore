@@ -1,4 +1,13 @@
-lfcses/
-mseds/
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment
+.venv/
 .env
 movableq.env
+
+# Application data
+lfcses/
+mseds/

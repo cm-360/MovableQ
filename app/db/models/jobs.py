@@ -1,0 +1,125 @@
+from dataclasses import dataclass
+from enum import Enum
+from typing import Optional
+
+from sqlalchemy import ForeignKey
+from sqlalchemy import Enum as SqlEnum
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
+
+from . import Base
+
+
+class JobStatus(Enum):
+    """
+    Enumeration representing the possible statuses of a job.
+
+    Attributes:
+        submitted (int): Submitted but not yet in the queue.
+        queued (int): In the queue, waiting to be assigned.
+        working (int): Currently being processed by a worker.
+        canceled (int): Canceled by the owning user.
+        failed (int): Reported as failed by the assigned worker.
+        completed (int): Successfully completed.
+    """
+    submitted = 0
+    queued = 1
+    working = 2
+    canceled = 3
+    failed = 4
+    completed = 5
+
+@dataclass
+class Job:
+    """
+    Represents a generic job with its status and timestamps.
+
+    Attributes:
+        status (JobStatus): The current status of this job.
+        created_at (str): The timestamp when this job was created.
+        updated_at (str): The timestamp when this job was last updated.
+        completed_at (str): The timestamp when this job was completed, if any.
+    """
+    created_at: Mapped[str]
+    updated_at: Mapped[str]
+    completed_at: Mapped[Optional[str]]
+    status: Mapped[JobStatus] = mapped_column(SqlEnum(JobStatus))
+
+class ConsoleModel(Enum):
+    """
+    Enumeration of the 3DS console model families.
+
+    Attributes:
+        old (str): A console from the original lineup (3DS, 3DSXL, 2DS)
+        new (str): A console from the "New" lineup with a C-stick and improved
+            hardware (N3DS, N3DSXL, N2DS)
+    """
+    old = "old"
+    new = "new"
+
+@dataclass
+class MiiLfcsJob(Base, Job):
+    """
+    Represents a bruteforcing job to obtain a LocalFriendCodeSeed from the
+    system ID in an exported Mii QR code.
+
+    Attributes:
+        system_id (str): The unique system ID of the user's console as a
+            hexadecimal string.
+        console_model (ConsoleModel): The user's console's model (new/old).
+        console_year (int): The manufacturing year of the user's console.
+    """
+    __tablename__ = "mii_lfcs_jobs"
+
+    system_id: Mapped[str] = mapped_column(primary_key=True)
+    console_model: Mapped[ConsoleModel] = mapped_column(SqlEnum(ConsoleModel))
+    console_year: Mapped[int]
+
+@dataclass
+class MiiLfcsOffsetJob(Base, Job):
+    """
+    TODO
+
+    Attributes:
+        system_id (str): The unique system ID of the user's console as a
+            hexadecimal string.
+    """
+    __tablename__ = "mii_lfcs_offset_jobs"
+
+    system_id: Mapped[str] = mapped_column(
+        ForeignKey("mii_lfcs_jobs.system_id"),
+        primary_key=True,
+    )
+    offset: Mapped[int] = mapped_column(primary_key=True)
+    index: Mapped[int] = mapped_column(primary_key=True)
+
+@dataclass
+class FcLfcsJob(Base, Job):
+    """
+    TODO
+    """
+    __tablename__ = "fc_lfcs_jobs"
+
+    friend_code: Mapped[str] = mapped_column(primary_key=True)
+
+@dataclass
+class MsedJob(Base, Job):
+    """
+    Represents a bruteforcing job to obtain a `movable.sed` file from a
+    provided LocalFriendCodeSeed (the part1 file).
+
+    Attributes:
+        id0 (str): The unique ID0 value associated with this job as a
+            hexadecimal string.
+        lfcs (Optional[str]): The LFCS needed to complete this job as a
+            hexadecimal string, if known.
+        assignee (Optional[int]): The client ID of the worker assigned to this
+            job, if any.
+    """
+    __tablename__ = "msed_jobs"
+
+    id0: Mapped[str] = mapped_column(primary_key=True)
+    lfcs: Mapped[Optional[str]]
+    assignee: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("miner_workers.client_id")
+    )

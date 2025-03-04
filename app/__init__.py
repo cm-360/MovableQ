@@ -1,0 +1,22 @@
+from quart import Quart
+from hypercorn.middleware import ProxyFixMiddleware
+
+# QR decoding
+from pyzbar.pyzbar import decode as qr_decode
+from PIL import Image
+
+from .api import bp as api_bp
+from .db import db
+
+
+def create_app() -> Quart:
+    app = Quart(__name__)
+    app.asgi_app = ProxyFixMiddleware(app.asgi_app, mode="legacy", trusted_hops=1)
+    app.config["TEMPLATES_AUTO_RELOAD"] = True
+
+    app.register_blueprint(api_bp, url_prefix="/api")
+
+    db.init_app(app)
+    db.create_all()
+
+    return app
