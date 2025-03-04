@@ -18,6 +18,6 @@ db = QuartSQLAlchemy(
                     expire_on_commit=False,
                 ),
             )
-        )
+        ),
     ),
 )

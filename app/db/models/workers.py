@@ -20,6 +20,7 @@ class Worker(Serializable):
         version (str): The version identifier of this worker's software.
         updated_at (str): The timestamp of this worker's last update.
     """
+
     name: Mapped[str]
     last_ip: Mapped[str]
     version: Mapped[str]
@@ -28,6 +29,7 @@ class Worker(Serializable):
     def __iter__(self):
         yield from super().__iter__()
         yield "updated_at", self.updated_at.isoformat()
+
 
 @dataclass
 class MinerWorker(Base, Worker):
@@ -39,9 +41,11 @@ class MinerWorker(Base, Worker):
         client_id (str): The unique identifier for the miner as reported by
             their client.
     """
+
     __tablename__ = "miner_workers"
 
     client_id: Mapped[str] = mapped_column(primary_key=True)
+
 
 @dataclass
 class FriendbotWorker(Base, Worker):
@@ -55,6 +59,7 @@ class FriendbotWorker(Base, Worker):
         friend_code (str): The unique 12-digit friend code associated with this
             friendbot worker.
     """
+
     __tablename__ = "friendbot_workers"
 
     friend_code: Mapped[str] = mapped_column(primary_key=True)

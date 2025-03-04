@@ -1,5 +1,4 @@
 from dataclasses import asdict
-from dataclasses import dataclass
 from dataclasses import fields
 from dataclasses import is_dataclass
 from typing import Type
@@ -18,6 +17,7 @@ class Serializable:
 
 
 T = TypeVar("T")
+
 
 def from_dict(target_class: Type[T], data: dict) -> T:
     """

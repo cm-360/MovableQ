@@ -26,6 +26,7 @@ async def list_jobs():
 
         return [dict(j) for j in jobs]
 
+
 @bp.post("/jobs")
 async def submit_job():
     # Unpack job information from request body
@@ -39,7 +40,7 @@ async def submit_job():
         "created_at": now,
         "updated_at": now,
         "status": JobStatus.submitted,
-        **job_data
+        **job_data,
     }
 
     # Construct appropriate job object

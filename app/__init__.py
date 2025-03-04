@@ -1,10 +1,6 @@
 from quart import Quart
 from hypercorn.middleware import ProxyFixMiddleware
 
-# QR decoding
-from pyzbar.pyzbar import decode as qr_decode
-from PIL import Image
-
 from .api import bp as api_bp
 from .db import db
 

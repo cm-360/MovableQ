@@ -25,12 +25,14 @@ class JobStatus(IntEnum):
         failed (int): Reported as failed by the assigned worker.
         completed (int): Successfully completed.
     """
+
     submitted = 0
     queued = 1
     working = 2
     canceled = 3
     failed = 4
     completed = 5
+
 
 @dataclass
 class Job(Serializable):
@@ -43,6 +45,7 @@ class Job(Serializable):
         updated_at (str): The timestamp when this job was last updated.
         completed_at (str): The timestamp when this job was completed, if any.
     """
+
     created_at: Mapped[str] = mapped_column(DateTime)
     updated_at: Mapped[str] = mapped_column(DateTime)
     completed_at: Mapped[Optional[str]] = mapped_column(DateTime)
@@ -52,19 +55,25 @@ class Job(Serializable):
         yield from super().__iter__()
         yield "created_at", self.created_at.isoformat()
         yield "updated_at", self.updated_at.isoformat()
-        yield "completed_at", (self.completed_at.isoformat() if self.completed_at is not None else None)
+        yield (
+            "completed_at",
+            (self.completed_at.isoformat() if self.completed_at is not None else None),
+        )
+
 
 class ConsoleModel(StrEnum):
     """
     Enumeration of the 3DS console model families.
 
     Attributes:
-        old (str): A console from the original lineup (3DS, 3DSXL, 2DS)
+        old (str): A console from the original lineup (3DS, 3DSXL, 2DS).
         new (str): A console from the "New" lineup with a C-stick and improved
-            hardware (N3DS, N3DSXL, N2DS)
+            hardware (N3DS, N3DSXL, N2DS).
     """
+
     old = "old"
     new = "new"
+
 
 @dataclass
 class MiiLfcsJob(Base, Job):
@@ -78,6 +87,7 @@ class MiiLfcsJob(Base, Job):
         console_model (ConsoleModel): The user's console's model (new/old).
         console_year (int): The manufacturing year of the user's console.
     """
+
     __tablename__ = "mii_lfcs_jobs"
 
     system_id: Mapped[str] = mapped_column(primary_key=True)
@@ -88,6 +98,7 @@ class MiiLfcsJob(Base, Job):
         yield from super().__iter__()
         yield "type", "mii-lfcs"
 
+
 @dataclass
 class MiiLfcsOffsetJob(Base, Job):
     """
@@ -97,6 +108,7 @@ class MiiLfcsOffsetJob(Base, Job):
         system_id (str): The unique system ID of the user's console as a
             hexadecimal string.
     """
+
     __tablename__ = "mii_lfcs_offset_jobs"
 
     system_id: Mapped[str] = mapped_column(
@@ -110,11 +122,13 @@ class MiiLfcsOffsetJob(Base, Job):
         yield from super().__iter__()
         yield "type", "mii-lfcs-offset"
 
+
 @dataclass
 class FcLfcsJob(Base, Job):
     """
     TODO
     """
+
     __tablename__ = "fc_lfcs_jobs"
 
     friend_code: Mapped[str] = mapped_column(primary_key=True)
@@ -122,6 +136,7 @@ class FcLfcsJob(Base, Job):
     def __iter__(self):
         yield from super().__iter__()
         yield "type", "fc-lfcs"
+
 
 @dataclass
 class MsedJob(Base, Job):
@@ -137,6 +152,7 @@ class MsedJob(Base, Job):
         assignee (Optional[int]): The client ID of the worker assigned to this
             job, if any.
     """
+
     __tablename__ = "msed_jobs"
 
     id0: Mapped[str] = mapped_column(primary_key=True)
