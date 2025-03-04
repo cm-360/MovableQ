@@ -51,8 +51,8 @@ class Job(Serializable):
     def __iter__(self):
         yield from super().__iter__()
         yield "created_at", self.created_at.isoformat()
-        yield "updated_at", self.created_at.isoformat()
-        yield "completed_at", self.created_at.isoformat()
+        yield "updated_at", self.updated_at.isoformat()
+        yield "completed_at", (self.completed_at.isoformat() if self.completed_at is not None else None)
 
 class ConsoleModel(StrEnum):
     """
