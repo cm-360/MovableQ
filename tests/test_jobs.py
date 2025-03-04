@@ -2,10 +2,10 @@ import pytest
 
 
 @pytest.mark.asyncio
-async def test_msed_job(client):
+async def test_create_msed_job(client):
     id0 = "969dbbb25e8f636c391ed29432e2af53"
 
-    # Create msed job
+    # Create new msed job
     response = await client.post(
         "/api/jobs",
         json={
@@ -17,8 +17,22 @@ async def test_msed_job(client):
     )
     assert response.status_code == 200
 
-    data = await response.get_json()
-    assert data["id0"] == id0
+    def validate_job_data(data: dict):
+        assert data["type"] == "msed"
+        assert data["id0"] == id0
+        assert data["lfcs"] == None
+        assert data["assignee"] == None
+        assert data["status"] == 0
 
+    # Validate job creation response
+    job_data = await response.get_json()
+    validate_job_data(job_data)
+
+    # Check job list
     response = await client.get("/api/jobs")
     assert response.status_code == 200
+
+    # Validate job list response
+    jobs = await response.get_json()
+    assert len(jobs) == 1
+    validate_job_data(jobs[0])
