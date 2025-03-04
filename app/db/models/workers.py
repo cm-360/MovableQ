@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+from sqlalchemy import DateTime
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 
@@ -21,7 +22,7 @@ class Worker:
     name: Mapped[str]
     last_ip: Mapped[str]
     version: Mapped[str]
-    updated_at: Mapped[str]
+    updated_at: Mapped[str] = mapped_column(DateTime)
 
 @dataclass
 class MinerWorker(Base, Worker):

@@ -1,7 +1,20 @@
+from dataclasses import asdict
+from dataclasses import dataclass
 from dataclasses import fields
 from dataclasses import is_dataclass
 from typing import Type
 from typing import TypeVar
+
+
+class Serializable:
+    """
+    Helper class to make serializing dataclasses as dictionaries more easily
+    customizable.
+    """
+
+    def __iter__(self):
+        for k, v in asdict(self).items():
+            yield k, v
 
 
 T = TypeVar("T")

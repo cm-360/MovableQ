@@ -1,16 +1,19 @@
 from dataclasses import dataclass
-from enum import Enum
+from enum import IntEnum
+from enum import StrEnum
 from typing import Optional
 
+from sqlalchemy import DateTime
 from sqlalchemy import ForeignKey
 from sqlalchemy import Enum as SqlEnum
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 
 from . import Base
+from ..utils import Serializable
 
 
-class JobStatus(Enum):
+class JobStatus(IntEnum):
     """
     Enumeration representing the possible statuses of a job.
 
@@ -30,7 +33,7 @@ class JobStatus(Enum):
     completed = 5
 
 @dataclass
-class Job:
+class Job(Serializable):
     """
     Represents a generic job with its status and timestamps.
 
@@ -40,12 +43,18 @@ class Job:
         updated_at (str): The timestamp when this job was last updated.
         completed_at (str): The timestamp when this job was completed, if any.
     """
-    created_at: Mapped[str]
-    updated_at: Mapped[str]
-    completed_at: Mapped[Optional[str]]
+    created_at: Mapped[str] = mapped_column(DateTime)
+    updated_at: Mapped[str] = mapped_column(DateTime)
+    completed_at: Mapped[Optional[str]] = mapped_column(DateTime)
     status: Mapped[JobStatus] = mapped_column(SqlEnum(JobStatus))
 
-class ConsoleModel(Enum):
+    def __iter__(self):
+        yield from super().__iter__()
+        yield "created_at", self.created_at.isoformat()
+        yield "updated_at", self.created_at.isoformat()
+        yield "completed_at", self.created_at.isoformat()
+
+class ConsoleModel(StrEnum):
     """
     Enumeration of the 3DS console model families.
 
@@ -75,6 +84,10 @@ class MiiLfcsJob(Base, Job):
     console_model: Mapped[ConsoleModel] = mapped_column(SqlEnum(ConsoleModel))
     console_year: Mapped[int]
 
+    def __iter__(self):
+        yield from super().__iter__()
+        yield "type", "mii-lfcs"
+
 @dataclass
 class MiiLfcsOffsetJob(Base, Job):
     """
@@ -93,6 +106,10 @@ class MiiLfcsOffsetJob(Base, Job):
     offset: Mapped[int] = mapped_column(primary_key=True)
     index: Mapped[int] = mapped_column(primary_key=True)
 
+    def __iter__(self):
+        yield from super().__iter__()
+        yield "type", "mii-lfcs-offset"
+
 @dataclass
 class FcLfcsJob(Base, Job):
     """
@@ -101,6 +118,10 @@ class FcLfcsJob(Base, Job):
     __tablename__ = "fc_lfcs_jobs"
 
     friend_code: Mapped[str] = mapped_column(primary_key=True)
+
+    def __iter__(self):
+        yield from super().__iter__()
+        yield "type", "fc-lfcs"
 
 @dataclass
 class MsedJob(Base, Job):
@@ -123,3 +144,7 @@ class MsedJob(Base, Job):
     assignee: Mapped[Optional[int]] = mapped_column(
         ForeignKey("miner_workers.client_id")
     )
+
+    def __iter__(self):
+        yield from super().__iter__()
+        yield "type", "msed"
