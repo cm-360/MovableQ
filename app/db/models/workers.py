@@ -5,10 +5,11 @@ from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 
 from . import Base
+from ..utils import Serializable
 
 
 @dataclass
-class Worker:
+class Worker(Serializable):
     """
     Parent class representing the common attributes shared between different
     worker types.
@@ -23,6 +24,10 @@ class Worker:
     last_ip: Mapped[str]
     version: Mapped[str]
     updated_at: Mapped[str] = mapped_column(DateTime)
+
+    def __iter__(self):
+        yield from super().__iter__()
+        yield "updated_at", self.updated_at.isoformat()
 
 @dataclass
 class MinerWorker(Base, Worker):
