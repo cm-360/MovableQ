@@ -1,0 +1,71 @@
+import hashlib
+import re
+import struct
+
+
+id0_pattern = re.compile(
+    r"(?![0-9a-fA-F]{4}(01|00)[0-9a-fA-F]{18}00[0-9a-fA-F]{6})[0-9a-fA-F]{32}"
+)
+
+system_id_pattern = re.compile(r"[0-9a-fA-F]{16}")
+
+
+def is_valid_id0(value: str) -> bool:
+    return bool(id0_pattern.fullmatch(value))
+
+
+def is_valid_system_id(value: str) -> bool:
+    value = value.split("-")[0]
+    return bool(system_id_pattern.fullmatch(value))
+
+
+# Modified from verify_3ds_fc @ friendcode.py by nh-server
+# https://github.com/nh-server/Kurisu/blob/main/cogs/friendcode.py#L28-L37
+def is_valid_friend_code(value: str) -> bool:
+    try:
+        fc = int(value)
+    except ValueError:
+        return False
+    if fc > 0x7FFFFFFFFF:
+        return False
+    principal_id = fc & 0xFFFFFFFF
+    checksum = (fc & 0xFF00000000) >> 32
+    return hashlib.sha1(struct.pack("<L", principal_id)).digest()[0] >> 1 == checksum
+
+
+# Used during system id -> lfcs jobs
+def is_valid_lfcs(lfcs: bytes) -> bool:
+    # shorter than 5 bytes
+    if len(lfcs) < 5:
+        return False
+    # first 4 bytes are 0
+    if b"\0\0\0\0" in lfcs[:4]:
+        return False
+    # if result[4:5] != b"\x00" && result[4:5] != b"\x02":
+    #    return False
+    return True
+
+
+# Used during lfcs -> msed jobs
+def validate_movable(msed: bytes, id0: str) -> bool:
+    if len(msed) == 320:
+        # full msed file
+        return validate_keyy(msed[0x110:0x120], id0)
+    elif len(msed) == 16:
+        # keyy only
+        return validate_keyy(msed, id0)
+    else:
+        return False
+
+
+# Modified from id0convert.py by zoogie
+# https://github.com/zoogie/seedminer_toolbox/blob/master/id0convert.py#L4-L8
+def validate_keyy(keyy: bytes, id0: str) -> bool:
+    keyy_sha256 = hashlib.sha256(keyy).digest()[:0x10]
+    keyy_id0 = (
+        keyy_sha256[3::-1]
+        + keyy_sha256[7:3:-1]
+        + keyy_sha256[11:7:-1]
+        + keyy_sha256[15:11:-1]
+    ).hex()
+    return keyy_id0 == id0
