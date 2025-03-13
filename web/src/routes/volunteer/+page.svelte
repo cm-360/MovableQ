@@ -1,0 +1,23 @@
+<script>
+	import { SITE_TITLE } from "$lib/constants";
+</script>
+
+<div class="card">
+	<h4 class="card-header">Mine for {SITE_TITLE}</h4>
+	<div class="card-body">
+		<p class="card-text">
+			{SITE_TITLE} is made possible by volunteers with powerful GPUs who are willing to offer computing
+			time to the service. If you are interested in mining, download the
+			<a href="/get_mining_client">mining script</a>, and follow the
+			<a href="https://github.com/cm-360/MovableQ#client-setup-miner">client setup instructions</a> on
+			GitHub. Please do not run the client script if you only have integrated graphics, as it will greatly
+			slow down the mining process for some users.
+		</p>
+		<p class="alert alert-warning card-text" role="alert">
+			<b>Note</b>: Mining works best on Windows systems with a powerful dedicated GPU. While mining
+			on other systems is possible, your mileage may vary. Mac users might find their system is not
+			powerful enough, and Linux users might run into driver/compatibility issues (especially with
+			bfCL).
+		</p>
+	</div>
+</div>

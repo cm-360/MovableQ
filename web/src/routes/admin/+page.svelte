@@ -1,0 +1,138 @@
+<!-- admin.js -->
+
+<div class="card">
+	<div class="card-header">
+		<ul class="nav nav-tabs card-header-tabs" role="tablist">
+			<li class="nav-item">
+				<button
+					class="nav-link active"
+					id="jobs-tab"
+					data-bs-toggle="tab"
+					data-bs-target="#jobs-tab-pane"
+					type="button"
+					role="tab"
+					aria-controls="jobs-tab-pane"
+					aria-selected="true">Jobs</button
+				>
+			</li>
+			<li class="nav-item">
+				<button
+					class="nav-link"
+					id="miners-tab"
+					data-bs-toggle="tab"
+					data-bs-target="#miners-tab-pane"
+					type="button"
+					role="tab"
+					aria-controls="miners-tab-pane"
+					aria-selected="false">Miners</button
+				>
+			</li>
+			<li class="nav-item">
+				<button
+					class="nav-link"
+					id="friendbots-tab"
+					data-bs-toggle="tab"
+					data-bs-target="#friendbots-tab-pane"
+					type="button"
+					role="tab"
+					aria-controls="friendbots-tab-pane"
+					aria-selected="false">Friendbots</button
+				>
+			</li>
+			<li class="nav-item">
+				<span class="nav-link disabled">
+					<span class="d-none d-md-inline">Checked: </span>
+					<span id="refreshTablesTime"></span>
+				</span>
+			</li>
+			<li class="nav-item ms-auto">
+				<button type="button" class="btn btn-sm btn-primary" id="refreshTablesButton">
+					<i class="fa-solid fa-arrows-rotate"></i>
+					<span class="d-none d-md-inline">Refresh</span>
+				</button>
+			</li>
+		</ul>
+	</div>
+	<div class="card-body tab-content">
+		<div
+			class="tab-pane fade show active"
+			id="jobs-tab-pane"
+			role="tabpanel"
+			aria-labelledby="jobs-tab"
+			tabindex="0"
+		>
+			<input type="text" placeholder="Filter..." class="form-control mb-2" id="jobFilter" />
+			<div class="table-responsive">
+				<table class="table table-hover">
+					<thead>
+						<tr>
+							<th>Key</th>
+							<th>Type</th>
+							<th>Status</th>
+							<th>Started</th>
+							<th>Updated</th>
+							<th>Assignee</th>
+							<th>Actions</th>
+						</tr>
+					</thead>
+					<tbody id="jobsTableBody"> </tbody>
+				</table>
+			</div>
+			<button
+				type="button"
+				class="btn btn-link btn-sm p-0"
+				data-bs-toggle="collapse"
+				data-bs-target="#jobQueueCollpase"
+				aria-expanded="false"
+				aria-controls="jobQueueCollpase">Show/hide job queue</button
+			>
+			<div class="collapse" id="jobQueueCollpase">
+				<div class="card mt-3">
+					<pre class="m-2" id="jobQueue"></pre>
+				</div>
+			</div>
+		</div>
+		<div
+			class="tab-pane fade"
+			id="miners-tab-pane"
+			role="tabpanel"
+			aria-labelledby="miners-tab"
+			tabindex="0"
+		>
+			<div class="table-responsive">
+				<table class="table table-hover">
+					<thead>
+						<tr>
+							<th>Name</th>
+							<th>IP</th>
+							<th>Version</th>
+							<th>Last seen</th>
+						</tr>
+					</thead>
+					<tbody id="minersTableBody"> </tbody>
+				</table>
+			</div>
+		</div>
+		<div
+			class="tab-pane fade"
+			id="friendbots-tab-pane"
+			role="tabpanel"
+			aria-labelledby="friendbots-tab"
+			tabindex="0"
+		>
+			<div class="table-responsive">
+				<table class="table table-hover">
+					<thead>
+						<tr>
+							<th>Name</th>
+							<th>IP</th>
+							<th>Version</th>
+							<th>Last seen</th>
+						</tr>
+					</thead>
+					<tbody id="friendbotsTableBody"> </tbody>
+				</table>
+			</div>
+		</div>
+	</div>
+</div>
