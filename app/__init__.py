@@ -8,7 +8,6 @@ from .db import db
 def create_app() -> Quart:
     app = Quart(__name__)
     app.asgi_app = ProxyFixMiddleware(app.asgi_app, mode="legacy", trusted_hops=1)
-    app.config["TEMPLATES_AUTO_RELOAD"] = True
 
     app.register_blueprint(api_bp, url_prefix="/api")
 

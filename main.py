@@ -10,11 +10,13 @@ from app import create_app
 def try_load_dotenv() -> None:
     try:
         from dotenv import load_dotenv
+
         load_dotenv()
-    except:
+    except ImportError:
         pass
 
-if __name__ == "__main__":
+
+def main() -> None:
     try_load_dotenv()
 
     parser = argparse.ArgumentParser()
@@ -27,9 +29,14 @@ if __name__ == "__main__":
     app = create_app()
 
     if args.dev:
+        app.config["TEMPLATES_AUTO_RELOAD"] = True
         app.run(host=host, port=port, debug=True)
     else:
         # Serve with Hypercorn ASGI server
         config = Config()
         config.bind = [f"{host}:{port}"]
         asyncio.run(serve(app, config))
+
+
+if __name__ == "__main__":
+    main()
