@@ -3,8 +3,6 @@ from datetime import timezone
 
 from quart import request
 
-from sqlalchemy import select
-
 from . import bp
 from .utils import api_error
 from ..db import db
@@ -12,18 +10,15 @@ from ..db.models.jobs import FcLfcsJob
 from ..db.models.jobs import MiiLfcsJob
 from ..db.models.jobs import MsedJob
 from ..db.models.jobs import JobStatus
+from ..db.queries.jobs import get_all_jobs
+from ..db.queries.jobs import get_job_by_id
 from ..db.utils import from_dict
 
 
 @bp.get("/jobs")
 async def list_jobs():
     with db.bind.Session() as session:
-        jobs = [
-            *session.scalars(select(FcLfcsJob)).all(),
-            *session.scalars(select(MiiLfcsJob)).all(),
-            *session.scalars(select(MsedJob)).all(),
-        ]
-
+        jobs = get_all_jobs(session)
         return [dict(j) for j in jobs]
 
 
@@ -60,3 +55,10 @@ async def submit_job():
             session.flush()
 
     return dict(job)
+
+
+@bp.get("/jobs/<job_id>")
+async def inspect_job(job_id: str):
+    with db.bind.Session() as session:
+        job = get_job_by_id(session, job_id)
+        return dict(job)
