@@ -5,8 +5,6 @@ __pycache__/
 
 # Environment
 .venv/
-.env
-movableq.env
 
 # Unit testing / coverage
 .pytest_cache/
