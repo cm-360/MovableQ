@@ -33,18 +33,18 @@ def read_mii_qr(mii_qr: bytes) -> bytes | None:
 
 
 def decrypt_mii_qr_data(encrypted: bytes, nk31: bytes) -> bytes:
-    """Decrypts the data extracted from Mii QR data using the slot0x31KeyN.
+    """Decrypts the data extracted from Mii QR data using the `slot0x31KeyN`.
 
     Args:
         encrypted (bytes): The encrypted Mii QR data. Must be 0x70 bytes.
-        nk31 (bytes): The AES slot0x31KeyN required for decryption.
+        nk31 (bytes): The AES `slot0x31KeyN` required for decryption.
 
     Returns:
         bytes: The decrypted portion of the Mii QR data.
 
     Raises:
         ValueError: If the encrypted data has an incorrect length.
-        ValueError: If the slot0x31KeyN (nk31) is not provided.
+        ValueError: If the `slot0x31KeyN` (nk31) is not provided.
 
     Note:
         - The decryption logic is based on

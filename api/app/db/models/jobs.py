@@ -166,7 +166,8 @@ class MsedJob(Base, Job):
 
     Note:
         For more information about KeyY and the `movable.sed` file, refer to
-        https://wiki.hacks.guide/wiki/3DS:System_files and
+        https://wiki.hacks.guide/wiki/3DS:System_files,
+        https://zoogie.github.io/web/34%E2%85%95c3, and
         https://www.3dbrew.org/wiki/Nand/private/movable.sed.
     """
 
