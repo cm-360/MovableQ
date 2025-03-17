@@ -8,9 +8,13 @@ from sqlalchemy import ForeignKey
 from sqlalchemy import Enum as SqlEnum
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
+from sqlalchemy.orm import validates
 
 from . import Base
 from ..utils import Serializable
+from ...utils.validators import is_valid_id0
+from ...utils.validators import is_valid_system_id
+from ...utils.validators import is_valid_friend_code
 
 
 class JobStatus(IntEnum):
@@ -126,6 +130,12 @@ class MiiLfcsOffsetJob(Base, Job):
     offset: Mapped[int] = mapped_column(primary_key=True)
     index: Mapped[int] = mapped_column(primary_key=True)
 
+    @validates("system_id")
+    def validate_id0(self, key, system_id):
+        if not is_valid_system_id(system_id):
+            raise ValueError("Invalid system ID")
+        return system_id
+
     def __iter__(self):
         yield from super().__iter__()
         yield "type", "mii-lfcs-offset"
@@ -142,6 +152,12 @@ class FcLfcsJob(Base, Job):
     __tablename__ = "fc_lfcs_jobs"
 
     friend_code: Mapped[str] = mapped_column(primary_key=True)
+
+    @validates("friend_code")
+    def validate_id0(self, key, friend_code):
+        if not is_valid_friend_code(friend_code):
+            raise ValueError("Invalid friend code")
+        return friend_code
 
     def __iter__(self):
         yield from super().__iter__()
@@ -178,6 +194,12 @@ class MsedJob(Base, Job):
     assignee: Mapped[Optional[int]] = mapped_column(
         ForeignKey("miner_workers.client_id")
     )
+
+    @validates("id0")
+    def validate_id0(self, key, id0):
+        if not is_valid_id0(id0):
+            raise ValueError("Invalid ID0")
+        return id0
 
     def __iter__(self):
         yield from super().__iter__()
