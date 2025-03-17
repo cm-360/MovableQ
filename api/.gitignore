@@ -4,6 +4,7 @@ __pycache__/
 *$py.class
 
 # Environment
+*.env
 .venv/
 
 # Unit testing / coverage

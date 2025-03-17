@@ -4,6 +4,14 @@ from shutil import copytree
 from pytest import fixture
 
 
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv()
+except ImportError:
+    pass
+
+
 @fixture
 def datadir(tmpdir, request):
     """

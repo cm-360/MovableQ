@@ -10,8 +10,7 @@ test_id0 = "969dbbb25e8f636c391ed29432e2af53"
 fake_id0 = "fef0fef0fef0fef0fef0fef0fef0fef0"
 zero_id0 = "00000000000000000000000000000000"
 
-# TODO: Use real system id
-test_system_id = "0000000000000000"
+test_system_id = "10a76a225904ff99"
 
 test_friend_code = "044770074962"
 fake_friend_code = "123456789012"
