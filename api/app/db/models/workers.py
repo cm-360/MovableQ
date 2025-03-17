@@ -44,13 +44,16 @@ class MinerWorker(Base, Worker):
 
     client_id: Mapped[str] = mapped_column(primary_key=True)
 
+    def __iter__(self):
+        yield from super().__iter__()
+        yield "type", "miner"
+
 
 @dataclass
 class FriendbotWorker(Base, Worker):
     """A worker running the friendbot software.
 
-    These workers are capable of automatically obtaining LFCSes from
-    friend requests.
+    These workers are capable of obtaining LFCSes from friend requests.
 
     Attributes:
         friend_code (str): This worker's unique 12-digit friend code.
@@ -63,3 +66,7 @@ class FriendbotWorker(Base, Worker):
     __tablename__ = "friendbot_workers"
 
     friend_code: Mapped[str] = mapped_column(primary_key=True)
+
+    def __iter__(self):
+        yield from super().__iter__()
+        yield "type", "friendbot"
