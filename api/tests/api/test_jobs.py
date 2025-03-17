@@ -8,7 +8,7 @@ test_id0 = "969dbbb25e8f636c391ed29432e2af53"
 async def test_create_msed_job(client):
     # Create new msed job
     response = await client.post(
-        "/api/jobs",
+        "/api/jobs/submit",
         json={
             "type": "msed",
             "job": {
@@ -30,10 +30,14 @@ async def test_create_msed_job(client):
     validate_job_data(job_data)
 
     # Check job list
-    response = await client.get("/api/jobs")
+    response = await client.get("/api/jobs/list")
     assert response.status_code == 200
 
     # Validate job list response
     jobs = await response.get_json()
     assert len(jobs) == 1
     validate_job_data(jobs[0])
+
+
+# TODO: Test get job details
+# TODO: Test release job

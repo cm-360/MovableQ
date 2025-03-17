@@ -15,14 +15,14 @@ from ..db.queries.jobs import get_job_by_id
 from ..db.utils import from_dict
 
 
-@bp.get("/jobs")
+@bp.get("/jobs/list")
 async def list_jobs():
     with db.bind.Session() as session:
         jobs = get_all_jobs(session)
         return [dict(j) for j in jobs]
 
 
-@bp.post("/jobs")
+@bp.post("/jobs/submit")
 async def submit_job():
     # Unpack job information from request body
     data = await request.get_json()
@@ -49,16 +49,20 @@ async def submit_job():
         return api_error(f"Invalid job type: {job_type}", 400)
 
     # Add job to database
-    with db.bind.Session() as session:
-        with session.begin():
-            session.add(job)
-            session.flush()
+    with db.bind.Session() as session, session.begin():
+        session.add(job)
+        session.flush()
 
     return dict(job)
 
 
-@bp.get("/jobs/<job_id>")
-async def inspect_job(job_id: str):
+@bp.get("/jobs/<job_id>/details")
+async def get_job_details(job_id: str):
     with db.bind.Session() as session:
         job = get_job_by_id(session, job_id)
         return dict(job)
+
+
+@bp.get("/jobs/<job_id>/release")
+async def release_job(job_id: str):
+    pass
