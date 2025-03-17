@@ -6,10 +6,7 @@ from typing import TypeVar
 
 
 class Serializable:
-    """
-    Helper class to make serializing dataclasses as dictionaries more easily
-    customizable.
-    """
+    """Makes serializing dataclasses as dictionaries more flexible."""
 
     def __iter__(self):
         for k, v in asdict(self).items():
@@ -20,10 +17,7 @@ T = TypeVar("T")
 
 
 def from_dict(target_class: Type[T], data: dict) -> T:
-    """
-    Unpacks a dictionary into a new instance of the specified dataclass.
-
-    https://medium.com/@emirhalici/unlocking-the-power-of-python-data-classes-w-json-serialization-3e5a24d98e84
+    """Unpacks a dictionary into a new instance of the specified dataclass.
 
     Args:
         target_class (Type[T]): The dataclass type to instantiate.
@@ -34,6 +28,10 @@ def from_dict(target_class: Type[T], data: dict) -> T:
 
     Raises:
         ValueError: If the target class is not a dataclass.
+
+    Note:
+        The functionality is based on
+        https://medium.com/@emirhalici/unlocking-the-power-of-python-data-classes-w-json-serialization-3e5a24d98e84.
     """
     if not is_dataclass(target_class):
         raise ValueError(f"{target_class.__name__} is not a dataclass")

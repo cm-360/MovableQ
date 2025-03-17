@@ -14,8 +14,7 @@ from ..utils import Serializable
 
 
 class JobStatus(IntEnum):
-    """
-    Enumeration representing the possible statuses of a job.
+    """Possible job statuses.
 
     Attributes:
         submitted (int): Submitted but not yet in the queue.
@@ -36,8 +35,7 @@ class JobStatus(IntEnum):
 
 @dataclass
 class Job(Serializable):
-    """
-    Represents a generic job with its status and timestamps.
+    """A generic job with a status and timestamps.
 
     Attributes:
         status (JobStatus): The current status of this job.
@@ -62,8 +60,7 @@ class Job(Serializable):
 
 
 class ConsoleModel(StrEnum):
-    """
-    Enumeration of the 3DS console model families.
+    """The 3DS console model families.
 
     Attributes:
         old (str): A console from the original lineup (3DS, 3DSXL, 2DS).
@@ -77,15 +74,21 @@ class ConsoleModel(StrEnum):
 
 @dataclass
 class MiiLfcsJob(Base, Job):
-    """
-    Represents a bruteforcing job to obtain a LocalFriendCodeSeed from the
-    system ID in an exported Mii QR code.
+    """A bruteforcing job for obtaining a LFCS from a system ID.
+
+    These jobs use the system ID contained in an exported Mii QR code to
+    bruteforce a console's unique LocalFriendCodeSeed.
 
     Attributes:
         system_id (str): The unique system ID of the user's console as a
             hexadecimal string.
         console_model (ConsoleModel): The user's console's model (new/old).
         console_year (int): The manufacturing year of the user's console.
+
+    Note:
+        For more information on the LFCS, refer to
+        https://wiki.hacks.guide/wiki/3DS:System_files and
+        https://3dbrew.org/wiki/Nandrw/sys/LocalFriendCodeSeed_B.
     """
 
     __tablename__ = "mii_lfcs_jobs"
@@ -101,12 +104,17 @@ class MiiLfcsJob(Base, Job):
 
 @dataclass
 class MiiLfcsOffsetJob(Base, Job):
-    """
-    TODO
+    """A sub-job for bruteforcing a specific LFCS offset for Mii-LFCS jobs.
+
+    These jobs allow more efficient distribution of bruteforce work for
+    Mii-LFCS jobs, as chunking the search space allows multiple miners to work
+    on a job simultaneously.
 
     Attributes:
         system_id (str): The unique system ID of the user's console as a
             hexadecimal string.
+        offset (int): This job's offset into the LFCS search space from
+        index (int): This job's index into the LFCS search space.
     """
 
     __tablename__ = "mii_lfcs_offset_jobs"
@@ -125,8 +133,10 @@ class MiiLfcsOffsetJob(Base, Job):
 
 @dataclass
 class FcLfcsJob(Base, Job):
-    """
-    TODO
+    """A job for obtaining a user's LFCS via an automated friend request.
+
+    Attributes:
+        friend_code (str): The user's unique 12-digit friend code.
     """
 
     __tablename__ = "fc_lfcs_jobs"
@@ -140,9 +150,11 @@ class FcLfcsJob(Base, Job):
 
 @dataclass
 class MsedJob(Base, Job):
-    """
-    Represents a bruteforcing job to obtain a `movable.sed` file from a
-    provided LocalFriendCodeSeed (the part1 file).
+    """A bruteforcing job to obtain a `movable.sed` file from a LFCS.
+
+    These jobs use a console's LocalFriendCodeSeed and ID0 to bruteforce the
+    KeyY encryption key contained in `movable.sed`. The LFCS is also sometimes
+    refered to as a `movable_part1.sed` file.
 
     Attributes:
         id0 (str): The unique ID0 value associated with this job as a
@@ -151,6 +163,11 @@ class MsedJob(Base, Job):
             hexadecimal string, if known.
         assignee (Optional[int]): The client ID of the worker assigned to this
             job, if any.
+
+    Note:
+        For more information about KeyY and the `movable.sed` file, refer to
+        https://wiki.hacks.guide/wiki/3DS:System_files and
+        https://www.3dbrew.org/wiki/Nand/private/movable.sed.
     """
 
     __tablename__ = "msed_jobs"

@@ -10,9 +10,7 @@ from ..utils import Serializable
 
 @dataclass
 class Worker(Serializable):
-    """
-    Parent class representing the common attributes shared between different
-    worker types.
+    """Common attributes shared between different worker types.
 
     Attributes:
         name (str): The name of the worker as reported by their client.
@@ -33,9 +31,9 @@ class Worker(Serializable):
 
 @dataclass
 class MinerWorker(Base, Worker):
-    """
-    Represents a worker running the bfCL mining client script and capable of
-    completing bruteforce jobs.
+    """A worker running the bfCL mining client script.
+
+    These workers are capable of completing bruteforcing jobs.
 
     Attributes:
         client_id (str): The unique identifier for the miner as reported by
@@ -49,15 +47,17 @@ class MinerWorker(Base, Worker):
 
 @dataclass
 class FriendbotWorker(Base, Worker):
-    """
-    Represents a worker running the friendbot software and capable of obtaining
-    LFCSes from friend requests.
+    """A worker running the friendbot software.
 
-    https://github.com/bleck9999/friendbot
+    These workers are capable of automatically obtaining LFCSes from
+    friend requests.
 
     Attributes:
-        friend_code (str): The unique 12-digit friend code associated with this
-            friendbot worker.
+        friend_code (str): This worker's unique 12-digit friend code.
+
+    Note:
+        The friendbot software is available at
+        https://github.com/bleck9999/friendbot.
     """
 
     __tablename__ = "friendbot_workers"
