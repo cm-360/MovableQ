@@ -1,17 +1,18 @@
 import pytest
 
 
+test_id0 = "969dbbb25e8f636c391ed29432e2af53"
+
+
 @pytest.mark.asyncio
 async def test_create_msed_job(client):
-    id0 = "969dbbb25e8f636c391ed29432e2af53"
-
     # Create new msed job
     response = await client.post(
         "/api/jobs",
         json={
             "type": "msed",
             "job": {
-                "id0": id0,
+                "id0": test_id0,
             },
         },
     )
@@ -19,7 +20,7 @@ async def test_create_msed_job(client):
 
     def validate_job_data(data: dict):
         assert data["type"] == "msed"
-        assert data["id0"] == id0
+        assert data["id0"] == test_id0
         assert data["lfcs"] is None
         assert data["assignee"] is None
         assert data["status"] == 0
