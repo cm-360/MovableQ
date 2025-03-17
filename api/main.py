@@ -1,5 +1,6 @@
 import argparse
 import asyncio
+import os
 
 from hypercorn.asyncio import serve
 from hypercorn.config import Config
@@ -23,14 +24,14 @@ def main() -> None:
     parser.add_argument("--dev", action="store_true", help="Run in development mode")
     args = parser.parse_args()
 
-    host = "0.0.0.0"
-    port = 8080
+    host = os.getenv("HOST_ADDR", "0.0.0.0")
+    port = os.getenv("HOST_PORT", "8080")
 
     app = create_app()
 
     if args.dev:
         app.config["TEMPLATES_AUTO_RELOAD"] = True
-        app.run(host=host, port=port, debug=True)
+        app.run(host=host, port=int(port), debug=True)
     else:
         # Serve with Hypercorn ASGI server
         config = Config()

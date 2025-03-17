@@ -51,6 +51,9 @@ def decrypt_mii_qr_data(encrypted: bytes, nk31: bytes) -> bytes:
             https://github.com/zoogie/seedminer/blob/5ceb4cf58f5e429781aecfc6b46a0d59311c0bac/seedminer/seedminer_launcher3.py#L126-L130.
         - For additional details on the Mii QR code format, refer to
             https://www.3dbrew.org/wiki/Mii_Maker#Mii_QR_Code_format.
+        - For instructions on obtaining `slot0x31KeyN`, refer to
+            https://3ds.goombi.fr/convertMii/0x31.html and
+            https://github.com/PabloMK7/citra/tree/master/dist/dumpkeys.
     """
     if 0x70 != len(encrypted):
         raise ValueError("Incorrect Mii QR data length")
