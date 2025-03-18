@@ -13,6 +13,7 @@ from ..db.models.jobs import MsedJob
 from ..db.models.jobs import JobStatus
 from ..db.queries.jobs import get_all_jobs
 from ..db.queries.jobs import get_job_by_id
+from ..db.queries.jobs import get_queued_jobs
 from ..db.utils import from_dict
 
 
@@ -69,17 +70,12 @@ async def submit_job():
     return dict(job)
 
 
-@bp.get("/jobs/request")
+@bp.post("/jobs/request")
 async def request_job():
-    job_types = request.args.get("types")
-    if job_types:
-        job_types = job_types.split(",")
+    job_types = (request.args.get("types") or "").split(",")
 
     with current_app.db.bind.Session() as session:
-        jobs = get_all_jobs(session)
-
-        if job_types:
-            jobs = [j for j in jobs if j.job_type() in job_types]
+        jobs = get_queued_jobs(session, job_types)
 
         return [dict(j) for j in jobs]
 
