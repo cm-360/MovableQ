@@ -127,7 +127,8 @@ class MiiLfcsOffsetJob(Base, Job):
     Attributes:
         system_id (str): The unique system ID of the user's console as a
             hexadecimal string.
-        offset (int): This job's offset into the LFCS search space from
+        offset (int): This job's offset from the starting point in the LFCS
+            search space.
         index (int): This job's index into the LFCS search space.
     """
 
@@ -175,6 +176,8 @@ class MsedJob(Base, Job):
             hexadecimal string, if known.
         assignee (Optional[int]): The client ID of the worker assigned to this
             job, if any.
+        prereq_id (Optional[str]): The job ID of this job's prerequisite, if
+            any. This should be either a system ID or friend code.
 
     Note:
         For more information about KeyY and the `movable.sed` file, refer to
