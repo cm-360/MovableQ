@@ -43,10 +43,10 @@ async def submit_job():
     # Set default job parameters
     now = datetime.now(timezone.utc)
     job_data = {
+        **job_data,
         "created_at": now,
         "updated_at": now,
         "status": JobStatus.submitted,
-        **job_data,
     }
 
     # Construct appropriate job object
