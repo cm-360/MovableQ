@@ -53,6 +53,9 @@ async def submit_job():
     try:
         if "msed" == job_type:
             job = from_dict(MsedJob, job_data)
+
+            if job.lfcs is not None:
+                job.status = JobStatus.queued
         elif "fc-lfcs" == job_type:
             job = from_dict(FcLfcsJob, job_data)
         elif "mii-lfcs" == job_type:
@@ -72,7 +75,8 @@ async def submit_job():
 
 @bp.post("/jobs/request")
 async def request_job():
-    job_types = (request.args.get("types") or "").split(",")
+    job_types = request.args.get("types")
+    job_types = job_types.split(",") if job_types else []
 
     with current_app.db.bind.Session() as session:
         jobs = get_queued_jobs(session, job_types)
