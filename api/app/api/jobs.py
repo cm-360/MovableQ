@@ -18,8 +18,14 @@ from ..db.utils import from_dict
 
 @bp.get("/jobs/list")
 async def list_jobs():
+    job_type = request.args.get("type")
+
     with db.bind.Session() as session:
         jobs = get_all_jobs(session)
+
+        if job_type:
+            jobs = [j for j in jobs if j.job_type() == job_type]
+
         return [dict(j) for j in jobs]
 
 
@@ -61,6 +67,21 @@ async def submit_job():
         session.flush()
 
     return dict(job)
+
+
+@bp.get("/jobs/request")
+async def request_job():
+    job_types = request.args.get("types")
+    if job_types:
+        job_types = job_types.split(",")
+
+    with db.bind.Session() as session:
+        jobs = get_all_jobs(session)
+
+        if job_types:
+            jobs = [j for j in jobs if j.job_type() in job_types]
+
+        return [dict(j) for j in jobs]
 
 
 @bp.get("/jobs/<job_id>/details")

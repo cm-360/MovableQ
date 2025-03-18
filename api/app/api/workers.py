@@ -4,8 +4,6 @@ from . import bp
 from .utils import api_error
 from ..db import db
 from ..db.queries.workers import get_all_workers
-from ..db.queries.workers import get_miner_workers
-from ..db.queries.workers import get_friendbot_workers
 from ..db.queries.workers import get_worker_by_id
 
 
@@ -14,16 +12,10 @@ async def list_workers():
     worker_type = request.args.get("type")
 
     with db.bind.Session() as session:
-        if "miner" == worker_type:
-            workers = get_miner_workers(session)
-        elif "friendbot" == worker_type:
-            workers = get_friendbot_workers(session)
-        elif "" == worker_type:
-            # No filter provided, get all workers
-            workers = get_all_workers(session)
-        else:
-            # Unrecognized worker type
-            return []
+        workers = get_all_workers(session)
+
+        if worker_type:
+            workers = [w for w in workers if w.worker_type() == worker_type]
 
         return [dict(w) for w in workers]
 
