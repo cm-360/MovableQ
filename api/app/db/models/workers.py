@@ -6,6 +6,7 @@ from sqlalchemy.orm import mapped_column
 
 from . import Base
 from ..utils import Serializable
+from ...utils.strings import camel_to_kebab_case
 
 
 @dataclass
@@ -24,9 +25,14 @@ class Worker(Serializable):
     version: Mapped[str]
     updated_at: Mapped[str] = mapped_column(DateTime)
 
+    @classmethod
+    def worker_type(cls) -> str:
+        return camel_to_kebab_case(cls.__name__.removesuffix("Worker"))
+
     def __iter__(self):
         yield from super().__iter__()
         yield "updated_at", self.updated_at.isoformat()
+        yield "type", self.worker_type()
 
 
 @dataclass
@@ -43,10 +49,6 @@ class MinerWorker(Base, Worker):
     __tablename__ = "miner_workers"
 
     client_id: Mapped[str] = mapped_column(primary_key=True)
-
-    def __iter__(self):
-        yield from super().__iter__()
-        yield "type", "miner"
 
 
 @dataclass
@@ -66,7 +68,3 @@ class FriendbotWorker(Base, Worker):
     __tablename__ = "friendbot_workers"
 
     friend_code: Mapped[str] = mapped_column(primary_key=True)
-
-    def __iter__(self):
-        yield from super().__iter__()
-        yield "type", "friendbot"

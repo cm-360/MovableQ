@@ -12,6 +12,7 @@ from sqlalchemy.orm import validates
 
 from . import Base
 from ..utils import Serializable
+from ...utils.strings import camel_to_kebab_case
 from ...utils.validators import is_valid_id0
 from ...utils.validators import is_valid_system_id
 from ...utils.validators import is_valid_friend_code
@@ -53,6 +54,10 @@ class Job(Serializable):
     completed_at: Mapped[Optional[str]] = mapped_column(DateTime)
     status: Mapped[JobStatus] = mapped_column(SqlEnum(JobStatus))
 
+    @classmethod
+    def job_type(cls) -> str:
+        return camel_to_kebab_case(cls.__name__.removesuffix("Job"))
+
     def __iter__(self):
         yield from super().__iter__()
         yield "created_at", self.created_at.isoformat()
@@ -61,6 +66,7 @@ class Job(Serializable):
             "completed_at",
             (self.completed_at.isoformat() if self.completed_at is not None else None),
         )
+        yield "type", self.job_type()
 
 
 class ConsoleModel(StrEnum):
@@ -101,10 +107,6 @@ class MiiLfcsJob(Base, Job):
     console_model: Mapped[ConsoleModel] = mapped_column(SqlEnum(ConsoleModel))
     console_year: Mapped[int]
 
-    def __iter__(self):
-        yield from super().__iter__()
-        yield "type", "mii-lfcs"
-
 
 @dataclass
 class MiiLfcsOffsetJob(Base, Job):
@@ -136,10 +138,6 @@ class MiiLfcsOffsetJob(Base, Job):
             raise ValueError("Invalid system ID")
         return system_id
 
-    def __iter__(self):
-        yield from super().__iter__()
-        yield "type", "mii-lfcs-offset"
-
 
 @dataclass
 class FcLfcsJob(Base, Job):
@@ -158,10 +156,6 @@ class FcLfcsJob(Base, Job):
         if not is_valid_friend_code(friend_code):
             raise ValueError("Invalid friend code")
         return friend_code
-
-    def __iter__(self):
-        yield from super().__iter__()
-        yield "type", "fc-lfcs"
 
 
 @dataclass
@@ -200,7 +194,3 @@ class MsedJob(Base, Job):
         if not is_valid_id0(id0):
             raise ValueError("Invalid ID0")
         return id0
-
-    def __iter__(self):
-        yield from super().__iter__()
-        yield "type", "msed"
