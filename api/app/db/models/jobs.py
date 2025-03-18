@@ -175,7 +175,7 @@ class MsedJob(Base, Job):
             hexadecimal string.
         lfcs (Optional[str]): The LFCS needed to complete this job as a
             hexadecimal string, if known.
-        assignee (Optional[int]): The client ID of the worker assigned to this
+        assignee (Optional[str]): The client ID of the worker assigned to this
             job, if any.
         prereq_id (Optional[str]): The job ID of this job's prerequisite, if
             any. This should be either a system ID or friend code.
@@ -191,7 +191,7 @@ class MsedJob(Base, Job):
 
     id0: Mapped[str] = mapped_column(primary_key=True)
     lfcs: Mapped[Optional[str]]
-    assignee: Mapped[Optional[int]] = mapped_column(
+    assignee: Mapped[Optional[str]] = mapped_column(
         ForeignKey("miner_workers.client_id")
     )
     prereq_id: Mapped[Optional[str]]
