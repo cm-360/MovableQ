@@ -68,6 +68,7 @@ class Job(Serializable):
             "completed_at",
             (self.completed_at.isoformat() if self.completed_at is not None else None),
         )
+        yield "status", self.status.name
         yield "type", self.job_type()
 
 

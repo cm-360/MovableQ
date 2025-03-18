@@ -34,7 +34,7 @@ async def test_create_msed_job(client, submit_job):
         assert data["id0"] == test_id0
         assert data["lfcs"] is None
         assert data["assignee"] is None
-        assert data["status"] == 0
+        assert data["status"] == "submitted"
 
     # Validate job creation response
     job_data = await response.get_json()
