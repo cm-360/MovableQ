@@ -4,7 +4,7 @@ from quart_sqlalchemy.framework import QuartSQLAlchemy
 from .models import Base
 
 
-def create_db(url: str, echo: bool = True) -> QuartSQLAlchemy:
+def create_db(url: str, echo: bool = False) -> QuartSQLAlchemy:
     return QuartSQLAlchemy(
         config=SQLAlchemyConfig(
             model_class=Base,
