@@ -1,8 +1,8 @@
+from quart import current_app
 from quart import request
 
 from . import bp
 from .utils import api_error
-from ..db import db
 from ..db.queries.workers import get_all_workers
 from ..db.queries.workers import get_worker_by_id
 
@@ -11,7 +11,7 @@ from ..db.queries.workers import get_worker_by_id
 async def list_workers():
     worker_type = request.args.get("type")
 
-    with db.bind.Session() as session:
+    with current_app.db.bind.Session() as session:
         workers = get_all_workers(session)
 
         if worker_type:
@@ -22,7 +22,7 @@ async def list_workers():
 
 @bp.get("/workers/<worker_id>/details")
 async def get_worker_details(worker_id: str):
-    with db.bind.Session() as session:
+    with current_app.db.bind.Session() as session:
         worker = get_worker_by_id(session, worker_id)
 
         if worker is None:

@@ -1,12 +1,12 @@
 from datetime import datetime
 from datetime import timezone
 
+from quart import current_app
 from quart import request
 
 from . import bp
 from .utils import api_error
 from .utils import api_exception
-from ..db import db
 from ..db.models.jobs import FcLfcsJob
 from ..db.models.jobs import MiiLfcsJob
 from ..db.models.jobs import MsedJob
@@ -20,7 +20,7 @@ from ..db.utils import from_dict
 async def list_jobs():
     job_type = request.args.get("type")
 
-    with db.bind.Session() as session:
+    with current_app.db.bind.Session() as session:
         jobs = get_all_jobs(session)
 
         if job_type:
@@ -62,7 +62,7 @@ async def submit_job():
         return api_exception(e, 400)
 
     # Add job to database
-    with db.bind.Session() as session, session.begin():
+    with current_app.db.bind.Session() as session, session.begin():
         session.add(job)
         session.flush()
 
@@ -75,7 +75,7 @@ async def request_job():
     if job_types:
         job_types = job_types.split(",")
 
-    with db.bind.Session() as session:
+    with current_app.db.bind.Session() as session:
         jobs = get_all_jobs(session)
 
         if job_types:
@@ -86,7 +86,7 @@ async def request_job():
 
 @bp.get("/jobs/<job_id>/details")
 async def get_job_details(job_id: str):
-    with db.bind.Session() as session:
+    with current_app.db.bind.Session() as session:
         job = get_job_by_id(session, job_id)
 
         if job is None:

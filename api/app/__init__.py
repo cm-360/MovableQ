@@ -2,7 +2,7 @@ from quart import Quart
 from hypercorn.middleware import ProxyFixMiddleware
 
 from .api import bp as api_bp
-from .db import db
+from .db import create_db
 
 
 def create_app() -> Quart:
@@ -11,7 +11,8 @@ def create_app() -> Quart:
 
     app.register_blueprint(api_bp, url_prefix="/api")
 
-    db.init_app(app)
-    db.create_all()
+    app.db = create_db("sqlite:///:memory:", echo=True)
+    app.db.init_app(app)
+    app.db.create_all()
 
     return app
