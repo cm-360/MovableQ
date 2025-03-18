@@ -3,6 +3,7 @@ from pytest import mark
 
 
 api_submit_endpoint = "/api/jobs/submit"
+api_list_endpoint = "/api/jobs/list"
 
 test_id0 = "969dbbb25e8f636c391ed29432e2af53"
 zero_id0 = "00000000000000000000000000000000"
@@ -83,6 +84,37 @@ async def test_create_job_invalid_data(client, submit_job):
     # Invalid ID0
     response = await submit_job("msed", {"id0": zero_id0})
     assert response.status_code == 400
+
+
+@mark.asyncio
+async def test_list_jobs(client, submit_job):
+    # Get all jobs
+    response = await client.get(api_list_endpoint)
+    assert response.status_code == 200
+    data = await response.get_json()
+    # TODO: Fix failure due to incorrect DB lifecycle
+    assert len(data) == 0
+
+    # Submit one msed job
+    await submit_job("msed", {"id0": test_id0})
+
+    # Get all jobs
+    response = await client.get(api_list_endpoint)
+    assert response.status_code == 200
+    data = await response.get_json()
+    assert len(data) == 1
+
+    # Get msed jobs
+    response = await client.get(f"{api_list_endpoint}?type=msed")
+    assert response.status_code == 200
+    data = await response.get_json()
+    assert len(data) == 1
+
+    # Get Mii LFCS jobs
+    response = await client.get(f"{api_list_endpoint}?type=mii-lfcs")
+    assert response.status_code == 200
+    data = await response.get_json()
+    assert len(data) == 0
 
 
 # TODO: Test get job details
