@@ -1,3 +1,4 @@
+from binascii import unhexlify
 from dataclasses import dataclass
 from enum import IntEnum
 from enum import StrEnum
@@ -16,6 +17,7 @@ from ...utils.strings import camel_to_kebab_case
 from ...utils.validators import is_valid_id0
 from ...utils.validators import is_valid_system_id
 from ...utils.validators import is_valid_friend_code
+from ...utils.validators import is_valid_lfcs
 
 
 class JobStatus(IntEnum):
@@ -107,6 +109,12 @@ class MiiLfcsJob(Base, Job):
     console_model: Mapped[ConsoleModel] = mapped_column(SqlEnum(ConsoleModel))
     console_year: Mapped[int]
 
+    @validates("system_id")
+    def validate_system_id(self, key: str, system_id: str):
+        if not is_valid_system_id(system_id):
+            raise ValueError("Invalid system ID")
+        return system_id
+
 
 @dataclass
 class MiiLfcsOffsetJob(Base, Job):
@@ -132,12 +140,6 @@ class MiiLfcsOffsetJob(Base, Job):
     offset: Mapped[int] = mapped_column(primary_key=True)
     index: Mapped[int] = mapped_column(primary_key=True)
 
-    @validates("system_id")
-    def validate_id0(self, key, system_id):
-        if not is_valid_system_id(system_id):
-            raise ValueError("Invalid system ID")
-        return system_id
-
 
 @dataclass
 class FcLfcsJob(Base, Job):
@@ -152,7 +154,7 @@ class FcLfcsJob(Base, Job):
     friend_code: Mapped[str] = mapped_column(primary_key=True)
 
     @validates("friend_code")
-    def validate_id0(self, key, friend_code):
+    def validate_friend_code(self, key: str, friend_code: str):
         if not is_valid_friend_code(friend_code):
             raise ValueError("Invalid friend code")
         return friend_code
@@ -188,9 +190,28 @@ class MsedJob(Base, Job):
     assignee: Mapped[Optional[int]] = mapped_column(
         ForeignKey("miner_workers.client_id")
     )
+    prereq_id: Mapped[Optional[str]]
 
     @validates("id0")
-    def validate_id0(self, key, id0):
+    def validate_id0(self, key: str, id0: str):
         if not is_valid_id0(id0):
             raise ValueError("Invalid ID0")
         return id0
+
+    @validates("lfcs")
+    def validate_lfcs(self, key: str, lfcs: Optional[str]):
+        if lfcs is not None and not is_valid_lfcs(unhexlify(lfcs)):
+            raise ValueError("Invalid LFCS")
+        return lfcs
+
+    @validates("prereq_id")
+    def validate_prereq_id(self, key: str, prereq_id: Optional[str]):
+        if prereq_id is not None:
+            if is_valid_system_id(prereq_id):
+                return prereq_id
+            if is_valid_friend_code(prereq_id):
+                return prereq_id
+
+            raise ValueError("Invalid prerequisite ID")
+
+        return prereq_id
