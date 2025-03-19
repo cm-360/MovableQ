@@ -1,18 +1,21 @@
 from datetime import datetime
 from datetime import timezone
 
+from quart import Blueprint
 from quart import current_app
 from quart import request
 
 from app.api.utils import api_error
+from app.api.utils import register_error_handlers
 from app.db.queries.workers import create_or_update_worker
 from app.db.queries.workers import get_all_workers
 from app.db.queries.workers import get_worker_by_id
 
-from . import bp
+bp = Blueprint("API: Workers", __name__)
+register_error_handlers(bp)
 
 
-@bp.get("/workers/list")
+@bp.get("/list")
 async def list_workers():
     worker_type = request.args.get("type")
 
@@ -25,7 +28,7 @@ async def list_workers():
         return [dict(w) for w in workers]
 
 
-@bp.post("/workers/register")
+@bp.post("/register")
 async def register_worker():
     # Unpack worker information from request body
     try:
@@ -48,7 +51,7 @@ async def register_worker():
         return dict(worker)
 
 
-@bp.get("/workers/<worker_id>/details")
+@bp.get("/<worker_id>/details")
 async def get_worker_details(worker_id: str):
     with current_app.db.bind.Session() as session:
         worker = get_worker_by_id(session, worker_id)

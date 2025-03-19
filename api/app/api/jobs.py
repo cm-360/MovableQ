@@ -1,17 +1,20 @@
+from quart import Blueprint
 from quart import current_app
 from quart import request
 
 from app.api.utils import api_error
 from app.api.utils import api_exception
+from app.api.utils import register_error_handlers
 from app.db.queries.jobs import create_job
 from app.db.queries.jobs import get_all_jobs
 from app.db.queries.jobs import get_job_by_id
 from app.db.queries.jobs import get_queued_jobs
 
-from . import bp
+bp = Blueprint("API: Jobs", __name__)
+register_error_handlers(bp)
 
 
-@bp.get("/jobs/list")
+@bp.get("/list")
 async def list_jobs():
     job_type = request.args.get("type")
 
@@ -24,7 +27,7 @@ async def list_jobs():
         return [dict(j) for j in jobs]
 
 
-@bp.post("/jobs/submit")
+@bp.post("/submit")
 async def submit_job():
     # Unpack job information from request body
     try:
@@ -44,7 +47,7 @@ async def submit_job():
         return api_exception(e, 400)
 
 
-@bp.post("/jobs/request")
+@bp.post("/request")
 async def request_job():
     job_types = request.args.get("types")
     job_types = job_types.split(",") if job_types else []
@@ -57,7 +60,7 @@ async def request_job():
         return dict(job)
 
 
-@bp.get("/jobs/<job_id>/details")
+@bp.get("/<job_id>/details")
 async def get_job_details(job_id: str):
     with current_app.db.bind.Session() as session:
         job = get_job_by_id(session, job_id)
@@ -68,6 +71,6 @@ async def get_job_details(job_id: str):
         return dict(job)
 
 
-@bp.get("/jobs/<job_id>/release")
+@bp.get("/<job_id>/release")
 async def release_job(job_id: str):
     pass
