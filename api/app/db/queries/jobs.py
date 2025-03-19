@@ -5,6 +5,9 @@ from ..models.jobs import Job
 from ..models.jobs import FcLfcsJob
 from ..models.jobs import MiiLfcsJob
 from ..models.jobs import MsedJob
+from ...utils.validators import is_valid_friend_code
+from ...utils.validators import is_valid_id0
+from ...utils.validators import is_valid_system_id
 
 
 def get_all_jobs(session) -> list[Job]:
@@ -26,29 +29,30 @@ def get_jobs_of_types(session, job_types: list[str] = []) -> list[Job]:
     return jobs
 
 
-def get_job_by_id(session, job_id: str) -> Job:
-    jobs = [
-        *get_fc_lfcs_jobs(job_id),
-        *get_mii_lfcs_jobs(job_id),
-        *get_msed_jobs(job_id),
-    ]
+def get_job_by_id(session, job_id: str) -> Job | None:
+    if is_valid_friend_code():
+        return get_fc_lfcs_job(job_id)
+    elif is_valid_system_id(job_id):
+        return get_mii_lfcs_job(job_id)
+    elif is_valid_id0(job_id):
+        return get_msed_job(job_id)
+    else:
+        raise ValueError("Invalid job ID")
 
-    return jobs
 
-
-def get_fc_lfcs_jobs(session, friend_code: str) -> FcLfcsJob:
+def get_fc_lfcs_job(session, friend_code: str) -> FcLfcsJob | None:
     statement = select(FcLfcsJob).filter(FcLfcsJob.friend_code == friend_code)
-    return session.scalars(statement).all()
+    return session.scalars(statement).first()
 
 
-def get_mii_lfcs_jobs(session, system_id: str) -> MiiLfcsJob:
+def get_mii_lfcs_job(session, system_id: str) -> MiiLfcsJob | None:
     statement = select(MiiLfcsJob).filter(MiiLfcsJob.system_id == system_id)
-    return session.scalars(statement).all()
+    return session.scalars(statement).first()
 
 
-def get_msed_jobs(session, id0: str) -> MsedJob:
+def get_msed_job(session, id0: str) -> MsedJob | None:
     statement = select(MsedJob).filter(MsedJob.id0 == id0)
-    return session.scalars(statement).all()
+    return session.scalars(statement).first()
 
 
 def get_queued_jobs(session, job_types: list[str] = []) -> list[Job]:
