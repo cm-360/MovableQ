@@ -81,7 +81,9 @@ async def request_job():
     with current_app.db.bind.Session() as session:
         jobs = get_queued_jobs(session, job_types)
 
-        return [dict(j) for j in jobs]
+        job = jobs[0]
+
+        return dict(job)
 
 
 @bp.get("/jobs/<job_id>/details")

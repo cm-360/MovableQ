@@ -1,3 +1,6 @@
+from datetime import datetime
+from datetime import timezone
+
 from quart import current_app
 from quart import request
 
@@ -5,6 +8,7 @@ from . import bp
 from .utils import api_error
 from ..db.queries.workers import get_all_workers
 from ..db.queries.workers import get_worker_by_id
+from ..db.queries.workers import create_or_update_worker
 
 
 @bp.get("/workers/list")
@@ -18,6 +22,29 @@ async def list_workers():
             workers = [w for w in workers if w.worker_type() == worker_type]
 
         return [dict(w) for w in workers]
+
+
+@bp.post("/workers/register")
+async def register_worker():
+    # Unpack worker information from request body
+    try:
+        worker_data = await request.get_json()
+        worker_type = worker_data["type"]
+    except KeyError:
+        return api_error("Missing required parameter", 400)
+
+    # Set worker parameters
+    worker_data = {
+        **worker_data,
+        "last_ip": request.remote_addr,
+        "updated_at": datetime.now(timezone.utc),
+    }
+
+    # Create/update worker in database
+    with current_app.db.bind.Session() as session, session.begin():
+        worker = create_or_update_worker(session, worker_type, worker_data)
+
+        return dict(worker)
 
 
 @bp.get("/workers/<worker_id>/details")

@@ -55,6 +55,6 @@ def get_queued_jobs(session, job_types: list[str] = []) -> list[Job]:
     jobs = get_jobs_of_types(session, job_types)
 
     jobs = [j for j in jobs if JobStatus.queued == j.status]
-    jobs.sort(key=lambda j: j.created_at)
+    jobs.sort(key=lambda j: j.updated_at)
 
     return jobs
