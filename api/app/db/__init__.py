@@ -1,7 +1,7 @@
 from quart_sqlalchemy import SQLAlchemyConfig
 from quart_sqlalchemy.framework import QuartSQLAlchemy
 
-from .models import Base
+from app.db.models import Base
 
 
 def create_db(url: str, echo: bool = False) -> QuartSQLAlchemy:

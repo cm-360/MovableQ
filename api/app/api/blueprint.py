@@ -2,12 +2,10 @@ from traceback import format_exception
 
 from quart import Blueprint
 from quart import current_app
-
 from sqlalchemy.exc import IntegrityError
 from werkzeug.exceptions import HTTPException
 
-from .utils import api_exception
-
+from app.api.utils import api_exception
 
 bp = Blueprint("API", __name__)
 

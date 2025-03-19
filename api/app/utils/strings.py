@@ -1,6 +1,5 @@
 import re
 
-
 camel_case_pattern = re.compile(r"(?<!^)(?=[A-Z])")
 
 

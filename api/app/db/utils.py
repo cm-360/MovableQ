@@ -1,10 +1,10 @@
-from dataclasses import asdict
 from dataclasses import Field
+from dataclasses import asdict
 from dataclasses import fields
 from dataclasses import is_dataclass
+from typing import Optional
 from typing import Type
 from typing import TypeVar
-from typing import Optional
 
 
 class Serializable:

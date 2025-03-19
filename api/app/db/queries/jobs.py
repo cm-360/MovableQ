@@ -3,15 +3,15 @@ from datetime import timezone
 
 from sqlalchemy import select
 
-from ..models.jobs import Job
-from ..models.jobs import JobStatus
-from ..models.jobs import FcLfcsJob
-from ..models.jobs import MiiLfcsJob
-from ..models.jobs import MsedJob
-from ..utils import from_dict
-from ...utils.validators import is_valid_friend_code
-from ...utils.validators import is_valid_id0
-from ...utils.validators import is_valid_system_id
+from app.db.models.jobs import FcLfcsJob
+from app.db.models.jobs import Job
+from app.db.models.jobs import JobStatus
+from app.db.models.jobs import MiiLfcsJob
+from app.db.models.jobs import MsedJob
+from app.db.utils import from_dict
+from app.utils.validators import is_valid_friend_code
+from app.utils.validators import is_valid_id0
+from app.utils.validators import is_valid_system_id
 
 
 def create_job(session, job_type: str, job_data: dict) -> Job:

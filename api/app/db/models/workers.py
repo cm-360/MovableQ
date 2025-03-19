@@ -4,9 +4,9 @@ from sqlalchemy import DateTime
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 
-from . import Base
-from ..utils import Serializable
-from ...utils.strings import camel_to_kebab_case
+from app.db.models.base import Base
+from app.db.utils import Serializable
+from app.utils.strings import camel_to_kebab_case
 
 
 @dataclass

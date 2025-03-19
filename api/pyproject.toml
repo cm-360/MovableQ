@@ -23,3 +23,6 @@ dev = [
 
 [tool.uv.sources]
 pyzbar = { git = "https://github.com/nmccann/pyzbar" }
+
+[tool.ruff.lint.isort]
+force-single-line = true

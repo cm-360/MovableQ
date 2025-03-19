@@ -3,7 +3,6 @@ from shutil import copytree
 
 from pytest import fixture
 
-
 try:
     from dotenv import load_dotenv
 

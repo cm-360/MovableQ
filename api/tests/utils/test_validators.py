@@ -1,10 +1,9 @@
 from app.utils.validators import is_valid_friend_code
 from app.utils.validators import is_valid_id0
-from app.utils.validators import is_valid_system_id
 from app.utils.validators import is_valid_lfcs
-from app.utils.validators import validate_movable
+from app.utils.validators import is_valid_system_id
 from app.utils.validators import validate_keyy
-
+from app.utils.validators import validate_movable
 
 test_id0 = "969dbbb25e8f636c391ed29432e2af53"
 fake_id0 = "fef0fef0fef0fef0fef0fef0fef0fef0"

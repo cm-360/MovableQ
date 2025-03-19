@@ -1,7 +1,6 @@
 from pytest import fixture
 from pytest import mark
 
-
 api_submit_endpoint = "/api/jobs/submit"
 api_list_endpoint = "/api/jobs/list"
 

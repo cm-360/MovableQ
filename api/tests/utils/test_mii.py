@@ -3,10 +3,9 @@ from binascii import unhexlify
 
 from pytest import fixture
 
-from app.utils.mii import read_mii_qr
 from app.utils.mii import decrypt_mii_qr_data
 from app.utils.mii import get_system_id
-
+from app.utils.mii import read_mii_qr
 
 test_system_id = "10a76a225904ff99"
 

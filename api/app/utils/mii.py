@@ -2,8 +2,8 @@ import io
 from binascii import hexlify
 
 # QR decoding
-from pyzbar.pyzbar import decode as qr_decode
 from PIL import Image
+from pyzbar.pyzbar import decode as qr_decode
 
 # AES decryption
 try:

@@ -2,7 +2,6 @@ import hashlib
 import re
 import struct
 
-
 id0_pattern = re.compile(
     r"(?![0-9a-fA-F]{4}(01|00)[0-9a-fA-F]{18}00[0-9a-fA-F]{6})[0-9a-fA-F]{32}"
 )

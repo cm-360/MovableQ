@@ -1,5 +1,5 @@
-from quart import Quart
 from hypercorn.middleware import ProxyFixMiddleware
+from quart import Quart
 
 from .api import bp as api_bp
 from .db import create_db

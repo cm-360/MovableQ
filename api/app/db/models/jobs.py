@@ -5,19 +5,19 @@ from enum import StrEnum
 from typing import Optional
 
 from sqlalchemy import DateTime
-from sqlalchemy import ForeignKey
 from sqlalchemy import Enum as SqlEnum
+from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import validates
 
-from . import Base
-from ..utils import Serializable
-from ...utils.strings import camel_to_kebab_case
-from ...utils.validators import is_valid_id0
-from ...utils.validators import is_valid_system_id
-from ...utils.validators import is_valid_friend_code
-from ...utils.validators import is_valid_lfcs
+from app.db.models.base import Base
+from app.db.utils import Serializable
+from app.utils.strings import camel_to_kebab_case
+from app.utils.validators import is_valid_friend_code
+from app.utils.validators import is_valid_id0
+from app.utils.validators import is_valid_lfcs
+from app.utils.validators import is_valid_system_id
 
 
 class JobStatus(IntEnum):

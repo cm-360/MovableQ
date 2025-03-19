@@ -4,11 +4,12 @@ from datetime import timezone
 from quart import current_app
 from quart import request
 
+from app.api.utils import api_error
+from app.db.queries.workers import create_or_update_worker
+from app.db.queries.workers import get_all_workers
+from app.db.queries.workers import get_worker_by_id
+
 from . import bp
-from .utils import api_error
-from ..db.queries.workers import get_all_workers
-from ..db.queries.workers import get_worker_by_id
-from ..db.queries.workers import create_or_update_worker
 
 
 @bp.get("/workers/list")

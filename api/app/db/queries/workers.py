@@ -1,9 +1,25 @@
 from sqlalchemy import select
 
-from ..models.workers import Worker
-from ..models.workers import MinerWorker
-from ..models.workers import FriendbotWorker
-from ..utils import from_dict
+from app.db.models.workers import FriendbotWorker
+from app.db.models.workers import MinerWorker
+from app.db.models.workers import Worker
+from app.db.utils import from_dict
+
+
+def create_or_update_worker(session, worker_type: str, worker_data: dict) -> Worker:
+    if "miner" == worker_type:
+        worker = from_dict(MinerWorker, worker_data)
+    elif "friendbot" == worker_type:
+        worker = from_dict(FriendbotWorker, worker_data)
+    else:
+        raise ValueError(f"Invalid worker type: {worker_type}")
+
+    # TODO update if exists
+
+    session.add(worker)
+    session.flush()
+
+    return worker
 
 
 def get_all_workers(session):
@@ -34,19 +50,3 @@ def get_friendbot_workers(session, friend_code: str) -> FriendbotWorker:
         FriendbotWorker.friend_code == friend_code
     )
     return session.scalars(statement).all()
-
-
-def create_or_update_worker(session, worker_type: str, worker_data: dict) -> Worker:
-    if "miner" == worker_type:
-        worker = from_dict(MinerWorker, worker_data)
-    elif "friendbot" == worker_type:
-        worker = from_dict(FriendbotWorker, worker_data)
-    else:
-        raise ValueError(f"Invalid worker type: {worker_type}")
-
-    # TODO update if exists
-
-    session.add(worker)
-    session.flush()
-
-    return worker
