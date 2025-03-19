@@ -1,6 +1,3 @@
-from datetime import datetime
-from datetime import timezone
-
 from quart import current_app
 from quart import request
 
@@ -11,10 +8,10 @@ from ..db.models.jobs import FcLfcsJob
 from ..db.models.jobs import MiiLfcsJob
 from ..db.models.jobs import MsedJob
 from ..db.models.jobs import JobStatus
+from ..db.queries.jobs import create_job
 from ..db.queries.jobs import get_all_jobs
 from ..db.queries.jobs import get_job_by_id
 from ..db.queries.jobs import get_queued_jobs
-from ..db.utils import from_dict
 
 
 @bp.get("/jobs/list")
@@ -40,37 +37,14 @@ async def submit_job():
     except KeyError:
         return api_error("Missing required parameter", 400)
 
-    # Set default job parameters
-    now = datetime.now(timezone.utc)
-    job_data = {
-        **job_data,
-        "created_at": now,
-        "updated_at": now,
-        "status": JobStatus.submitted,
-    }
-
-    # Construct appropriate job object
+    # Create job object in database
     try:
-        if "msed" == job_type:
-            job = from_dict(MsedJob, job_data)
+        with current_app.db.bind.Session() as session, session.begin():
+            job = create_job(session, job_type, job_data)
 
-            if job.lfcs is not None:
-                job.status = JobStatus.queued
-        elif "fc-lfcs" == job_type:
-            job = from_dict(FcLfcsJob, job_data)
-        elif "mii-lfcs" == job_type:
-            job = from_dict(MiiLfcsJob, job_data)
-        else:
-            return api_error(f"Invalid job type: {job_type}", 400)
+            return dict(job)
     except ValueError as e:
         return api_exception(e, 400)
-
-    # Add job to database
-    with current_app.db.bind.Session() as session, session.begin():
-        session.add(job)
-        session.flush()
-
-    return dict(job)
 
 
 @bp.post("/jobs/request")
