@@ -63,27 +63,36 @@ def get_jobs_of_types(session, job_types: list[str] = []) -> list[Job]:
 
 
 def get_job_by_id(session, job_id: str) -> Job | None:
-    if is_valid_friend_code():
-        return get_fc_lfcs_job(job_id)
+    if is_valid_friend_code(job_id):
+        return get_fc_lfcs_job(session, job_id)
     elif is_valid_system_id(job_id):
-        return get_mii_lfcs_job(job_id)
+        return get_mii_lfcs_job(session, job_id)
     elif is_valid_id0(job_id):
-        return get_msed_job(job_id)
+        return get_msed_job(session, job_id)
     else:
-        raise ValueError("Invalid job ID")
+        raise ValueError(f"Invalid job ID: {job_id}")
 
 
 def get_fc_lfcs_job(session, friend_code: str) -> FcLfcsJob | None:
+    if not is_valid_friend_code(friend_code):
+        raise ValueError("Invalid friend code")
+
     statement = select(FcLfcsJob).filter(FcLfcsJob.friend_code == friend_code)
     return session.scalars(statement).first()
 
 
 def get_mii_lfcs_job(session, system_id: str) -> MiiLfcsJob | None:
+    if not is_valid_system_id(system_id):
+        raise ValueError("Invalid system ID")
+
     statement = select(MiiLfcsJob).filter(MiiLfcsJob.system_id == system_id)
     return session.scalars(statement).first()
 
 
 def get_msed_job(session, id0: str) -> MsedJob | None:
+    if not is_valid_id0(id0):
+        raise ValueError("Invalid ID0")
+
     statement = select(MsedJob).filter(MsedJob.id0 == id0)
     return session.scalars(statement).first()
 

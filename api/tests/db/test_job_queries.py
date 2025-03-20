@@ -1,6 +1,9 @@
+from pytest import raises
+
 from app.db.queries.jobs import create_job
 from app.db.queries.jobs import get_all_jobs
 from app.db.queries.jobs import get_fc_lfcs_job
+from app.db.queries.jobs import get_job_by_id
 from app.db.queries.jobs import get_mii_lfcs_job
 from app.db.queries.jobs import get_msed_job
 from app.db.queries.jobs import get_queued_jobs
@@ -65,6 +68,30 @@ def test_get_all_jobs(db):
         jobs = get_all_jobs(session)
         assert len(jobs) == 2
 
+        create_job(session, "mii-lfcs", test_mii_lfcs_job_data)
+
+        jobs = get_all_jobs(session)
+        assert len(jobs) == 3
+
+
+def test_get_job_by_id(db):
+    with db.bind.Session() as session, session.begin():
+        create_job(session, "msed", test_msed_job_data)
+        create_job(session, "fc-lfcs", test_fc_lfcs_job_data)
+        create_job(session, "mii-lfcs", test_mii_lfcs_job_data)
+
+        msed_job = get_job_by_id(session, test_id0)
+        assert msed_job.id0 == test_id0
+
+        fc_lfcs_job = get_job_by_id(session, test_friend_code)
+        assert fc_lfcs_job.friend_code == test_friend_code
+
+        mii_lfcs_job = get_job_by_id(session, test_system_id)
+        assert mii_lfcs_job.system_id == test_system_id
+
+        with raises(ValueError):
+            get_job_by_id(session, "")
+
 
 def test_get_fc_lfcs_job(db):
     with db.bind.Session() as session, session.begin():
@@ -72,6 +99,9 @@ def test_get_fc_lfcs_job(db):
 
         job = get_fc_lfcs_job(session, test_friend_code)
         assert job.friend_code == test_friend_code
+
+        with raises(ValueError):
+            get_fc_lfcs_job(session, "")
 
 
 def test_get_mii_lfcs_job(db):
@@ -81,6 +111,9 @@ def test_get_mii_lfcs_job(db):
         job = get_mii_lfcs_job(session, test_system_id)
         assert job.system_id == test_system_id
 
+        with raises(ValueError):
+            get_mii_lfcs_job(session, "")
+
 
 def test_get_msed_job(db):
     with db.bind.Session() as session, session.begin():
@@ -88,6 +121,9 @@ def test_get_msed_job(db):
 
         job = get_msed_job(session, test_id0)
         assert job.id0 == test_id0
+
+        with raises(ValueError):
+            get_msed_job(session, "")
 
 
 def test_get_queued_jobs(db):
