@@ -7,7 +7,7 @@ from app.api.utils import api_exception
 from app.api.utils import register_error_handlers
 from app.db.queries.jobs import assign_job
 from app.db.queries.jobs import create_job
-from app.db.queries.jobs import get_all_jobs
+from app.db.queries.jobs import get_jobs_of_types
 from app.db.queries.jobs import get_job_by_id
 from app.db.queries.jobs import get_queued_jobs
 from app.db.queries.workers import get_worker_by_data
@@ -18,13 +18,11 @@ register_error_handlers(bp)
 
 @bp.get("/list")
 async def list_jobs():
-    job_type = request.args.get("type")
+    job_types = request.args.get("types")
+    job_types = job_types.split(",") if job_types else []
 
     with current_app.db.bind.Session() as session:
-        jobs = get_all_jobs(session)
-
-        if job_type:
-            jobs = [j for j in jobs if j.job_type() == job_type]
+        jobs = get_jobs_of_types(session, job_types)
 
         return [dict(j) for j in jobs]
 

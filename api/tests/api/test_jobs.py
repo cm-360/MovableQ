@@ -104,13 +104,13 @@ async def test_list_jobs(client, submit_job):
     assert len(data) == 1
 
     # Get msed jobs
-    response = await client.get(f"{api_list_endpoint}?type=msed")
+    response = await client.get(f"{api_list_endpoint}?types=msed")
     assert response.status_code == 200
     data = await response.get_json()
     assert len(data) == 1
 
     # Get Mii LFCS jobs
-    response = await client.get(f"{api_list_endpoint}?type=mii-lfcs")
+    response = await client.get(f"{api_list_endpoint}?types=mii-lfcs")
     assert response.status_code == 200
     data = await response.get_json()
     assert len(data) == 0

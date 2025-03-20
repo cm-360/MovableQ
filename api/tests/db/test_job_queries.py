@@ -37,17 +37,17 @@ def test_create_job(db):
     with db.bind.Session() as session, session.begin():
         # Create msed job
         job = create_job(session, "msed", test_msed_job_data)
-        assert job.job_type() == "msed"
+        assert job.subclass_id() == "msed"
         assert job.id0 == test_id0
 
         # Create FC-LFCS job
         job = create_job(session, "fc-lfcs", test_fc_lfcs_job_data)
-        assert job.job_type() == "fc-lfcs"
+        assert job.subclass_id() == "fc-lfcs"
         assert job.friend_code == test_friend_code
 
         # Create Mii-LFCS job
         job = create_job(session, "mii-lfcs", test_mii_lfcs_job_data)
-        assert job.job_type() == "mii-lfcs"
+        assert job.subclass_id() == "mii-lfcs"
         assert job.system_id == test_system_id
 
 

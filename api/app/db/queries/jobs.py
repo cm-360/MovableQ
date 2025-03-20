@@ -47,20 +47,23 @@ def create_job(session, job_type: str, job_data: dict) -> Job:
 
 
 def get_all_jobs(session) -> list[Job]:
-    jobs = [
-        *session.scalars(select(FcLfcsJob)).all(),
-        *session.scalars(select(MiiLfcsJob)).all(),
-        *session.scalars(select(MsedJob)).all(),
-    ]
+    jobs = []
+
+    for job_class in Job.get_all_subclasses():
+        jobs.extend(session.scalars(select(job_class)))
 
     return jobs
 
 
 def get_jobs_of_types(session, job_types: list[str] = []) -> list[Job]:
-    jobs = get_all_jobs(session)
+    if not job_types:
+        return get_all_jobs(session)
 
-    if job_types:
-        jobs = [j for j in jobs if j.job_type() in job_types]
+    jobs = []
+
+    for job_type in job_types:
+        job_class = Job.get_subclass(job_type)
+        jobs.extend(session.scalars(select(job_class)))
 
     return jobs
 

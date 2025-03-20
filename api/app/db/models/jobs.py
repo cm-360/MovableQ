@@ -12,7 +12,6 @@ from sqlalchemy.orm import validates
 from app.db.models.base import Base
 from app.db.models.base import GenericBase
 from app.db.utils import format_timestamp
-from app.utils.strings import camel_to_kebab_case
 from app.utils.validators import is_valid_friend_code
 from app.utils.validators import is_valid_id0
 from app.utils.validators import is_valid_lfcs
@@ -54,17 +53,13 @@ class Job(GenericBase):
     completed_at: Mapped[str | None] = mapped_column(DateTime)
     status: Mapped[JobStatus] = mapped_column(SqlEnum(JobStatus))
 
-    @classmethod
-    def job_type(cls) -> str:
-        return camel_to_kebab_case(cls.__name__.removesuffix("Job"))
-
     def __iter__(self):
         yield from super().__iter__()
         yield "created_at", format_timestamp(self.created_at)
         yield "updated_at", format_timestamp(self.updated_at)
         yield "completed_at", format_timestamp(self.completed_at)
         yield "status", self.status.name
-        yield "type", self.job_type()
+        yield "type", self.subclass_id()
 
 
 class ConsoleModel(StrEnum):

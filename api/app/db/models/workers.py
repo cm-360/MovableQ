@@ -6,7 +6,6 @@ from app.db.models.base import Base
 from app.db.models.base import GenericBase
 from app.db.models.decorators import allowed_job_types
 from app.db.utils import format_timestamp
-from app.utils.strings import camel_to_kebab_case
 
 
 class Worker(GenericBase):
@@ -28,14 +27,10 @@ class Worker(GenericBase):
     def allowed_job_types(cls) -> list[str]:
         return getattr(cls, "_allowed_job_types", [])
 
-    @classmethod
-    def worker_type(cls) -> str:
-        return camel_to_kebab_case(cls.__name__.removesuffix("Worker"))
-
     def __iter__(self):
         yield from super().__iter__()
         yield "updated_at", format_timestamp(self.updated_at)
-        yield "type", self.worker_type()
+        yield "type", self.subclass_id()
 
 
 @allowed_job_types("mii-lfcs", "msed")
