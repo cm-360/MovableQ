@@ -9,7 +9,6 @@ from app.api.utils import api_error
 from app.api.utils import register_error_handlers
 from app.db.queries.workers import create_or_update_worker
 from app.db.queries.workers import get_all_workers
-from app.db.queries.workers import get_worker_by_id
 
 bp = Blueprint("API: Workers", __name__)
 register_error_handlers(bp)
@@ -47,16 +46,5 @@ async def register_worker():
     # Create/update worker in database
     with current_app.db.bind.Session() as session, session.begin():
         worker = create_or_update_worker(session, worker_type, worker_data)
-
-        return dict(worker)
-
-
-@bp.get("/<worker_id>/details")
-async def get_worker_details(worker_id: str):
-    with current_app.db.bind.Session() as session:
-        worker = get_worker_by_id(session, worker_id)
-
-        if worker is None:
-            return api_error(f"Unknown worker ID: {worker_id}", 404)
 
         return dict(worker)

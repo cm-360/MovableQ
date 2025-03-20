@@ -4,6 +4,7 @@ from app.db.models.workers import FriendbotWorker
 from app.db.models.workers import MinerWorker
 from app.db.models.workers import Worker
 from app.db.utils import from_dict
+from app.utils.validators import is_valid_friend_code
 
 
 def create_or_update_worker(session, worker_type: str, worker_data: dict) -> Worker:
@@ -24,29 +25,31 @@ def create_or_update_worker(session, worker_type: str, worker_data: dict) -> Wor
 
 def get_all_workers(session):
     workers = [
-        *session.scalars(select(MinerWorker)).all(),
-        *session.scalars(select(FriendbotWorker)).all(),
+        *get_miner_workers(session),
+        *get_friendbot_workers(session),
     ]
 
     return workers
 
 
-def get_worker_by_id(session, worker_id: str) -> Worker:
-    workers = [
-        *get_miner_workers(worker_id),
-        *get_friendbot_workers(worker_id),
-    ]
-
-    return workers
+def get_miner_workers(session) -> list[MinerWorker]:
+    return session.scalars(select(MinerWorker)).all()
 
 
-def get_miner_workers(session, client_id: str) -> MinerWorker:
+def get_friendbot_workers(session) -> list[FriendbotWorker]:
+    return session.scalars(select(FriendbotWorker)).all()
+
+
+def get_miner_worker(session, client_id: str) -> MinerWorker | None:
     statement = select(MinerWorker).filter(MinerWorker.client_id == client_id)
-    return session.scalars(statement).all()
+    return session.scalars(statement).first()
 
 
-def get_friendbot_workers(session, friend_code: str) -> FriendbotWorker:
+def get_friendbot_worker(session, friend_code: str) -> FriendbotWorker | None:
+    if not is_valid_friend_code(friend_code):
+        raise ValueError("Invalid friend code")
+
     statement = select(FriendbotWorker).filter(
         FriendbotWorker.friend_code == friend_code
     )
-    return session.scalars(statement).all()
+    return session.scalars(statement).first()
