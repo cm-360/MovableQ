@@ -1,17 +1,15 @@
-from dataclasses import dataclass
-
 from sqlalchemy import DateTime
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 
 from app.db.models.base import Base
-from app.db.utils import Serializable
+from app.db.models.base import GenericBase
+from app.db.models.decorators import allowed_job_types
 from app.db.utils import format_timestamp
 from app.utils.strings import camel_to_kebab_case
 
 
-@dataclass
-class Worker(Serializable):
+class Worker(GenericBase):
     """Common attributes shared between different worker types.
 
     Attributes:
@@ -27,6 +25,10 @@ class Worker(Serializable):
     updated_at: Mapped[str] = mapped_column(DateTime)
 
     @classmethod
+    def allowed_job_types(cls) -> list[str]:
+        return getattr(cls, "_allowed_job_types", [])
+
+    @classmethod
     def worker_type(cls) -> str:
         return camel_to_kebab_case(cls.__name__.removesuffix("Worker"))
 
@@ -36,7 +38,7 @@ class Worker(Serializable):
         yield "type", self.worker_type()
 
 
-@dataclass
+@allowed_job_types("mii-lfcs", "msed")
 class MinerWorker(Base, Worker):
     """A worker running the bfCL mining client script.
 
@@ -52,7 +54,7 @@ class MinerWorker(Base, Worker):
     client_id: Mapped[str] = mapped_column(primary_key=True)
 
 
-@dataclass
+@allowed_job_types("fc-lfcs")
 class FriendbotWorker(Base, Worker):
     """A worker running the friendbot software.
 

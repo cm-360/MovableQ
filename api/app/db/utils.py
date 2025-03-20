@@ -1,20 +1,9 @@
-from dataclasses import Field
-from dataclasses import asdict
 from dataclasses import fields
 from dataclasses import is_dataclass
 from datetime import timezone
-from typing import Optional
+from typing import Any
 from typing import Type
 from typing import TypeVar
-
-
-class Serializable:
-    """Makes serializing dataclasses as dictionaries more flexible."""
-
-    def __iter__(self):
-        for k, v in asdict(self).items():
-            yield k, v
-
 
 T = TypeVar("T")
 
@@ -40,20 +29,18 @@ def from_dict(target_class: Type[T], data: dict) -> T:
     if not is_dataclass(target_class):
         raise ValueError(f"{target_class.__name__} is not a dataclass")
 
-    required_fields = [f.name for f in fields(target_class) if is_required(f)]
-    missing_fields = [f for f in required_fields if f not in data.keys()]
+    required_fields = [
+        f.name for f in fields(target_class) if not isinstance(f.type, type(Any | None))
+    ]
+    missing_fields = [f for f in required_fields if f not in data]
 
     if missing_fields:
         raise ValueError(f"Missing required fields: {missing_fields}")
 
     field_names = [f.name for f in fields(target_class)]
-    kwargs = {k: v for k, v in data.items() if k in field_names}
+    kwargs = {k: data.get(k) for k in field_names}
 
     return target_class(**kwargs)
-
-
-def is_required(field: Field) -> bool:
-    return not isinstance(field.type.__args__[0], type(Optional[any]))
 
 
 def format_timestamp(timestamp: str | None) -> str | None:
