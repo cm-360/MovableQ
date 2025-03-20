@@ -46,7 +46,7 @@ def create_or_update_worker(session, worker_type: str, worker_data: dict) -> Wor
             return create_friendbot_worker(session, worker_data)
 
         # Update existing worker
-
+        worker = update_friendbot_worker(session, friend_code, worker_data)
     else:
         raise ValueError(f"Invalid worker type: {worker_type}")
 
@@ -104,7 +104,7 @@ def update_miner_worker(session, client_id: str, worker_data: dict) -> MinerWork
     worker_data["updated_at"] = datetime.now(timezone.utc)
 
     # Update worker in DB
-    worker = session.execute(
+    session.execute(
         update(MinerWorker)
         .where(MinerWorker.client_id == client_id)
         .values(worker_data)
@@ -140,7 +140,7 @@ def update_friendbot_worker(
     worker_data["updated_at"] = datetime.now(timezone.utc)
 
     # Update worker in DB
-    worker = session.execute(
+    session.execute(
         update(FriendbotWorker)
         .where(FriendbotWorker.friend_code == friend_code)
         .values(worker_data)
@@ -230,3 +230,22 @@ def get_friendbot_worker(session, friend_code: str) -> FriendbotWorker | None:
         FriendbotWorker.friend_code == friend_code
     )
     return session.scalars(statement).first()
+
+
+def get_worker_by_data(session, worker_data: dict) -> Worker | None:
+    try:
+        worker_type = worker_data["type"]
+    except KeyError as e:
+        raise ValueError("Missing worker type") from e
+
+    try:
+        if "miner" == worker_type:
+            client_id = worker_data["client_id"]
+            return get_miner_worker(session, client_id)
+        elif "friendbot" == worker_type:
+            friend_code = worker_data["friend_code"]
+            return get_friendbot_worker(session, friend_code)
+        else:
+            raise ValueError(f"Invalid worker type: {worker_type}")
+    except KeyError as e:
+        raise ValueError("Missing worker ID") from e

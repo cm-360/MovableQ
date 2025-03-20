@@ -2,12 +2,15 @@ from datetime import datetime
 from datetime import timezone
 
 from sqlalchemy import select
+from sqlalchemy import update
+from sqlalchemy import inspect
 
 from app.db.models.jobs import FcLfcsJob
 from app.db.models.jobs import Job
 from app.db.models.jobs import JobStatus
 from app.db.models.jobs import MiiLfcsJob
 from app.db.models.jobs import MsedJob
+from app.db.models.workers import Worker
 from app.db.utils import from_dict
 from app.utils.validators import is_valid_friend_code
 from app.utils.validators import is_valid_id0
@@ -21,15 +24,15 @@ def create_job(session, job_type: str, job_data: dict) -> Job:
         **job_data,
         "created_at": now,
         "updated_at": now,
-        "status": JobStatus.submitted,
+        "status": JobStatus.queued,
     }
 
     # Construct appropriate job object
     if "msed" == job_type:
         job = from_dict(MsedJob, job_data)
 
-        if job.lfcs is not None:
-            job.status = JobStatus.queued
+        if job.lfcs is None:
+            job.status = JobStatus.submitted
     elif "fc-lfcs" == job_type:
         job = from_dict(FcLfcsJob, job_data)
     elif "mii-lfcs" == job_type:
@@ -104,3 +107,22 @@ def get_queued_jobs(session, job_types: list[str] = []) -> list[Job]:
     jobs.sort(key=lambda j: j.updated_at)
 
     return jobs
+
+
+def assign_job(session, job: Job, worker: Worker) -> Job | None:
+    worker_id_column = inspect(type(worker)).primary_key[0].name
+    worker_id = getattr(worker, worker_id_column)
+
+    # TODO handle nonexistent jobs
+
+    session.execute(
+        update(type(job))
+        .where(job.primary_key_matches(dict(job)))
+        .values(assignee=worker_id)
+    )
+
+    job = session.scalars(
+        select(type(job)).where(job.primary_key_matches(dict(job)))
+    ).one()
+
+    return job

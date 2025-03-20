@@ -5,10 +5,12 @@ from quart import request
 from app.api.utils import api_error
 from app.api.utils import api_exception
 from app.api.utils import register_error_handlers
+from app.db.queries.jobs import assign_job
 from app.db.queries.jobs import create_job
 from app.db.queries.jobs import get_all_jobs
 from app.db.queries.jobs import get_job_by_id
 from app.db.queries.jobs import get_queued_jobs
+from app.db.queries.workers import get_worker_by_data
 
 bp = Blueprint("API: Jobs", __name__)
 register_error_handlers(bp)
@@ -49,15 +51,42 @@ async def submit_job():
 
 @bp.post("/request")
 async def request_job():
-    job_types = request.args.get("types")
-    job_types = job_types.split(",") if job_types else []
+    worker_data = await request.get_json()
 
     with current_app.db.bind.Session() as session:
+        worker = get_worker_by_data(session, worker_data)
+
+        # Request Parameters
+
+        # Set job type filter from query parameter or defaults
+        allowed_job_types = worker.allowed_job_types()
+        job_types = request.args.get("types")
+        job_types = job_types.split(",") if job_types else allowed_job_types
+
+        # Restrict illegal job requests
+        illegal_job_types = [j for j in job_types if j not in allowed_job_types]
+        if illegal_job_types:
+            illegal_joined = ", ".join(illegal_job_types)
+            return api_error(f"Illegal job type(s) requested: {illegal_joined}", 400)
+
+        # Set max job count from query parameter or default
+        max_jobs = request.args.get("max")
+        try:
+            max_jobs = int(max_jobs) if max_jobs is not None else 1
+        except ValueError:
+            return api_error(f"Invalid max job count: {max_jobs}", 400)
+
+        # Job Assignment
+
         jobs = get_queued_jobs(session, job_types)
 
-        job = jobs[0]
+        # Assign jobs from queue
+        assigned_count = min(max_jobs, len(jobs))
+        assigned_jobs = jobs[:assigned_count]
+        for job in assigned_jobs:
+            assign_job(session, job, worker)
 
-        return dict(job)
+        return {"assigned": [dict(j) for j in assigned_jobs]}
 
 
 @bp.get("/<job_id>/details")
