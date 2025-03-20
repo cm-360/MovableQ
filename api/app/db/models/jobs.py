@@ -107,6 +107,9 @@ class MiiLfcsJob(Base, Job):
     system_id: Mapped[str] = mapped_column(primary_key=True)
     console_model: Mapped[ConsoleModel] = mapped_column(SqlEnum(ConsoleModel))
     console_year: Mapped[int]
+    assignee: Mapped[Optional[str]] = mapped_column(
+        ForeignKey("miner_workers.client_id")
+    )
 
     @validates("system_id")
     def validate_system_id(self, key: str, system_id: str):
@@ -139,6 +142,9 @@ class MiiLfcsOffsetJob(Base, Job):
     )
     offset: Mapped[int] = mapped_column(primary_key=True)
     index: Mapped[int] = mapped_column(primary_key=True)
+    assignee: Mapped[Optional[str]] = mapped_column(
+        ForeignKey("miner_workers.client_id")
+    )
 
 
 @dataclass
@@ -152,8 +158,11 @@ class FcLfcsJob(Base, Job):
     __tablename__ = "fc_lfcs_jobs"
 
     friend_code: Mapped[str] = mapped_column(primary_key=True)
+    assignee: Mapped[Optional[str]] = mapped_column(
+        ForeignKey("friendbot_workers.friend_code")
+    )
 
-    @validates("friend_code")
+    @validates("friend_code", "assignee")
     def validate_friend_code(self, key: str, friend_code: str):
         if not is_valid_friend_code(friend_code):
             raise ValueError("Invalid friend code")
