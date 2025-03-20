@@ -5,7 +5,7 @@ from quart import request
 from app.api.utils import api_exception
 from app.api.utils import register_error_handlers
 from app.db.queries.workers import create_or_update_worker
-from app.db.queries.workers import get_all_workers
+from app.db.queries.workers import get_workers_of_types
 
 bp = Blueprint("API: Workers", __name__)
 register_error_handlers(bp)
@@ -13,13 +13,11 @@ register_error_handlers(bp)
 
 @bp.get("/list")
 async def list_workers():
-    worker_type = request.args.get("type")
+    worker_types = request.args.get("types")
+    worker_types = worker_types.split(",") if worker_types else []
 
     with current_app.db.bind.Session() as session:
-        workers = get_all_workers(session)
-
-        if worker_type:
-            workers = [w for w in workers if w.worker_type() == worker_type]
+        workers = get_workers_of_types(session, worker_types)
 
         return [dict(w) for w in workers]
 
@@ -27,12 +25,7 @@ async def list_workers():
 @bp.post("/register")
 async def register_worker():
     worker_data = await request.get_json()
-
-    # Set worker parameters
-    worker_data = {
-        **worker_data,
-        "last_ip": request.remote_addr,
-    }
+    worker_data["last_ip"] = request.remote_addr
 
     # Create/update worker in database
     with current_app.db.bind.Session() as session, session.begin():
