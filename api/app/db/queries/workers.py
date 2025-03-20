@@ -9,13 +9,40 @@ from app.utils.validators import is_valid_friend_code
 
 def create_or_update_worker(session, worker_type: str, worker_data: dict) -> Worker:
     if "miner" == worker_type:
-        worker = from_dict(MinerWorker, worker_data)
+        # Check for existing worker
+        client_id = worker_data["client_id"]
+        worker = get_miner_worker(session, client_id)
+
+        if worker is None:
+            return create_miner_worker(session, worker_data)
+
+        # Update existing worker
     elif "friendbot" == worker_type:
-        worker = from_dict(FriendbotWorker, worker_data)
+        # Check for existing worker
+        friend_code = worker_data["friend_code"]
+        worker = get_friendbot_worker(session, friend_code)
+
+        if worker is None:
+            return create_friendbot_worker(session, worker_data)
+
+        # Update existing worker
     else:
         raise ValueError(f"Invalid worker type: {worker_type}")
 
-    # TODO update if exists
+    return worker
+
+
+def create_miner_worker(session, worker_data: dict) -> MinerWorker:
+    worker = from_dict(MinerWorker, worker_data)
+
+    session.add(worker)
+    session.flush()
+
+    return worker
+
+
+def create_friendbot_worker(session, worker_data: dict) -> FriendbotWorker:
+    worker = from_dict(FriendbotWorker, worker_data)
 
     session.add(worker)
     session.flush()

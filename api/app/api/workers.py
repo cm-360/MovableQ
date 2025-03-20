@@ -6,6 +6,7 @@ from quart import current_app
 from quart import request
 
 from app.api.utils import api_error
+from app.api.utils import api_exception
 from app.api.utils import register_error_handlers
 from app.db.queries.workers import create_or_update_worker
 from app.db.queries.workers import get_all_workers
@@ -45,6 +46,9 @@ async def register_worker():
 
     # Create/update worker in database
     with current_app.db.bind.Session() as session, session.begin():
-        worker = create_or_update_worker(session, worker_type, worker_data)
+        try:
+            worker = create_or_update_worker(session, worker_type, worker_data)
+        except KeyError as e:
+            return api_exception(e, 400)
 
         return dict(worker)
