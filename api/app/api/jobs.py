@@ -7,10 +7,10 @@ from app.api.utils import api_exception
 from app.api.utils import register_error_handlers
 from app.db.queries.jobs import assign_job
 from app.db.queries.jobs import create_job
-from app.db.queries.jobs import get_jobs_of_types
 from app.db.queries.jobs import get_job_by_id
+from app.db.queries.jobs import get_jobs_of_types
 from app.db.queries.jobs import get_queued_jobs
-from app.db.queries.workers import get_worker_by_data
+from app.db.queries.workers import get_worker
 
 bp = Blueprint("API: Jobs", __name__)
 register_error_handlers(bp)
@@ -52,7 +52,7 @@ async def request_job():
     worker_data = await request.get_json()
 
     with current_app.db.bind.Session() as session:
-        worker = get_worker_by_data(session, worker_data)
+        worker = get_worker(session, worker_data)
 
         # Request Parameters
 

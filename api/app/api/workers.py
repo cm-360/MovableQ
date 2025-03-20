@@ -1,11 +1,7 @@
-from datetime import datetime
-from datetime import timezone
-
 from quart import Blueprint
 from quart import current_app
 from quart import request
 
-from app.api.utils import api_error
 from app.api.utils import api_exception
 from app.api.utils import register_error_handlers
 from app.db.queries.workers import create_or_update_worker
@@ -30,24 +26,18 @@ async def list_workers():
 
 @bp.post("/register")
 async def register_worker():
-    # Unpack worker information from request body
-    try:
-        worker_data = await request.get_json()
-        worker_type = worker_data["type"]
-    except KeyError:
-        return api_error("Missing required parameter", 400)
+    worker_data = await request.get_json()
 
     # Set worker parameters
     worker_data = {
         **worker_data,
         "last_ip": request.remote_addr,
-        "updated_at": datetime.now(timezone.utc),
     }
 
     # Create/update worker in database
     with current_app.db.bind.Session() as session, session.begin():
         try:
-            worker = create_or_update_worker(session, worker_type, worker_data)
+            worker = create_or_update_worker(session, worker_data)
         except KeyError as e:
             return api_exception(e, 400)
 

@@ -113,8 +113,8 @@ def get_queued_jobs(session, job_types: list[str] = []) -> list[Job]:
 
 
 def assign_job(session, job: Job, worker: Worker) -> Job | None:
-    worker_id_column = inspect(type(worker)).primary_key[0].name
-    worker_id = getattr(worker, worker_id_column)
+    worker_id_attr = inspect(type(worker)).primary_key[0].name
+    worker_id = getattr(worker, worker_id_attr)
 
     # TODO handle nonexistent jobs
 
