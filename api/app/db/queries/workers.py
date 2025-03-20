@@ -35,7 +35,7 @@ def get_workers_of_types(session, worker_types: list[str] = []) -> list[Worker]:
         worker_types (list[str]): The types of workers to retrieve.
 
     Returns:
-        list[MinerWorker]: A list of matching workers.
+        list[Worker]: A list of matching workers.
     """
     if not worker_types:
         return get_all_workers(session)
@@ -100,7 +100,7 @@ def create_worker(session, worker_data: dict) -> Worker:
         worker_data (dict): Dictionary of data for the new worker.
 
     Returns:
-        MinerWorker: The newly-created worker object.
+        Worker: The newly-created worker object.
     """
     worker_type = worker_data["type"]
     worker_class = Worker.get_subclass(worker_type)
