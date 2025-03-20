@@ -6,6 +6,7 @@ from sqlalchemy.orm import mapped_column
 
 from app.db.models.base import Base
 from app.db.utils import Serializable
+from app.db.utils import format_timestamp
 from app.utils.strings import camel_to_kebab_case
 
 
@@ -31,7 +32,7 @@ class Worker(Serializable):
 
     def __iter__(self):
         yield from super().__iter__()
-        yield "updated_at", self.updated_at.isoformat()
+        yield "updated_at", format_timestamp(self.updated_at)
         yield "type", self.worker_type()
 
 

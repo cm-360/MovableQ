@@ -2,6 +2,7 @@ from dataclasses import Field
 from dataclasses import asdict
 from dataclasses import fields
 from dataclasses import is_dataclass
+from datetime import timezone
 from typing import Optional
 from typing import Type
 from typing import TypeVar
@@ -53,3 +54,10 @@ def from_dict(target_class: Type[T], data: dict) -> T:
 
 def is_required(field: Field) -> bool:
     return not isinstance(field.type.__args__[0], type(Optional[any]))
+
+
+def format_timestamp(timestamp: str | None) -> str | None:
+    if timestamp is None:
+        return
+
+    return timestamp.replace(tzinfo=timezone.utc).isoformat()

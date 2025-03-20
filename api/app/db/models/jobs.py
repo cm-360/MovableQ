@@ -13,6 +13,7 @@ from sqlalchemy.orm import validates
 
 from app.db.models.base import Base
 from app.db.utils import Serializable
+from app.db.utils import format_timestamp
 from app.utils.strings import camel_to_kebab_case
 from app.utils.validators import is_valid_friend_code
 from app.utils.validators import is_valid_id0
@@ -62,12 +63,9 @@ class Job(Serializable):
 
     def __iter__(self):
         yield from super().__iter__()
-        yield "created_at", self.created_at.isoformat()
-        yield "updated_at", self.updated_at.isoformat()
-        yield (
-            "completed_at",
-            (self.completed_at.isoformat() if self.completed_at is not None else None),
-        )
+        yield "created_at", format_timestamp(self.created_at)
+        yield "updated_at", format_timestamp(self.updated_at)
+        yield "completed_at", format_timestamp(self.completed_at)
         yield "status", self.status.name
         yield "type", self.job_type()
 
