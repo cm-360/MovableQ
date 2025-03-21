@@ -11,7 +11,7 @@ from sqlalchemy.orm import validates
 
 from app.db.models.base import Base
 from app.db.models.base import GenericBase
-from app.db.utils import format_timestamp
+from app.utils.formatters import format_timestamp
 from app.utils.validators import is_valid_friend_code
 from app.utils.validators import is_valid_id0
 from app.utils.validators import is_valid_lfcs

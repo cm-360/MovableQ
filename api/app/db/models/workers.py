@@ -5,7 +5,7 @@ from sqlalchemy.orm import mapped_column
 from app.db.models.base import Base
 from app.db.models.base import GenericBase
 from app.db.models.decorators import allowed_job_types
-from app.db.utils import format_timestamp
+from app.utils.formatters import format_timestamp
 
 
 class Worker(GenericBase):

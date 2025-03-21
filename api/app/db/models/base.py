@@ -2,17 +2,15 @@ from __future__ import annotations
 
 from dataclasses import asdict
 from dataclasses import fields
-from dataclasses import is_dataclass
 from functools import reduce
 from typing import Any
-from typing import Type
 
 from sqlalchemy import inspect
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import MappedAsDataclass
 
-from app.utils.strings import camel_to_kebab_case
+from app.utils.formatters import camel_to_kebab_case
 
 
 class Base(AsyncAttrs, DeclarativeBase):
