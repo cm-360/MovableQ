@@ -29,21 +29,15 @@ async def list_jobs():
 
 @bp.post("/submit")
 async def submit_job():
-    # Unpack job information from request body
-    try:
-        data = await request.get_json()
-        job_type = data["type"]
-        job_data = data["job"]
-    except KeyError:
-        return api_error("Missing required parameter", 400)
+    job_data = await request.get_json()
 
     # Create job object in database
     try:
         with current_app.db.bind.Session() as session, session.begin():
-            job = create_job(session, job_type, job_data)
+            job = create_job(session, job_data)
 
             return dict(job)
-    except ValueError as e:
+    except Exception as e:
         return api_exception(e, 400)
 
 

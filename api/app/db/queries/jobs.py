@@ -1,9 +1,9 @@
 from datetime import datetime
 from datetime import timezone
 
+from sqlalchemy import inspect
 from sqlalchemy import select
 from sqlalchemy import update
-from sqlalchemy import inspect
 
 from app.db.models.jobs import FcLfcsJob
 from app.db.models.jobs import Job
@@ -17,36 +17,15 @@ from app.utils.validators import is_valid_id0
 from app.utils.validators import is_valid_system_id
 
 
-def create_job(session, job_type: str, job_data: dict) -> Job:
-    # Set default job parameters
-    now = datetime.now(timezone.utc)
-    job_data = {
-        **job_data,
-        "created_at": now,
-        "updated_at": now,
-        "status": JobStatus.queued,
-    }
-
-    # Construct appropriate job object
-    if "msed" == job_type:
-        job = from_dict(MsedJob, job_data)
-
-        if job.lfcs is None:
-            job.status = JobStatus.submitted
-    elif "fc-lfcs" == job_type:
-        job = from_dict(FcLfcsJob, job_data)
-    elif "mii-lfcs" == job_type:
-        job = from_dict(MiiLfcsJob, job_data)
-    else:
-        raise ValueError(f"Invalid job type: {job_type}")
-
-    session.add(job)
-    session.flush()
-
-    return job
-
-
 def get_all_jobs(session) -> list[Job]:
+    """Retrieves all jobs from the database.
+
+    Args:
+        session (Session): The database session object.
+
+    Returns:
+        list[Job]: A list of all jobs.
+    """
     jobs = []
 
     for job_class in Job.get_all_subclasses():
@@ -56,6 +35,15 @@ def get_all_jobs(session) -> list[Job]:
 
 
 def get_jobs_of_types(session, job_types: list[str] = []) -> list[Job]:
+    """Retrieves all jobs of the specified types from the database.
+
+    Args:
+        session (Session): The database session object.
+        job_types (list[str]): The types of jobs to retrieve.
+
+    Returns:
+        list[Job]: A list of matching jobs.
+    """
     if not job_types:
         return get_all_jobs(session)
 
@@ -110,6 +98,25 @@ def get_queued_jobs(session, job_types: list[str] = []) -> list[Job]:
     jobs.sort(key=lambda j: j.updated_at)
 
     return jobs
+
+
+def create_job(session, job_data: dict) -> Job:
+    job_type = job_data["type"]
+    job_class = Job.get_subclass(job_type)
+
+    now = datetime.now(timezone.utc)
+    job_data = {
+        **job_data,
+        "created_at": now,
+        "updated_at": now,
+        "status": JobStatus.queued,
+    }
+    job = from_dict(job_class, job_data)
+
+    session.add(job)
+    session.flush()
+
+    return job
 
 
 def assign_job(session, job: Job, worker: Worker) -> Job | None:

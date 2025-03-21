@@ -191,6 +191,13 @@ class MsedJob(Base, Job):
     assignee: Mapped[str | None] = mapped_column(ForeignKey("miner_workers.client_id"))
     prereq_id: Mapped[str | None]
 
+    def __post_init__(self):
+        if self.lfcs is None and self.prereq_id is None:
+            raise ValueError("Either an LFCS or prerequisite ID must be provided")
+
+        if self.lfcs is None and JobStatus.queued == self.status:
+            self.status = JobStatus.submitted
+
     @validates("id0")
     def validate_id0(self, key: str, id0: str):
         if not is_valid_id0(id0):
