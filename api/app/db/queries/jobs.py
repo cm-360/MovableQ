@@ -128,21 +128,41 @@ def create_job(session, job_data: dict) -> Job:
     return job
 
 
-def assign_job(session, job: Job, worker: Worker) -> Job:
-    # Get assigned worker's ID
-    worker_id_attr = inspect(type(worker)).primary_key[0].name
-    worker_id = getattr(worker, worker_id_attr)
-
-    # Update job in database
+def update_job(session, job: Job, job_data: dict) -> Job:
     session.execute(
-        update(type(job))
-        .where(job.primary_key_matches(dict(job)))
-        .values(assignee=worker_id)
+        update(type(job)).where(job.primary_key_matches(dict(job))).values(job_data)
     )
     session.refresh(job)
 
     return job
 
 
+def cancel_job(session, job: Job) -> Job:
+    pass
+
+
+def assign_job(session, job: Job, worker: Worker) -> Job:
+    # Get assigned worker's ID
+    worker_id_attr = inspect(type(worker)).primary_key[0].name
+    worker_id = getattr(worker, worker_id_attr)
+
+    # Update job in database
+    job = update_job(session, job, dict(assignee=worker_id))
+
+    return job
+
+
 def release_job(session, job: Job) -> Job:
+    pass
+
+
+def complete_job(session, job: Job, result: any) -> Job:
+    pass
+
+
+def fail_job(session, job: Job, reason: str) -> Job:
+    pass
+
+
+def reset_job(session, job: Job) -> Job:
     pass
