@@ -78,7 +78,7 @@ async def request_job():
         for job in assigned_jobs:
             assign_job(session, job, worker)
 
-        return {"assigned": [dict(j) for j in assigned_jobs]}
+        return [dict(j) for j in assigned_jobs]
 
 
 @bp.get("/<job_id>/details")

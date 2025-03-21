@@ -15,6 +15,8 @@ from app.utils.validators import is_valid_friend_code
 from app.utils.validators import is_valid_id0
 from app.utils.validators import is_valid_system_id
 
+# TODO: handle illegal job state transitions
+
 
 def get_all_jobs(session) -> list[Job]:
     """Retrieves all jobs from the database.
@@ -70,24 +72,31 @@ def get_fc_lfcs_job(session, friend_code: str) -> FcLfcsJob | None:
     if not is_valid_friend_code(friend_code):
         raise ValueError("Invalid friend code")
 
-    statement = select(FcLfcsJob).filter(FcLfcsJob.friend_code == friend_code)
-    return session.scalars(statement).first()
+    job = session.scalars(
+        select(FcLfcsJob).filter(FcLfcsJob.friend_code == friend_code)
+    ).first()
+
+    return job
 
 
 def get_mii_lfcs_job(session, system_id: str) -> MiiLfcsJob | None:
     if not is_valid_system_id(system_id):
         raise ValueError("Invalid system ID")
 
-    statement = select(MiiLfcsJob).filter(MiiLfcsJob.system_id == system_id)
-    return session.scalars(statement).first()
+    job = session.scalars(
+        select(MiiLfcsJob).filter(MiiLfcsJob.system_id == system_id)
+    ).first()
+
+    return job
 
 
 def get_msed_job(session, id0: str) -> MsedJob | None:
     if not is_valid_id0(id0):
         raise ValueError("Invalid ID0")
 
-    statement = select(MsedJob).filter(MsedJob.id0 == id0)
-    return session.scalars(statement).first()
+    job = session.scalars(select(MsedJob).filter(MsedJob.id0 == id0)).first()
+
+    return job
 
 
 def get_queued_jobs(session, job_types: list[str] = []) -> list[Job]:
@@ -100,9 +109,7 @@ def get_queued_jobs(session, job_types: list[str] = []) -> list[Job]:
 
 
 def create_job(session, job_data: dict) -> Job:
-    job_type = job_data["type"]
-    job_class = Job.get_subclass(job_type)
-
+    # Default job data
     now = datetime.now(timezone.utc)
     job_data = {
         **job_data,
@@ -110,28 +117,32 @@ def create_job(session, job_data: dict) -> Job:
         "updated_at": now,
         "status": JobStatus.queued,
     }
+
+    # Create job object
+    job_type = job_data["type"]
+    job_class = Job.get_subclass(job_type)
     job = job_class.from_dict(job_data)
 
     session.add(job)
-    session.flush()
 
     return job
 
 
-def assign_job(session, job: Job, worker: Worker) -> Job | None:
+def assign_job(session, job: Job, worker: Worker) -> Job:
+    # Get assigned worker's ID
     worker_id_attr = inspect(type(worker)).primary_key[0].name
     worker_id = getattr(worker, worker_id_attr)
 
-    # TODO handle nonexistent jobs
-
+    # Update job in database
     session.execute(
         update(type(job))
         .where(job.primary_key_matches(dict(job)))
         .values(assignee=worker_id)
     )
-
-    job = session.scalars(
-        select(type(job)).where(job.primary_key_matches(dict(job)))
-    ).one()
+    session.refresh(job)
 
     return job
+
+
+def release_job(session, job: Job) -> Job:
+    pass

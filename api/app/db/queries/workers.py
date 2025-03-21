@@ -88,7 +88,7 @@ def create_or_update_worker(session, worker_data: dict) -> Worker:
     if worker is None:
         return create_worker(session, worker_data)
     else:
-        return update_worker(session, worker_data)
+        return update_worker(session, worker, worker_data)
 
 
 def create_worker(session, worker_data: dict) -> Worker:
@@ -101,19 +101,20 @@ def create_worker(session, worker_data: dict) -> Worker:
     Returns:
         Worker: The newly-created worker object.
     """
+    # Default worker data
+    worker_data["updated_at"] = datetime.now(timezone.utc)
+
+    # Create worker object
     worker_type = worker_data["type"]
     worker_class = Worker.get_subclass(worker_type)
-
-    worker_data["updated_at"] = datetime.now(timezone.utc)
     worker = worker_class.from_dict(worker_data)
 
     session.add(worker)
-    session.flush()
 
     return worker
 
 
-def update_worker(session, worker_data: dict) -> Worker:
+def update_worker(session, worker: Worker, worker_data: dict) -> Worker:
     """Updates an existing worker in the database.
 
     Args:
@@ -124,24 +125,16 @@ def update_worker(session, worker_data: dict) -> Worker:
     Returns:
         Worker: The updated worker object.
     """
-    worker_type = worker_data["type"]
-    worker_class = Worker.get_subclass(worker_type)
-
     # Filter input columns
     update_data = {k: v for k, v in worker_data.items() if k in allowed_update_columns}
     update_data["updated_at"] = datetime.now(timezone.utc)
 
-    # Update worker in DB
+    # Update worker in database
     session.execute(
-        update(worker_class)
-        .where(worker_class.primary_key_matches(worker_data))
+        update(type(worker))
+        .where(worker.primary_key_matches(worker_data))
         .values(update_data)
     )
-    session.flush()
-
-    # Get updated worker object
-    worker = session.scalars(
-        select(worker_class).where(worker_class.primary_key_matches(worker_data))
-    ).first()
+    session.refresh(worker)
 
     return worker
