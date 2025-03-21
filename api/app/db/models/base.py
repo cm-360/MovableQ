@@ -1,5 +1,11 @@
+from __future__ import annotations
+
 from dataclasses import asdict
+from dataclasses import fields
+from dataclasses import is_dataclass
 from functools import reduce
+from typing import Any
+from typing import Type
 
 from sqlalchemy import inspect
 from sqlalchemy.ext.asyncio import AsyncAttrs
@@ -22,12 +28,42 @@ class Base(AsyncAttrs, DeclarativeBase):
         return joined_clauses
 
 
-class Serializable:
-    """Provides flexible dictionary serialization for dataclasses."""
+class Serializable(MappedAsDataclass):
+    """Dataclass with flexible dictionary serialization and ."""
 
     def __iter__(self):
         for k, v in asdict(self).items():
             yield k, v
+
+    @classmethod
+    def from_dict(cls, data: dict) -> Serializable:
+        """Unpacks a dictionary into a new instance of a dataclass.
+
+        Args:
+            data (dict): A dictionary of data to unpack from.
+
+        Returns:
+            Serializable: A dataclass instance populated with the given data.
+
+        Raises:
+            ValueError: If no value is specified for a required field.
+
+        Note:
+            The instantiation functionality is based on
+            https://medium.com/@emirhalici/unlocking-the-power-of-python-data-classes-w-json-serialization-3e5a24d98e84.
+        """
+        required_fields = [
+            f.name for f in fields(cls) if not isinstance(f.type, type(Any | None))
+        ]
+        missing_fields = [f for f in required_fields if f not in data]
+
+        if missing_fields:
+            raise ValueError(f"Missing required fields: {missing_fields}")
+
+        field_names = [f.name for f in fields(cls)]
+        kwargs = {k: data.get(k) for k in field_names}
+
+        return cls(**kwargs)
 
 
 class Superclass:
@@ -59,5 +95,5 @@ class Superclass:
                 return subclass
 
 
-class GenericBase(MappedAsDataclass, Serializable, Superclass):
+class GenericBase(Serializable, Superclass):
     pass

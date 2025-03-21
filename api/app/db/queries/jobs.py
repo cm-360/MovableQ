@@ -11,7 +11,6 @@ from app.db.models.jobs import JobStatus
 from app.db.models.jobs import MiiLfcsJob
 from app.db.models.jobs import MsedJob
 from app.db.models.workers import Worker
-from app.db.utils import from_dict
 from app.utils.validators import is_valid_friend_code
 from app.utils.validators import is_valid_id0
 from app.utils.validators import is_valid_system_id
@@ -111,7 +110,7 @@ def create_job(session, job_data: dict) -> Job:
         "updated_at": now,
         "status": JobStatus.queued,
     }
-    job = from_dict(job_class, job_data)
+    job = job_class.from_dict(job_data)
 
     session.add(job)
     session.flush()

@@ -5,7 +5,6 @@ from sqlalchemy import select
 from sqlalchemy import update
 
 from app.db.models.workers import Worker
-from app.db.utils import from_dict
 
 allowed_update_columns = ["name", "last_ip", "version"]
 
@@ -106,7 +105,7 @@ def create_worker(session, worker_data: dict) -> Worker:
     worker_class = Worker.get_subclass(worker_type)
 
     worker_data["updated_at"] = datetime.now(timezone.utc)
-    worker = from_dict(worker_class, worker_data)
+    worker = worker_class.from_dict(worker_data)
 
     session.add(worker)
     session.flush()
